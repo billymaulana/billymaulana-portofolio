@@ -7,6 +7,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "nuxt3": "^3.0.0-rc.1-27516498.2bfd749",
     "pinia": "^2.0.12"
   },
   "devDependencies": {
@@ -17,13 +18,6 @@
     "@unocss/nuxt": "^0.30.8",
     "@vueuse/nuxt": "^8.2.3",
     "eslint": "^8.12.0",
-    "nuxt3": "^3.0.0-27478938.fdd6a91",
     "typescript": "^4.6.3"
-  },
-  "pnpm": {
-    "overrides": {
-      "@nuxt/kit": "npm:@nuxt/kit-edge@latest",
-      "@nuxt/kit-edge": "latest"
-    }
   }
 }
