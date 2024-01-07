@@ -1,19 +1,9 @@
+<script setup>
+const { isLoadingScreen } = useWelcomeScreen()
+</script>
 <template>
-  <NuxtLayout>
-    <NuxtPage />
+  <WelcomeScreen v-if="isLoadingScreen"/>
+  <NuxtLayout v-else>
+    <NuxtPage :key="'welcomeScreen'"></NuxtPage>
   </NuxtLayout>
 </template>
-<style>
-html,
-body,
-#__nuxt {
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-}
-
-html.dark {
-  background: #222;
-  color: white;
-}
-</style>
