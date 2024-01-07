@@ -1,11 +1,15 @@
 export default defineNuxtConfig({
   modules: [
+    'nuxt-typed-router',
     '@vueuse/nuxt',
     '@unocss/nuxt',
     '@pinia/nuxt',
     '@nuxtjs/color-mode',
   ],
-   experimental: {
+  build: {
+    transpile: ['gsap'],
+  },
+  experimental: {
     // when using generate, payload js assets included in sw precache manifest
     // but missing on offline, disabling extraction it until fixed
     payloadExtraction: false,
@@ -14,6 +18,7 @@ export default defineNuxtConfig({
   },
   css: [
     '@unocss/reset/tailwind.css',
+    '~/assets/styles/main.css',
   ],
   colorMode: {
     classSuffix: '',
@@ -29,7 +34,10 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Billy Maulana',
+      htmlAttrs: {
+        lang: "en",
+      },
+      title: 'Billy Maulana | Frontend Developer',
       viewport: 'width=device-width,initial-scale=1',
       link: [
         { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
@@ -38,8 +46,13 @@ export default defineNuxtConfig({
       ],
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'description', content: "Billy Maulana Portfolio" },
+        { name: 'description', content: "Billy Maulana Portfolio, I'm a Front-End Web Developer based in Bandung, Indonesia." },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+        {
+          name: "keywords",
+          content:
+            "Web Developer, Front End Developer, Frontend Developer, Junior Web Developer, Software Developer, Software Engineer, Po Yi Zhi, Yi Zhi, Po YZ, YZ Po, eazypau, Malaysia",
+        },
       ],
     },
   },
