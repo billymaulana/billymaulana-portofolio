@@ -5,9 +5,6 @@
     "name": "Billy Maulana",
     "url": "https://billymaulana.com/"
   },
-  "engines" : { 
-    "node" : ">=18.0.0" 
-  },
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxi dev",
