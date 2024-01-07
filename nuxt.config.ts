@@ -27,6 +27,7 @@ export default defineNuxtConfig({
     classSuffix: '',
   },
   nitro: {
+    preset: "vercel",
     esbuild: {
       options: {
         target: 'esnext',
