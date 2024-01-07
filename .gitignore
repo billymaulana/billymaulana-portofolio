@@ -6,3 +6,4 @@ dist
 .env
 .vercel_build_output
 .idea/
+.vercel
