@@ -2,6 +2,10 @@
   "type": "module",
   "private": true,
   "packageManager": "pnpm@8.14.0",
+  "author": {
+    "name": "Billy Maulana",
+    "url": "https://billymaulana.com/"
+  },
   "scripts": {
     "build": "nuxi build",
     "dev": "nuxi dev",
@@ -26,6 +30,7 @@
     "eslint-plugin-format": "^0.1.0",
     "eslint-ts-patch": "^8.56.0-0",
     "nuxt": "^3.9.1",
+    "nuxt-typed-router": "^3.5.1",
     "pinia": "^2.1.7",
     "typescript": "^5.3.3",
     "vue-tsc": "^1.8.27"
