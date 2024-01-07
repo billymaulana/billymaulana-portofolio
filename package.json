@@ -16,6 +16,9 @@
     "lint": "eslint .",
     "typecheck": "vue-tsc --noEmit"
   },
+  "dependencies": {
+    "gsap": "^3.12.4"
+  },
   "devDependencies": {
     "@antfu/eslint-config": "^2.6.1",
     "@iconify-json/carbon": "^1.1.27",
