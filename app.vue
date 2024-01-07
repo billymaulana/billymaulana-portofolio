@@ -1,10 +1,19 @@
 <template>
-  <main class="py-20 px-10 text-center">
+  <NuxtLayout>
     <NuxtPage />
-    <Footer />
-  </main>
+  </NuxtLayout>
 </template>
-
 <style>
-@import '~/styles/main.css';
+html,
+body,
+#__nuxt {
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+html.dark {
+  background: #222;
+  color: white;
+}
 </style>
