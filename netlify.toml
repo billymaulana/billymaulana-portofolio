@@ -1,9 +1,10 @@
 [build]
-  command = "bun run build"
+  command = "corepack enable && pnpm install --frozen-lockfile && pnpm run build"
   publish = ".output/public"
 
 [build.environment]
   NODE_VERSION = "20"
+  PNPM_VERSION = "9.15.0"
 
 [[headers]]
   for = "/*"
@@ -32,3 +33,8 @@
   for = "/favicon.svg"
   [headers.values]
     Cache-Control = "public, max-age=86400"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

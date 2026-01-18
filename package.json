@@ -1,6 +1,9 @@
 {
+  "name": "billymaulana-portfolio",
   "type": "module",
+  "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@9.15.0",
   "author": {
     "name": "Billy Maulana",
     "url": "https://billymaulana.com/"
@@ -10,35 +13,36 @@
     "dev": "nuxi dev",
     "generate": "nuxi generate",
     "postinstall": "nuxi prepare",
+    "preview": "nuxi preview",
     "start": "node .output/server/index.mjs",
-    "start:generate": "npx serve .output/public",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "gsap": "^3.12.5",
+    "gsap": "^3.12.7",
     "lenis": "^1.1.18"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^4.0.0",
-    "@iconify-json/carbon": "^1.2.0",
-    "@iconify-json/logos": "^1.2.0",
-    "@iconify-json/mdi": "^1.2.0",
-    "@iconify-json/ph": "^1.2.0",
-    "@iconify-json/ri": "^1.2.0",
-    "@iconify-json/simple-icons": "^1.2.0",
-    "@iconify-json/tabler": "^1.2.0",
-    "@iconify-json/twemoji": "^1.2.0",
+    "@antfu/eslint-config": "^4.2.0",
+    "@iconify-json/carbon": "^1.2.5",
+    "@iconify-json/logos": "^1.2.3",
+    "@iconify-json/mdi": "^1.2.2",
+    "@iconify-json/ph": "^1.2.2",
+    "@iconify-json/ri": "^1.2.3",
+    "@iconify-json/simple-icons": "^1.2.11",
+    "@iconify-json/tabler": "^1.2.8",
+    "@iconify-json/twemoji": "^1.2.5",
     "@nuxt/image": "^1.8.1",
     "@pinia/nuxt": "^0.5.5",
     "@unocss/nuxt": "^66.0.0",
     "@vueuse/nuxt": "^12.0.0",
     "consola": "^3.4.0",
-    "eslint": "^9.0.0",
-    "nuxt": "^3.14.0",
+    "eslint": "^9.17.0",
+    "nuxt": "^3.15.0",
     "nuxt-typed-router": "^3.8.0",
     "pinia": "^2.3.0",
-    "typescript": "^5.7.0",
+    "typescript": "^5.7.2",
     "vue-tsc": "^2.2.0"
   }
 }
