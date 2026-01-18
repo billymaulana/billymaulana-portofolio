@@ -41,30 +41,35 @@ const categories = computed(() => {
 })
 
 onMounted(async () => {
-  const { gsap } = await import('gsap')
-  const { ScrollTrigger } = await import('gsap/ScrollTrigger')
+  try {
+    const { gsap } = await import('gsap')
+    const { ScrollTrigger } = await import('gsap/ScrollTrigger')
 
-  gsap.registerPlugin(ScrollTrigger)
+    gsap.registerPlugin(ScrollTrigger)
 
-  const items = gridRef.value?.querySelectorAll('.skill-card')
+    const items = gridRef.value?.querySelectorAll('.skill-card')
 
-  if (items) {
-    gsap.fromTo(
-      items,
-      { scale: 0.8, opacity: 0 },
-      {
-        scale: 1,
-        opacity: 1,
-        duration: 0.5,
-        stagger: 0.05,
-        ease: 'back.out(1.7)',
-        scrollTrigger: {
-          trigger: gridRef.value,
-          start: 'top 80%',
-          toggleActions: 'play none none reverse',
+    if (items && items.length > 0) {
+      gsap.fromTo(
+        items,
+        { scale: 0.8, opacity: 0 },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.5,
+          stagger: 0.05,
+          ease: 'back.out(1.7)',
+          scrollTrigger: {
+            trigger: gridRef.value,
+            start: 'top 80%',
+            toggleActions: 'play none none reverse',
+          },
         },
-      },
-    )
+      )
+    }
+  }
+  catch (error) {
+    console.warn('Skills animation failed:', error)
   }
 })
 </script>

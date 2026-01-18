@@ -50,31 +50,36 @@ const projects: Project[] = [
 ]
 
 onMounted(async () => {
-  const { gsap } = await import('gsap')
-  const { ScrollTrigger } = await import('gsap/ScrollTrigger')
+  try {
+    const { gsap } = await import('gsap')
+    const { ScrollTrigger } = await import('gsap/ScrollTrigger')
 
-  gsap.registerPlugin(ScrollTrigger)
+    gsap.registerPlugin(ScrollTrigger)
 
-  const cards = worksRef.value?.querySelectorAll('.work-card')
+    const cards = worksRef.value?.querySelectorAll('.work-card')
 
-  cards?.forEach((card, index) => {
-    gsap.fromTo(
-      card,
-      { y: 100, opacity: 0, rotateX: -15 },
-      {
-        y: 0,
-        opacity: 1,
-        rotateX: 0,
-        duration: 0.8,
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: card,
-          start: 'top 85%',
-          toggleActions: 'play none none reverse',
+    cards?.forEach((card) => {
+      gsap.fromTo(
+        card,
+        { y: 100, opacity: 0, rotateX: -15 },
+        {
+          y: 0,
+          opacity: 1,
+          rotateX: 0,
+          duration: 0.8,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: card,
+            start: 'top 85%',
+            toggleActions: 'play none none reverse',
+          },
         },
-      },
-    )
-  })
+      )
+    })
+  }
+  catch (error) {
+    console.warn('Works animation failed:', error)
+  }
 })
 </script>
 

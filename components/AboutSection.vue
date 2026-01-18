@@ -11,43 +11,52 @@ const stats = [
 ]
 
 onMounted(async () => {
-  const { gsap } = await import('gsap')
-  const { ScrollTrigger } = await import('gsap/ScrollTrigger')
+  try {
+    const { gsap } = await import('gsap')
+    const { ScrollTrigger } = await import('gsap/ScrollTrigger')
 
-  gsap.registerPlugin(ScrollTrigger)
+    gsap.registerPlugin(ScrollTrigger)
 
-  gsap.fromTo(
-    contentRef.value,
-    { x: -100, opacity: 0 },
-    {
-      x: 0,
-      opacity: 1,
-      duration: 1,
-      ease: 'power3.out',
-      scrollTrigger: {
-        trigger: sectionRef.value,
-        start: 'top 80%',
-        toggleActions: 'play none none reverse',
-      },
-    },
-  )
+    if (contentRef.value && sectionRef.value) {
+      gsap.fromTo(
+        contentRef.value,
+        { x: -100, opacity: 0 },
+        {
+          x: 0,
+          opacity: 1,
+          duration: 1,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: sectionRef.value,
+            start: 'top 80%',
+            toggleActions: 'play none none reverse',
+          },
+        },
+      )
+    }
 
-  gsap.fromTo(
-    statsRef.value?.children || [],
-    { y: 50, opacity: 0 },
-    {
-      y: 0,
-      opacity: 1,
-      duration: 0.8,
-      stagger: 0.15,
-      ease: 'power3.out',
-      scrollTrigger: {
-        trigger: statsRef.value,
-        start: 'top 85%',
-        toggleActions: 'play none none reverse',
-      },
-    },
-  )
+    if (statsRef.value?.children) {
+      gsap.fromTo(
+        statsRef.value.children,
+        { y: 50, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          stagger: 0.15,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: statsRef.value,
+            start: 'top 85%',
+            toggleActions: 'play none none reverse',
+          },
+        },
+      )
+    }
+  }
+  catch (error) {
+    console.warn('About animation failed:', error)
+  }
 })
 </script>
 
@@ -61,7 +70,7 @@ onMounted(async () => {
 
     <div class="container-custom section-padding">
       <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-        <div ref="contentRef">
+        <div ref="contentRef" class="opacity-0">
           <span class="font-mono text-primary text-sm uppercase tracking-widest mb-4 block">
             About Me
           </span>
@@ -112,7 +121,7 @@ onMounted(async () => {
           <div
             v-for="stat in stats"
             :key="stat.label"
-            class="brutalist-card group"
+            class="brutalist-card group opacity-0"
           >
             <span class="text-fluid-4xl font-accent text-primary block mb-2 group-hover:text-secondary transition-colors">
               {{ stat.value }}

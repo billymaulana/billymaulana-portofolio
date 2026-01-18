@@ -87,30 +87,35 @@ const experiences = [
 ]
 
 onMounted(async () => {
-  const { gsap } = await import('gsap')
-  const { ScrollTrigger } = await import('gsap/ScrollTrigger')
+  try {
+    const { gsap } = await import('gsap')
+    const { ScrollTrigger } = await import('gsap/ScrollTrigger')
 
-  gsap.registerPlugin(ScrollTrigger)
+    gsap.registerPlugin(ScrollTrigger)
 
-  const items = timelineRef.value?.querySelectorAll('.timeline-item')
+    const items = timelineRef.value?.querySelectorAll('.timeline-item')
 
-  items?.forEach((item, index) => {
-    gsap.fromTo(
-      item,
-      { x: index % 2 === 0 ? -100 : 100, opacity: 0 },
-      {
-        x: 0,
-        opacity: 1,
-        duration: 1,
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: item,
-          start: 'top 85%',
-          toggleActions: 'play none none reverse',
+    items?.forEach((item, index) => {
+      gsap.fromTo(
+        item,
+        { x: index % 2 === 0 ? -100 : 100, opacity: 0 },
+        {
+          x: 0,
+          opacity: 1,
+          duration: 1,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: item,
+            start: 'top 85%',
+            toggleActions: 'play none none reverse',
+          },
         },
-      },
-    )
-  })
+      )
+    })
+  }
+  catch (error) {
+    console.warn('Experience animation failed:', error)
+  }
 })
 </script>
 

@@ -1,17 +1,20 @@
 <script setup lang="ts">
 const isLoading = ref(true)
+const isClient = ref(false)
 
 function handleLoadingComplete() {
   isLoading.value = false
 }
 
 onMounted(async () => {
-  const { gsap } = await import('gsap')
-  const { ScrollTrigger } = await import('gsap/ScrollTrigger')
+  isClient.value = true
 
-  gsap.registerPlugin(ScrollTrigger)
+  try {
+    const { gsap } = await import('gsap')
+    const { ScrollTrigger } = await import('gsap/ScrollTrigger')
 
-  if (typeof window !== 'undefined') {
+    gsap.registerPlugin(ScrollTrigger)
+
     const Lenis = (await import('lenis')).default
 
     const lenis = new Lenis({
@@ -29,14 +32,20 @@ onMounted(async () => {
 
     gsap.ticker.lagSmoothing(0)
   }
+  catch (error) {
+    console.warn('Animation initialization failed:', error)
+    isLoading.value = false
+  }
 })
 </script>
 
 <template>
   <div class="app-container">
-    <LoadingScreen v-if="isLoading" @complete="handleLoadingComplete" />
+    <LoadingScreen v-if="isLoading && isClient" @complete="handleLoadingComplete" />
     <template v-else>
-      <CustomCursor />
+      <ClientOnly>
+        <CustomCursor />
+      </ClientOnly>
       <Navigation />
       <main>
         <NuxtPage />

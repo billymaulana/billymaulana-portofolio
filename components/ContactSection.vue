@@ -37,26 +37,33 @@ const contactLinks: ContactLink[] = [
 ]
 
 onMounted(async () => {
-  const { gsap } = await import('gsap')
-  const { ScrollTrigger } = await import('gsap/ScrollTrigger')
+  try {
+    const { gsap } = await import('gsap')
+    const { ScrollTrigger } = await import('gsap/ScrollTrigger')
 
-  gsap.registerPlugin(ScrollTrigger)
+    gsap.registerPlugin(ScrollTrigger)
 
-  gsap.fromTo(
-    formRef.value,
-    { y: 100, opacity: 0 },
-    {
-      y: 0,
-      opacity: 1,
-      duration: 1,
-      ease: 'power3.out',
-      scrollTrigger: {
-        trigger: sectionRef.value,
-        start: 'top 70%',
-        toggleActions: 'play none none reverse',
-      },
-    },
-  )
+    if (formRef.value && sectionRef.value) {
+      gsap.fromTo(
+        formRef.value,
+        { y: 100, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 1,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: sectionRef.value,
+            start: 'top 70%',
+            toggleActions: 'play none none reverse',
+          },
+        },
+      )
+    }
+  }
+  catch (error) {
+    console.warn('Contact animation failed:', error)
+  }
 })
 </script>
 
