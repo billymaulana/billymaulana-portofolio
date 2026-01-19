@@ -7,3 +7,10 @@ dist
 .vercel_build_output
 .idea/
 .vercel
+.netlify/
+node-compile-cache
+.netlify
+dist
+.output
+.nuxt
+node_modules
