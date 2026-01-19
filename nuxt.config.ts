@@ -27,7 +27,6 @@ export default defineNuxtConfig({
   ],
 
   nitro: {
-    preset: 'netlify',
     esbuild: {
       options: {
         target: 'esnext',
@@ -38,6 +37,8 @@ export default defineNuxtConfig({
       routes: ['/'],
     },
   },
+
+  ssr: true,
 
   routeRules: {
     '/': { prerender: true },
