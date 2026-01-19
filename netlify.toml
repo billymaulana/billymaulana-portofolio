@@ -1,9 +1,10 @@
 [build]
-  command = "npm install -g pnpm && pnpm install && pnpm run generate"
+  command = "corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile && pnpm run generate"
   publish = ".output/public"
 
 [build.environment]
   NODE_VERSION = "20"
+  COREPACK_ENABLE_STRICT = "0"
 
 [[headers]]
   for = "/*"
