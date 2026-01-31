@@ -1,0 +1,14 @@
+node_modules
+*.log
+dist
+.output
+.nuxt
+.env
+.vercel_build_output
+.idea/
+.vercel
+.netlify
+node-compile-cache
+.vscode
+.claude
+CLAUDE.md
