@@ -4,219 +4,201 @@ const emit = defineEmits<{
 }>()
 
 const containerRef = ref<HTMLElement | null>(null)
-const counterRef = ref<HTMLElement | null>(null)
-const nameRef = ref<HTMLElement | null>(null)
-const roleRef = ref<HTMLElement | null>(null)
-const lineRef = ref<HTMLElement | null>(null)
-const yearRef = ref<HTMLElement | null>(null)
+const textRef = ref<HTMLElement | null>(null)
+const thermalTextRef = ref<HTMLElement | null>(null)
 
-const counter = ref(0)
-const isRevealing = ref(false)
+// Thermal color palette from the tutorial
+const thermalColors = [
+  '#000000',
+  '#214F89',
+  '#4A8497',
+  '#E5504C',
+  '#EF7E01',
+  '#F9BA3B',
+  '#FDEBD1',
+  '#FFFFFF',
+]
+
+const turbulenceRef = ref<SVGFETurbulenceElement | null>(null)
+const displacementRef = ref<SVGFEDisplacementMapElement | null>(null)
 
 onMounted(async () => {
-  if (!containerRef.value)
+  if (!containerRef.value || !textRef.value)
     return
 
   const { gsap } = await import('gsap')
 
-  const masterTl = gsap.timeline({
-    onComplete: () => {
-      emit('complete')
-    },
-  })
+  const mainText = textRef.value
+  const thermalText = thermalTextRef.value
+  const turbulence = turbulenceRef.value
+  const displacement = displacementRef.value
 
-  // Phase 1: Counter animation (0 to 100)
-  masterTl.to(counter, {
-    value: 100,
-    duration: 2,
-    ease: 'power2.inOut',
-    snap: { value: 1 },
-    onUpdate: () => {
-      if (counterRef.value) {
-        counterRef.value.textContent = String(Math.floor(counter.value)).padStart(3, '0')
-      }
-    },
-  })
-
-  // Phase 2: Counter fades and scales
-  masterTl.to(counterRef.value, {
-    scale: 0.5,
+  // Initial state
+  gsap.set(mainText, {
     opacity: 0,
-    duration: 0.5,
-    ease: 'power3.in',
+    filter: 'blur(30px)',
+  })
+  gsap.set(thermalText, {
+    opacity: 1,
   })
 
-  // Phase 3: Reveal name
-  masterTl.add(() => {
-    isRevealing.value = true
+  const master = gsap.timeline({
+    onComplete: () => emit('complete'),
   })
 
-  masterTl.fromTo(
-    nameRef.value,
-    {
-      opacity: 0,
-      y: 100,
-      clipPath: 'inset(100% 0 0 0)',
-    },
-    {
-      opacity: 1,
-      y: 0,
-      clipPath: 'inset(0% 0 0 0)',
-      duration: 1.2,
-      ease: 'power4.out',
-    },
-    '-=0.2',
-  )
-
-  // Animate each letter with stagger
-  if (nameRef.value) {
-    const letters = nameRef.value.querySelectorAll('.char')
-    masterTl.fromTo(
-      letters,
+  // Phase 1: Animate turbulence evolution (creates the thermal shimmer)
+  if (turbulence) {
+    master.fromTo(
+      { seed: 0 },
+      { seed: 100 },
       {
-        y: 120,
-        opacity: 0,
-        rotateX: -90,
+        duration: 3,
+        ease: 'none',
+        onUpdate() {
+          // Animate baseFrequency for organic movement
+          const progress = this.progress()
+          const freq = 0.008 + Math.sin(progress * Math.PI * 4) * 0.004
+          turbulence.setAttribute('baseFrequency', `${freq}`)
+          turbulence.setAttribute('seed', String(Math.floor(this.targets()[0].seed)))
+        },
       },
-      {
-        y: 0,
-        opacity: 1,
-        rotateX: 0,
-        duration: 0.8,
-        stagger: 0.03,
-        ease: 'back.out(1.7)',
-      },
-      '-=0.8',
     )
   }
 
-  // Phase 4: Role text slides in
-  masterTl.fromTo(
-    roleRef.value,
-    {
-      opacity: 0,
-      x: -50,
-    },
+  // Phase 2: Reduce displacement scale (distortion settles)
+  if (displacement) {
+    master.to(
+      { scale: 80 },
+      {
+        scale: 0,
+        duration: 2.5,
+        ease: 'power2.out',
+        onUpdate() {
+          displacement.setAttribute('scale', String(this.targets()[0].scale))
+        },
+      },
+      0,
+    )
+  }
+
+  // Phase 3: Fade in main text, reduce blur
+  master.to(
+    mainText,
     {
       opacity: 1,
-      x: 0,
-      duration: 0.6,
-      ease: 'power3.out',
+      filter: 'blur(0px)',
+      duration: 2.5,
+      ease: 'power2.out',
     },
-    '-=0.3',
+    0.5,
   )
 
-  // Line expands
-  masterTl.fromTo(
-    lineRef.value,
-    {
-      scaleX: 0,
-      transformOrigin: 'left center',
-    },
-    {
-      scaleX: 1,
-      duration: 0.8,
-      ease: 'power3.out',
-    },
-    '-=0.4',
-  )
-
-  // Year fades in
-  masterTl.fromTo(
-    yearRef.value,
+  // Phase 4: Fade out thermal overlay
+  master.to(
+    thermalText,
     {
       opacity: 0,
-      y: 20,
+      duration: 2,
+      ease: 'power2.in',
     },
-    {
-      opacity: 1,
-      y: 0,
-      duration: 0.5,
-      ease: 'power3.out',
-    },
-    '-=0.3',
+    1.5,
   )
 
-  // Phase 5: Hold then exit
-  masterTl.to({}, { duration: 1 })
+  // Hold
+  master.to({}, { duration: 1 })
 
-  // Exit animation
-  masterTl.to(containerRef.value, {
-    clipPath: 'inset(0 0 100% 0)',
-    duration: 1,
-    ease: 'power4.inOut',
+  // Exit: Quick blur out and slide
+  master.to(textRef.value, {
+    filter: 'blur(12px)',
+    opacity: 0,
+    y: -40,
+    duration: 0.6,
+    ease: 'power3.in',
   })
+
+  master.to(
+    containerRef.value,
+    {
+      opacity: 0,
+      duration: 0.4,
+    },
+    '-=0.3',
+  )
 })
 
-function splitText(text: string): string[] {
-  return text.split('')
-}
+// Generate thermal gradient CSS
+const thermalGradient = computed(() => {
+  const stops = thermalColors.map((color, i) => {
+    const percent = (i / (thermalColors.length - 1)) * 100
+    return `${color} ${percent}%`
+  }).join(', ')
+  return `linear-gradient(180deg, ${stops})`
+})
 </script>
 
 <template>
-  <div
-    ref="containerRef"
-    class="intro-splash"
-  >
-    <!-- Counter Phase -->
-    <div
-      ref="counterRef"
-      class="counter"
-      :class="{ hidden: isRevealing }"
-    >
-      000
-    </div>
+  <div ref="containerRef" class="splash">
+    <!-- SVG Filters for displacement effect -->
+    <svg class="filters" aria-hidden="true">
+      <defs>
+        <!-- Thermal displacement filter -->
+        <filter id="thermal-displacement" x="-50%" y="-50%" width="200%" height="200%">
+          <feTurbulence
+            ref="turbulenceRef"
+            type="fractalNoise"
+            base-frequency="0.008"
+            num-octaves="3"
+            seed="0"
+            result="noise"
+          />
+          <feDisplacementMap
+            ref="displacementRef"
+            in="SourceGraphic"
+            in2="noise"
+            scale="80"
+            x-channel-selector="R"
+            y-channel-selector="G"
+          />
+        </filter>
 
-    <!-- Main Reveal -->
-    <div
-      class="reveal-content"
-      :class="{ visible: isRevealing }"
-    >
-      <!-- Decorative Elements -->
-      <div class="decor decor-tl" />
-      <div class="decor decor-br" />
+        <!-- Glow filter -->
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="8" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+    </svg>
 
-      <!-- Role -->
-      <div ref="roleRef" class="role">
-        <span class="role-line" />
-        <span class="role-text">FRONTEND DEVELOPER</span>
-      </div>
+    <!-- Background with subtle thermal gradient -->
+    <div class="bg" />
 
-      <!-- Main Name -->
-      <h1 ref="nameRef" class="name">
-        <span class="name-line">
-          <span
-            v-for="(char, i) in splitText('BILLY')"
-            :key="`b-${i}`"
-            class="char"
-          >{{ char }}</span>
-        </span>
-        <span class="name-line">
-          <span
-            v-for="(char, i) in splitText('MAULANA')"
-            :key="`m-${i}`"
-            class="char"
-          >{{ char }}</span>
-        </span>
+    <!-- Main text (reveals from blur) -->
+    <div ref="textRef" class="text-container">
+      <h1 class="text main-text">
+        BILLY
       </h1>
-
-      <!-- Bottom Line -->
-      <div ref="lineRef" class="bottom-line" />
-
-      <!-- Year -->
-      <div ref="yearRef" class="year">
-        <span class="year-label">PORTFOLIO</span>
-        <span class="year-number">© 2026</span>
-      </div>
+      <p class="subtext">
+        MAULANA
+      </p>
     </div>
 
-    <!-- Noise Overlay -->
+    <!-- Thermal text overlay (with displacement + gradient) -->
+    <div ref="thermalTextRef" class="text-container thermal-layer">
+      <h1 class="text thermal-text" :style="{ backgroundImage: thermalGradient }">
+        BILLY
+      </h1>
+    </div>
+
+    <!-- Noise grain -->
     <div class="noise" />
   </div>
 </template>
 
 <style scoped>
-.intro-splash {
+.splash {
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -227,150 +209,83 @@ function splitText(text: string): string[] {
   overflow: hidden;
 }
 
-/* Counter */
-.counter {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: clamp(8rem, 20vw, 16rem);
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.05em;
-  transition: opacity 0.3s ease;
-}
-
-.counter.hidden {
+.filters {
+  position: absolute;
+  width: 0;
+  height: 0;
   pointer-events: none;
 }
 
-/* Reveal Content */
-.reveal-content {
+.bg {
   position: absolute;
   inset: 0;
+  background: radial-gradient(ellipse at center, #0a0a12 0%, #000 100%);
+}
+
+.text-container {
+  position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  opacity: 0;
+  gap: 0.5rem;
+}
+
+.text {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: clamp(4rem, 15vw, 10rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.main-text {
+  color: #fff;
+}
+
+.subtext {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: clamp(0.8rem, 2.5vw, 1.2rem);
+  font-weight: 400;
+  letter-spacing: 0.5em;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+/* Thermal overlay layer */
+.thermal-layer {
+  filter: url(#thermal-displacement) url(#glow);
+  mix-blend-mode: screen;
   pointer-events: none;
 }
 
-.reveal-content.visible {
-  opacity: 1;
-  pointer-events: auto;
+.thermal-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: blur(2px);
 }
 
-/* Decorative Elements */
-.decor {
-  position: absolute;
-  width: 100px;
-  height: 100px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-}
-
-.decor-tl {
-  top: 2rem;
-  left: 2rem;
-  border-right: none;
-  border-bottom: none;
-}
-
-.decor-br {
-  bottom: 2rem;
-  right: 2rem;
-  border-left: none;
-  border-top: none;
-}
-
-/* Role */
-.role {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.role-line {
-  width: 40px;
-  height: 1px;
-  background: #fff;
-}
-
-.role-text {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: clamp(0.625rem, 1.5vw, 0.875rem);
-  color: rgba(255, 255, 255, 0.6);
-  letter-spacing: 0.3em;
-}
-
-/* Name */
-.name {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 0.85;
-  perspective: 1000px;
-}
-
-.name-line {
-  display: flex;
-  overflow: hidden;
-}
-
-.char {
-  display: inline-block;
-  font-family: 'Inter', sans-serif;
-  font-size: clamp(4rem, 15vw, 14rem);
-  font-weight: 900;
-  color: #fff;
-  text-transform: uppercase;
-  letter-spacing: -0.03em;
-  transform-style: preserve-3d;
-}
-
-.name-line:nth-child(2) .char {
-  color: transparent;
-  -webkit-text-stroke: 2px #fff;
-  text-stroke: 2px #fff;
-}
-
-/* Bottom Line */
-.bottom-line {
-  width: min(80%, 600px);
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #fff, transparent);
-  margin-top: 2rem;
-}
-
-/* Year */
-.year {
-  display: flex;
-  justify-content: space-between;
-  width: min(80%, 600px);
-  margin-top: 1rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: clamp(0.625rem, 1vw, 0.75rem);
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.2em;
-}
-
-/* Noise */
+/* Noise overlay */
 .noise {
   position: absolute;
   inset: 0;
   pointer-events: none;
   opacity: 0.04;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* Mobile Adjustments */
-@media (max-width: 768px) {
-  .decor {
-    width: 50px;
-    height: 50px;
+/* Responsive */
+@media (max-width: 640px) {
+  .text {
+    font-size: clamp(2.5rem, 18vw, 5rem);
   }
 
-  .name-line:nth-child(2) .char {
-    -webkit-text-stroke-width: 1px;
+  .subtext {
+    font-size: clamp(0.6rem, 3vw, 0.9rem);
+    letter-spacing: 0.4em;
   }
 }
 </style>
