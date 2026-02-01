@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * IntroSplash - Hypnotic Spiral + Logo + Text Reveal
- * Inspired by: skizophonic.com, stellapetkova.com
+ * IntroSplash - Cinematic Iris Wipe + Glitch Effect
+ * Inspired by: skizophonic.com
  *
- * Sequence: Logo → Circles expand → Text reveal
+ * Sequence: Glitch in → Logo → Iris wipe → Text reveal → Glitch out
  */
 
 const emit = defineEmits<{
@@ -24,110 +24,218 @@ async function initAnimation() {
   const { gsap } = await import('gsap')
 
   // Elements
-  const logo = container.querySelector('.logo')
-  const circles = container.querySelectorAll('.circle')
+  const logo = container.querySelector('.logo-wrapper')
+  const logoImg = container.querySelector('.logo')
+  const logoGlitchLayers = container.querySelectorAll('.glitch-layer')
+  const irisSegments = container.querySelectorAll('.iris-segment')
+  const scanlines = container.querySelector('.scanlines')
+  const noise = container.querySelector('.noise')
   const textChars = container.querySelectorAll('.char')
   const subtitle = container.querySelector('.subtitle')
 
-  // Initial states - everything hidden
-  gsap.set(logo, { opacity: 0, scale: 0.5 })
-  gsap.set(circles, { scale: 0 })
-  gsap.set(textChars, { y: 100, opacity: 0, rotateX: -40 })
-  gsap.set(subtitle, { opacity: 0, y: 20 })
+  // Initial states
+  gsap.set(logo, { opacity: 0, scale: 0.9 })
+  gsap.set(logoGlitchLayers, { opacity: 0 })
+  gsap.set(irisSegments, { scale: 0, rotation: 0 })
+  gsap.set(scanlines, { opacity: 0 })
+  gsap.set(noise, { opacity: 0 })
+  gsap.set(textChars, { y: 120, opacity: 0, rotateX: -60 })
+  gsap.set(subtitle, { opacity: 0, y: 30 })
 
   const tl = gsap.timeline({
     defaults: { ease: 'power3.out' },
     onComplete: () => {
       gsap.to(container, {
         opacity: 0,
-        duration: 0.6,
+        duration: 0.5,
         ease: 'power2.inOut',
         onComplete: () => emit('complete'),
       })
     },
   })
 
-  // Phase 1: Logo appears
+  // === PHASE 1: Glitch intro + Logo appears ===
+  // Noise flash
+  tl.to(noise, {
+    opacity: 0.15,
+    duration: 0.1,
+  })
+
+  tl.to(noise, {
+    opacity: 0,
+    duration: 0.1,
+  })
+
+  // Scanlines appear
+  tl.to(scanlines, {
+    opacity: 0.4,
+    duration: 0.2,
+  }, '-=0.1')
+
+  // Logo with glitch effect
   tl.to(logo, {
     opacity: 1,
     scale: 1,
-    duration: 1,
-    ease: 'back.out(1.2)',
-  })
-
-  // Phase 2: Hold logo
-  tl.to({}, { duration: 0.8 })
-
-  // Phase 3: Logo fades out completely before circles
-  tl.to(logo, {
-    opacity: 0,
-    scale: 0.8,
-    duration: 0.6,
-    ease: 'power2.inOut',
-  })
-
-  // Phase 4: Circles bloom from center (smooth stagger)
-  tl.to(circles, {
-    scale: 1,
-    duration: 1.4,
+    duration: 0.8,
     ease: 'power2.out',
-    stagger: {
-      each: 0.1,
-      from: 'end',
-    },
+  })
+
+  // RGB split glitch on entry
+  tl.to(logoGlitchLayers[0], {
+    opacity: 0.8,
+    x: -4,
+    duration: 0.05,
+  }, '-=0.6')
+
+  tl.to(logoGlitchLayers[1], {
+    opacity: 0.8,
+    x: 4,
+    duration: 0.05,
+  }, '-=0.55')
+
+  // Glitch flicker
+  tl.to(logoGlitchLayers, {
+    opacity: 0,
+    x: 0,
+    duration: 0.1,
   }, '-=0.4')
 
-  // Phase 5: Text characters reveal (smooth cascade)
+  tl.to(logoGlitchLayers[0], {
+    opacity: 0.6,
+    x: -6,
+    duration: 0.03,
+  }, '-=0.2')
+
+  tl.to(logoGlitchLayers[1], {
+    opacity: 0.6,
+    x: 6,
+    duration: 0.03,
+  }, '-=0.18')
+
+  tl.to(logoGlitchLayers, {
+    opacity: 0,
+    x: 0,
+    duration: 0.15,
+  })
+
+  // Scanlines fade
+  tl.to(scanlines, {
+    opacity: 0.1,
+    duration: 0.5,
+  }, '-=0.3')
+
+  // === PHASE 2: Hold logo ===
+  tl.to({}, { duration: 0.6 })
+
+  // === PHASE 3: Logo exit with glitch ===
+  // Glitch burst before exit
+  tl.to(noise, {
+    opacity: 0.2,
+    duration: 0.05,
+  })
+
+  tl.to(logoGlitchLayers[0], {
+    opacity: 0.9,
+    x: -8,
+    y: 2,
+    duration: 0.04,
+  }, '-=0.03')
+
+  tl.to(logoGlitchLayers[1], {
+    opacity: 0.9,
+    x: 8,
+    y: -2,
+    duration: 0.04,
+  }, '-=0.03')
+
+  tl.to([logo, logoGlitchLayers, noise], {
+    opacity: 0,
+    scale: 0.95,
+    duration: 0.3,
+    ease: 'power2.in',
+  })
+
+  // === PHASE 4: Iris wipe reveal ===
+  tl.to(irisSegments, {
+    scale: 1,
+    rotation: (i) => i * 30,
+    duration: 1.2,
+    ease: 'power3.inOut',
+    stagger: {
+      each: 0.04,
+      from: 'center',
+    },
+  }, '-=0.1')
+
+  // === PHASE 5: Text reveal ===
   tl.to(textChars, {
     y: 0,
     opacity: 1,
     rotateX: 0,
-    duration: 0.9,
+    duration: 1,
     ease: 'power3.out',
     stagger: {
-      each: 0.035,
+      each: 0.04,
       ease: 'power2.in',
     },
-  }, '-=0.8')
+  }, '-=0.6')
 
-  // Phase 6: Subtitle fades in
+  // Subtitle
   tl.to(subtitle, {
     opacity: 0.5,
     y: 0,
     duration: 0.6,
     ease: 'power2.out',
-  }, '-=0.4')
+  }, '-=0.5')
 
-  // Phase 7: Hold to appreciate
-  tl.to({}, { duration: 2 })
+  // === PHASE 6: Appreciate ===
+  tl.to({}, { duration: 1.8 })
 
-  // Phase 8: Exit - circles expand out
-  tl.to(circles, {
-    scale: 2,
-    opacity: 0,
-    duration: 1,
-    ease: 'power2.in',
-    stagger: {
-      each: 0.06,
-      from: 'start',
-    },
+  // === PHASE 7: Exit with glitch ===
+  // Subtle glitch flash
+  tl.to(scanlines, {
+    opacity: 0.5,
+    duration: 0.1,
   })
 
-  // Phase 9: Text and logo exit
+  tl.to(noise, {
+    opacity: 0.1,
+    duration: 0.08,
+  })
+
+  // Iris segments expand out
+  tl.to(irisSegments, {
+    scale: 2.5,
+    opacity: 0,
+    duration: 0.8,
+    ease: 'power2.in',
+    stagger: {
+      each: 0.03,
+      from: 'edges',
+    },
+  }, '-=0.1')
+
+  // Text exit
   tl.to(textChars, {
-    y: -60,
+    y: -80,
     opacity: 0,
     duration: 0.5,
     ease: 'power3.in',
     stagger: 0.02,
-  }, '-=0.8')
+  }, '-=0.7')
 
   tl.to(subtitle, {
     opacity: 0,
-    y: -30,
+    y: -40,
     duration: 0.4,
     ease: 'power2.in',
   }, '-=0.5')
+
+  // Final cleanup
+  tl.to([scanlines, noise], {
+    opacity: 0,
+    duration: 0.2,
+  }, '-=0.3')
 }
 
 onMounted(() => {
@@ -137,8 +245,28 @@ onMounted(() => {
 
 <template>
   <div class="splash">
-    <!-- Logo -->
-    <div class="logo-container">
+    <!-- Noise overlay -->
+    <div class="noise" />
+
+    <!-- Scanlines -->
+    <div class="scanlines" />
+
+    <!-- Logo with glitch layers -->
+    <div class="logo-wrapper">
+      <!-- RGB Glitch layers -->
+      <img
+        src="/assets/images/logo/logo-bm-white.png"
+        alt=""
+        class="glitch-layer glitch-r"
+        aria-hidden="true"
+      >
+      <img
+        src="/assets/images/logo/logo-bm-white.png"
+        alt=""
+        class="glitch-layer glitch-b"
+        aria-hidden="true"
+      >
+      <!-- Main logo -->
       <img
         src="/assets/images/logo/logo-bm-white.png"
         alt="BM"
@@ -146,18 +274,23 @@ onMounted(() => {
       >
     </div>
 
-    <!-- Concentric circles -->
-    <div class="circles-container">
-      <div class="circle circle-1" />
-      <div class="circle circle-2" />
-      <div class="circle circle-3" />
-      <div class="circle circle-4" />
-      <div class="circle circle-5" />
-      <div class="circle circle-6" />
-      <div class="circle circle-7" />
+    <!-- Iris wipe segments -->
+    <div class="iris-container">
+      <div class="iris-segment seg-1" />
+      <div class="iris-segment seg-2" />
+      <div class="iris-segment seg-3" />
+      <div class="iris-segment seg-4" />
+      <div class="iris-segment seg-5" />
+      <div class="iris-segment seg-6" />
+      <div class="iris-segment seg-7" />
+      <div class="iris-segment seg-8" />
+      <div class="iris-segment seg-9" />
+      <div class="iris-segment seg-10" />
+      <div class="iris-segment seg-11" />
+      <div class="iris-segment seg-12" />
     </div>
 
-    <!-- Text overlay with blend mode -->
+    <!-- Text with blend mode -->
     <div class="text-container">
       <h1 class="title">
         <span class="char">B</span>
@@ -176,7 +309,6 @@ onMounted(() => {
       </h1>
     </div>
 
-    <!-- Subtitle outside blend mode for visibility -->
     <p class="subtitle">
       Frontend Developer
     </p>
@@ -195,8 +327,43 @@ onMounted(() => {
   justify-content: center;
 }
 
+/* Noise overlay */
+.noise {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0;
+  pointer-events: none;
+  z-index: 100;
+  animation: noiseShift 0.1s steps(2) infinite;
+}
+
+@keyframes noiseShift {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(-5%, -5%); }
+  100% { transform: translate(5%, 5%); }
+}
+
+/* Scanlines */
+.scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.3) 2px,
+    rgba(0, 0, 0, 0.3) 4px
+  );
+  pointer-events: none;
+  z-index: 99;
+  opacity: 0;
+}
+
 /* Logo */
-.logo-container {
+.logo-wrapper {
   position: absolute;
   z-index: 20;
   display: flex;
@@ -211,65 +378,59 @@ onMounted(() => {
   z-index: 2;
 }
 
-/* Concentric circles */
-.circles-container {
+.glitch-layer {
+  position: absolute;
+  width: clamp(320px, 65vw, 700px);
+  height: auto;
+  pointer-events: none;
+}
+
+.glitch-r {
+  z-index: 1;
+  filter: hue-rotate(-60deg) saturate(2);
+  mix-blend-mode: screen;
+}
+
+.glitch-b {
+  z-index: 3;
+  filter: hue-rotate(180deg) saturate(2);
+  mix-blend-mode: screen;
+}
+
+/* Iris wipe segments */
+.iris-container {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  z-index: 5;
 }
 
-.circle {
+.iris-segment {
   position: absolute;
-  border-radius: 50%;
+  width: 250vmax;
+  height: 250vmax;
+  clip-path: polygon(50% 50%, 50% 0%, 100% 0%);
+  transform-origin: center;
 }
 
-/* More circles for smoother gradient effect */
-.circle-1 {
-  width: 200vmax;
-  height: 200vmax;
-  background: #fff;
-}
+/* Alternating black and white segments */
+.seg-1 { background: #fff; transform: rotate(0deg); }
+.seg-2 { background: #000; transform: rotate(30deg); }
+.seg-3 { background: #fff; transform: rotate(60deg); }
+.seg-4 { background: #000; transform: rotate(90deg); }
+.seg-5 { background: #fff; transform: rotate(120deg); }
+.seg-6 { background: #000; transform: rotate(150deg); }
+.seg-7 { background: #fff; transform: rotate(180deg); }
+.seg-8 { background: #000; transform: rotate(210deg); }
+.seg-9 { background: #fff; transform: rotate(240deg); }
+.seg-10 { background: #000; transform: rotate(270deg); }
+.seg-11 { background: #fff; transform: rotate(300deg); }
+.seg-12 { background: #000; transform: rotate(330deg); }
 
-.circle-2 {
-  width: 170vmax;
-  height: 170vmax;
-  background: #000;
-}
-
-.circle-3 {
-  width: 140vmax;
-  height: 140vmax;
-  background: #fff;
-}
-
-.circle-4 {
-  width: 110vmax;
-  height: 110vmax;
-  background: #000;
-}
-
-.circle-5 {
-  width: 80vmax;
-  height: 80vmax;
-  background: #fff;
-}
-
-.circle-6 {
-  width: 50vmax;
-  height: 50vmax;
-  background: #000;
-}
-
-.circle-7 {
-  width: 25vmax;
-  height: 25vmax;
-  background: #fff;
-}
-
-/* Text with difference blend */
+/* Text */
 .text-container {
   position: relative;
   z-index: 10;
@@ -277,7 +438,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   mix-blend-mode: difference;
-  perspective: 500px;
+  perspective: 600px;
 }
 
 .title {
@@ -319,7 +480,8 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .logo {
+  .logo,
+  .glitch-layer {
     width: 280px;
   }
 
@@ -330,6 +492,11 @@ onMounted(() => {
   .subtitle {
     letter-spacing: 0.2em;
     bottom: 35%;
+  }
+
+  .iris-segment {
+    width: 300vmax;
+    height: 300vmax;
   }
 }
 </style>
