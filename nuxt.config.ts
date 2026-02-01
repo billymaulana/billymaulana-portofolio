@@ -1,4 +1,6 @@
 export default defineNuxtConfig({
+  ssr: false, // Disable SSR to fix client-side hydration issues
+
   modules: [
     '@unocss/nuxt',
     '@nuxt/icon',
@@ -34,13 +36,19 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'en' },
-      title: 'Nuxt Boilerplate',
+      title: 'Billy Maulana - Portfolio',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'description', content: 'A Nuxt 3 boilerplate with UnoCSS, GSAP, and more.' },
+        { name: 'description', content: 'Billy Maulana - Portfolio' },
+        { name: 'theme-color', content: '#000000' },
+        { name: 'apple-mobile-web-app-title', content: 'Billy Maulana' },
       ],
       link: [
-        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'icon', type: 'image/svg+xml', href: '/assets/favicon/favicon.svg' },
+        { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/assets/favicon/favicon-96x96.png' },
+        { rel: 'icon', type: 'image/x-icon', href: '/assets/favicon/favicon.ico' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/assets/favicon/apple-touch-icon.png' },
+        { rel: 'manifest', href: '/assets/favicon/site.webmanifest' },
       ],
     },
   },

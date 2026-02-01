@@ -1,199 +1,185 @@
 <script setup lang="ts">
+/**
+ * IntroSplash - Hypnotic Spiral + Logo + Text Reveal
+ * Inspired by: skizophonic.com, stellapetkova.com
+ *
+ * Sequence: Logo → Circles expand → Text reveal
+ */
+
 const emit = defineEmits<{
   complete: []
 }>()
 
-const containerRef = ref<HTMLElement | null>(null)
-const textRef = ref<HTMLElement | null>(null)
-const thermalTextRef = ref<HTMLElement | null>(null)
+let isInitialized = false
 
-// Thermal color palette from the tutorial
-const thermalColors = [
-  '#000000',
-  '#214F89',
-  '#4A8497',
-  '#E5504C',
-  '#EF7E01',
-  '#F9BA3B',
-  '#FDEBD1',
-  '#FFFFFF',
-]
+async function initAnimation() {
+  if (isInitialized)
+    return
+  isInitialized = true
 
-const turbulenceRef = ref<SVGFETurbulenceElement | null>(null)
-const displacementRef = ref<SVGFEDisplacementMapElement | null>(null)
-
-onMounted(async () => {
-  if (!containerRef.value || !textRef.value)
+  const container = document.querySelector('.splash') as HTMLElement
+  if (!container)
     return
 
   const { gsap } = await import('gsap')
 
-  const mainText = textRef.value
-  const thermalText = thermalTextRef.value
-  const turbulence = turbulenceRef.value
-  const displacement = displacementRef.value
+  // Elements
+  const logo = container.querySelector('.logo')
+  const circles = container.querySelectorAll('.circle')
+  const textChars = container.querySelectorAll('.char')
+  const subtitle = container.querySelector('.subtitle')
 
-  // Initial state
-  gsap.set(mainText, {
-    opacity: 0,
-    filter: 'blur(30px)',
-  })
-  gsap.set(thermalText, {
-    opacity: 1,
-  })
+  // Initial states - everything hidden
+  gsap.set(logo, { opacity: 0, scale: 0.5 })
+  gsap.set(circles, { scale: 0 })
+  gsap.set(textChars, { y: 100, opacity: 0, rotateX: -40 })
+  gsap.set(subtitle, { opacity: 0, y: 20 })
 
-  const master = gsap.timeline({
-    onComplete: () => emit('complete'),
-  })
-
-  // Phase 1: Animate turbulence evolution (creates the thermal shimmer)
-  if (turbulence) {
-    master.fromTo(
-      { seed: 0 },
-      { seed: 100 },
-      {
-        duration: 3,
-        ease: 'none',
-        onUpdate() {
-          // Animate baseFrequency for organic movement
-          const progress = this.progress()
-          const freq = 0.008 + Math.sin(progress * Math.PI * 4) * 0.004
-          turbulence.setAttribute('baseFrequency', `${freq}`)
-          turbulence.setAttribute('seed', String(Math.floor(this.targets()[0].seed)))
-        },
-      },
-    )
-  }
-
-  // Phase 2: Reduce displacement scale (distortion settles)
-  if (displacement) {
-    master.to(
-      { scale: 80 },
-      {
-        scale: 0,
-        duration: 2.5,
-        ease: 'power2.out',
-        onUpdate() {
-          displacement.setAttribute('scale', String(this.targets()[0].scale))
-        },
-      },
-      0,
-    )
-  }
-
-  // Phase 3: Fade in main text, reduce blur
-  master.to(
-    mainText,
-    {
-      opacity: 1,
-      filter: 'blur(0px)',
-      duration: 2.5,
-      ease: 'power2.out',
+  const tl = gsap.timeline({
+    defaults: { ease: 'power3.out' },
+    onComplete: () => {
+      gsap.to(container, {
+        opacity: 0,
+        duration: 0.6,
+        ease: 'power2.inOut',
+        onComplete: () => emit('complete'),
+      })
     },
-    0.5,
-  )
+  })
 
-  // Phase 4: Fade out thermal overlay
-  master.to(
-    thermalText,
-    {
-      opacity: 0,
-      duration: 2,
+  // Phase 1: Logo appears
+  tl.to(logo, {
+    opacity: 1,
+    scale: 1,
+    duration: 1,
+    ease: 'back.out(1.2)',
+  })
+
+  // Phase 2: Hold logo
+  tl.to({}, { duration: 0.8 })
+
+  // Phase 3: Logo fades out completely before circles
+  tl.to(logo, {
+    opacity: 0,
+    scale: 0.8,
+    duration: 0.6,
+    ease: 'power2.inOut',
+  })
+
+  // Phase 4: Circles bloom from center (smooth stagger)
+  tl.to(circles, {
+    scale: 1,
+    duration: 1.4,
+    ease: 'power2.out',
+    stagger: {
+      each: 0.1,
+      from: 'end',
+    },
+  }, '-=0.4')
+
+  // Phase 5: Text characters reveal (smooth cascade)
+  tl.to(textChars, {
+    y: 0,
+    opacity: 1,
+    rotateX: 0,
+    duration: 0.9,
+    ease: 'power3.out',
+    stagger: {
+      each: 0.035,
       ease: 'power2.in',
     },
-    1.5,
-  )
+  }, '-=0.8')
 
-  // Hold
-  master.to({}, { duration: 1 })
-
-  // Exit: Quick blur out and slide
-  master.to(textRef.value, {
-    filter: 'blur(12px)',
-    opacity: 0,
-    y: -40,
+  // Phase 6: Subtitle fades in
+  tl.to(subtitle, {
+    opacity: 0.5,
+    y: 0,
     duration: 0.6,
-    ease: 'power3.in',
+    ease: 'power2.out',
+  }, '-=0.4')
+
+  // Phase 7: Hold to appreciate
+  tl.to({}, { duration: 2 })
+
+  // Phase 8: Exit - circles expand out
+  tl.to(circles, {
+    scale: 2,
+    opacity: 0,
+    duration: 1,
+    ease: 'power2.in',
+    stagger: {
+      each: 0.06,
+      from: 'start',
+    },
   })
 
-  master.to(
-    containerRef.value,
-    {
-      opacity: 0,
-      duration: 0.4,
-    },
-    '-=0.3',
-  )
-})
+  // Phase 9: Text and logo exit
+  tl.to(textChars, {
+    y: -60,
+    opacity: 0,
+    duration: 0.5,
+    ease: 'power3.in',
+    stagger: 0.02,
+  }, '-=0.8')
 
-// Generate thermal gradient CSS
-const thermalGradient = computed(() => {
-  const stops = thermalColors.map((color, i) => {
-    const percent = (i / (thermalColors.length - 1)) * 100
-    return `${color} ${percent}%`
-  }).join(', ')
-  return `linear-gradient(180deg, ${stops})`
+  tl.to(subtitle, {
+    opacity: 0,
+    y: -30,
+    duration: 0.4,
+    ease: 'power2.in',
+  }, '-=0.5')
+}
+
+onMounted(() => {
+  setTimeout(() => initAnimation(), 100)
 })
 </script>
 
 <template>
-  <div ref="containerRef" class="splash">
-    <!-- SVG Filters for displacement effect -->
-    <svg class="filters" aria-hidden="true">
-      <defs>
-        <!-- Thermal displacement filter -->
-        <filter id="thermal-displacement" x="-50%" y="-50%" width="200%" height="200%">
-          <feTurbulence
-            ref="turbulenceRef"
-            type="fractalNoise"
-            base-frequency="0.008"
-            num-octaves="3"
-            seed="0"
-            result="noise"
-          />
-          <feDisplacementMap
-            ref="displacementRef"
-            in="SourceGraphic"
-            in2="noise"
-            scale="80"
-            x-channel-selector="R"
-            y-channel-selector="G"
-          />
-        </filter>
-
-        <!-- Glow filter -->
-        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="8" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-    </svg>
-
-    <!-- Background with subtle thermal gradient -->
-    <div class="bg" />
-
-    <!-- Main text (reveals from blur) -->
-    <div ref="textRef" class="text-container">
-      <h1 class="text main-text">
-        BILLY
-      </h1>
-      <p class="subtext">
-        MAULANA
-      </p>
+  <div class="splash">
+    <!-- Logo -->
+    <div class="logo-container">
+      <img
+        src="/assets/images/logo/logo-bm-white.png"
+        alt="BM"
+        class="logo"
+      >
     </div>
 
-    <!-- Thermal text overlay (with displacement + gradient) -->
-    <div ref="thermalTextRef" class="text-container thermal-layer">
-      <h1 class="text thermal-text" :style="{ backgroundImage: thermalGradient }">
-        BILLY
+    <!-- Concentric circles -->
+    <div class="circles-container">
+      <div class="circle circle-1" />
+      <div class="circle circle-2" />
+      <div class="circle circle-3" />
+      <div class="circle circle-4" />
+      <div class="circle circle-5" />
+      <div class="circle circle-6" />
+      <div class="circle circle-7" />
+    </div>
+
+    <!-- Text overlay with blend mode -->
+    <div class="text-container">
+      <h1 class="title">
+        <span class="char">B</span>
+        <span class="char">i</span>
+        <span class="char">l</span>
+        <span class="char">l</span>
+        <span class="char">y</span>
+        <span class="char space">&nbsp;</span>
+        <span class="char">M</span>
+        <span class="char">a</span>
+        <span class="char">u</span>
+        <span class="char">l</span>
+        <span class="char">a</span>
+        <span class="char">n</span>
+        <span class="char">a</span>
       </h1>
     </div>
 
-    <!-- Noise grain -->
-    <div class="noise" />
+    <!-- Subtitle outside blend mode for visibility -->
+    <p class="subtitle">
+      Frontend Developer
+    </p>
   </div>
 </template>
 
@@ -203,89 +189,147 @@ const thermalGradient = computed(() => {
   inset: 0;
   z-index: 9999;
   background: #000;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 }
 
-.filters {
+/* Logo */
+.logo-container {
   position: absolute;
-  width: 0;
-  height: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo {
+  width: clamp(320px, 65vw, 700px);
+  height: auto;
+  position: relative;
+  z-index: 2;
+}
+
+/* Concentric circles */
+.circles-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
 }
 
-.bg {
+.circle {
   position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, #0a0a12 0%, #000 100%);
+  border-radius: 50%;
 }
 
+/* More circles for smoother gradient effect */
+.circle-1 {
+  width: 200vmax;
+  height: 200vmax;
+  background: #fff;
+}
+
+.circle-2 {
+  width: 170vmax;
+  height: 170vmax;
+  background: #000;
+}
+
+.circle-3 {
+  width: 140vmax;
+  height: 140vmax;
+  background: #fff;
+}
+
+.circle-4 {
+  width: 110vmax;
+  height: 110vmax;
+  background: #000;
+}
+
+.circle-5 {
+  width: 80vmax;
+  height: 80vmax;
+  background: #fff;
+}
+
+.circle-6 {
+  width: 50vmax;
+  height: 50vmax;
+  background: #000;
+}
+
+.circle-7 {
+  width: 25vmax;
+  height: 25vmax;
+  background: #fff;
+}
+
+/* Text with difference blend */
 .text-container {
-  position: absolute;
+  position: relative;
+  z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  mix-blend-mode: difference;
+  perspective: 500px;
 }
 
-.text {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: clamp(4rem, 15vw, 10rem);
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  margin: 0;
-  text-transform: uppercase;
-}
-
-.main-text {
+.title {
+  font-family: 'Satoshi', system-ui, sans-serif;
+  font-size: clamp(40px, 14vw, 160px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
   color: #fff;
-}
-
-.subtext {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: clamp(0.8rem, 2.5vw, 1.2rem);
-  font-weight: 400;
-  letter-spacing: 0.5em;
-  color: rgba(255, 255, 255, 0.4);
   margin: 0;
   text-transform: uppercase;
+  display: flex;
+  overflow: hidden;
 }
 
-/* Thermal overlay layer */
-.thermal-layer {
-  filter: url(#thermal-displacement) url(#glow);
-  mix-blend-mode: screen;
-  pointer-events: none;
+.char {
+  display: inline-block;
+  will-change: transform, opacity;
+  transform-style: preserve-3d;
 }
 
-.thermal-text {
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: blur(2px);
+.space {
+  width: 0.2em;
 }
 
-/* Noise overlay */
-.noise {
+.subtitle {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.04;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  bottom: 38%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  font-family: 'Satoshi', system-ui, sans-serif;
+  font-size: clamp(12px, 2vw, 18px);
+  font-weight: 500;
+  letter-spacing: 0.35em;
+  color: #fff;
+  text-transform: uppercase;
+  mix-blend-mode: difference;
 }
 
-/* Responsive */
-@media (max-width: 640px) {
-  .text {
-    font-size: clamp(2.5rem, 18vw, 5rem);
+@media (max-width: 768px) {
+  .logo {
+    width: 280px;
   }
 
-  .subtext {
-    font-size: clamp(0.6rem, 3vw, 0.9rem);
-    letter-spacing: 0.4em;
+  .title {
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    letter-spacing: 0.2em;
+    bottom: 35%;
   }
 }
 </style>
