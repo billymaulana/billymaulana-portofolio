@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * IntroSplash - AWWWARDS Level Animation Orchestration
+ * IntroSplash - AWWWARDS Level Animation (SVG Hypnotic Spiral)
  * ═══════════════════════════════════════════════════════════════
- * Inspired by: Skizophonic, Zajno, Linear, Stripe
- * Key: Smooth overlaps, micro-delays, premium easing curves
+ * Inspired by: Skizophonic (https://www.skizophonic.com/)
+ * No video - Pure SVG + GSAP animation
  */
 
 const emit = defineEmits<{
@@ -11,6 +11,7 @@ const emit = defineEmits<{
 }>()
 
 let isInitialized = false
+let spiralAnimation: gsap.core.Tween | null = null
 
 async function initAnimation() {
   if (isInitialized)
@@ -29,7 +30,7 @@ async function initAnimation() {
   const logo = container.querySelector('.logo')
   const logoGlow = container.querySelector('.logo-glow')
   const spiralWrapper = container.querySelector('.spiral-wrapper')
-  const video = container.querySelector('.spiral-video') as HTMLVideoElement
+  const spiralCircles = container.querySelectorAll('.hypnotic-spiral .circle')
   const textContainer = container.querySelector('.text-container')
   const titleChars = container.querySelectorAll('.title .char')
   const subtitle = container.querySelector('.subtitle')
@@ -37,7 +38,7 @@ async function initAnimation() {
   const exitOverlay = container.querySelector('.exit-overlay')
 
   // ═══════════════════════════════════════════════════════════════
-  // INITIAL STATES - Prepared for cinematic reveals
+  // INITIAL STATES
   // ═══════════════════════════════════════════════════════════════
   gsap.set(logo, {
     opacity: 0,
@@ -48,6 +49,7 @@ async function initAnimation() {
   })
   gsap.set(logoGlow, { opacity: 0, scale: 0.4 })
   gsap.set(spiralWrapper, { clipPath: 'circle(0% at 50% 50%)', opacity: 1 })
+  gsap.set(spiralCircles, { transformOrigin: 'center center' })
   gsap.set(textContainer, { autoAlpha: 0 })
   gsap.set(titleChars, {
     yPercent: 130,
@@ -66,25 +68,33 @@ async function initAnimation() {
   gsap.set(whiteFlash, { autoAlpha: 0 })
   gsap.set(exitOverlay, { autoAlpha: 0 })
 
-  // Ensure video plays
-  if (video) {
-    video.play().catch(() => {})
-  }
+  // ═══════════════════════════════════════════════════════════════
+  // HYPNOTIC SPIRAL ANIMATION (Skizophonic style)
+  // ═══════════════════════════════════════════════════════════════
+  spiralAnimation = gsap.from(spiralCircles, {
+    scale: 0.88,
+    duration: 0.9,
+    ease: 'back(3)',
+    stagger: {
+      each: -0.055,
+      repeat: -1,
+      yoyo: true,
+    },
+  })
 
   // ═══════════════════════════════════════════════════════════════
-  // MASTER TIMELINE - Awwwards-level orchestration
+  // MASTER TIMELINE
   // ═══════════════════════════════════════════════════════════════
   const master = gsap.timeline({
     defaults: {
-      ease: 'power3.out', // Default smooth ease
+      ease: 'power3.out',
     },
   })
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 1: LOGO ENTRANCE - Ethereal Materialization
+  // PHASE 1: LOGO ENTRANCE
   // ───────────────────────────────────────────────────────────────
 
-  // Glow fades in first - prepares the stage
   master.to(logoGlow, {
     opacity: 0.15,
     scale: 0.7,
@@ -92,7 +102,6 @@ async function initAnimation() {
     ease: 'sine.out',
   })
 
-  // Logo materializes with smooth deceleration
   master.to(logo, {
     opacity: 1,
     scale: 1,
@@ -100,18 +109,16 @@ async function initAnimation() {
     filter: 'blur(0px)',
     y: 0,
     duration: 1.4,
-    ease: 'expo.out', // Fast start, smooth landing
-  }, '-=0.5') // 62% overlap - seamless flow
+    ease: 'expo.out',
+  }, '-=0.5')
 
-  // Glow breathes outward
   master.to(logoGlow, {
     opacity: 0.5,
     scale: 1.3,
     duration: 1.2,
     ease: 'power2.inOut',
-  }, '-=1.0') // Overlaps with logo settle
+  }, '-=1.0')
 
-  // Glow subtle pulse back
   master.to(logoGlow, {
     opacity: 0.35,
     scale: 1.15,
@@ -119,14 +126,12 @@ async function initAnimation() {
     ease: 'sine.inOut',
   }, '-=0.3')
 
-  // Micro-pause for visual breathing
   master.to({}, { duration: 0.15 })
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 2: LOGO → SPIRAL - Dimensional Crossfade
+  // PHASE 2: LOGO → SPIRAL
   // ───────────────────────────────────────────────────────────────
 
-  // Logo begins ethereal dissolve
   master.to(logo, {
     opacity: 0,
     scale: 1.08,
@@ -136,47 +141,42 @@ async function initAnimation() {
     ease: 'power2.inOut',
   })
 
-  // Glow expands and dissolves
   master.to(logoGlow, {
     opacity: 0,
     scale: 2.8,
     duration: 1.8,
     ease: 'power2.in',
-  }, '<+0.1') // Slight delay for depth
+  }, '<+0.1')
 
-  // Spiral iris wipe - perfectly timed with dissolve
   master.to(spiralWrapper, {
     clipPath: 'circle(100% at 50% 50%)',
     duration: 2.2,
-    ease: 'power3.inOut', // Smooth S-curve
-  }, '<+0.3') // Starts after dissolve begins
+    ease: 'power3.inOut',
+  }, '<+0.3')
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 3: TEXT ENTRANCE - Choreographed Reveal
+  // PHASE 3: TEXT ENTRANCE
   // ───────────────────────────────────────────────────────────────
 
-  // Activate text container mid-spiral reveal
   master.to(textContainer, {
     autoAlpha: 1,
     duration: 0.01,
   }, '-=1.4')
 
-  // Title characters cascade with rotation unwind
   master.to(titleChars, {
     yPercent: 0,
     opacity: 1,
     rotation: 0,
     scale: 1,
     duration: 1.0,
-    ease: 'power4.out', // Sharp deceleration
+    ease: 'power4.out',
     stagger: {
-      each: 0.035, // Tight stagger for flow
+      each: 0.035,
       from: 'start',
-      ease: 'power1.in', // Accelerating stagger
+      ease: 'power1.in',
     },
   }, '-=1.2')
 
-  // Subtitle contracts and sharpens
   master.to(subtitle, {
     yPercent: 0,
     opacity: 0.85,
@@ -185,19 +185,18 @@ async function initAnimation() {
     scale: 1,
     duration: 1.1,
     ease: 'power3.out',
-  }, '-=0.5') // Overlaps title finish
+  }, '-=0.5')
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 4: HOLD - Let it breathe
+  // PHASE 4: HOLD
   // ───────────────────────────────────────────────────────────────
 
   master.to({}, { duration: 1.8 })
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 5: TEXT EXIT - Accelerated Departure
+  // PHASE 5: TEXT EXIT
   // ───────────────────────────────────────────────────────────────
 
-  // Subtitle disperses first
   master.to(subtitle, {
     yPercent: -60,
     opacity: 0,
@@ -208,46 +207,41 @@ async function initAnimation() {
     ease: 'power3.in',
   })
 
-  // Title characters accelerate out with reverse cascade
   master.to(titleChars, {
     yPercent: -130,
     opacity: 0,
     rotation: -8,
     scale: 0.9,
     duration: 0.75,
-    ease: 'power4.in', // Strong acceleration
+    ease: 'power4.in',
     stagger: {
       each: 0.02,
-      from: 'end', // Reverse direction
+      from: 'end',
       ease: 'power2.in',
     },
-  }, '-=0.45') // Tight overlap
+  }, '-=0.45')
 
-  // Container fade
   master.to(textContainer, {
     autoAlpha: 0,
     duration: 0.1,
   }, '-=0.1')
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 6: SPIRAL EXIT - Hyperdrive Zoom
+  // PHASE 6: SPIRAL EXIT
   // ───────────────────────────────────────────────────────────────
 
-  // Spiral accelerates into infinity
   master.to(spiralWrapper, {
     scale: 3.5,
     duration: 1.2,
-    ease: 'expo.in', // Dramatic exponential acceleration
+    ease: 'expo.in',
   }, '-=0.05')
 
-  // Spiral fades during zoom
   master.to(spiralWrapper, {
     opacity: 0,
     duration: 0.9,
     ease: 'power3.in',
   }, '<+0.3')
 
-  // Breakthrough flash
   master.to(whiteFlash, {
     autoAlpha: 0.25,
     duration: 0.12,
@@ -260,17 +254,28 @@ async function initAnimation() {
     ease: 'power2.out',
   })
 
-  // Final black takeover
   master.to(exitOverlay, {
     autoAlpha: 1,
     duration: 0.45,
     ease: 'power2.out',
-    onComplete: () => emit('complete'),
+    onComplete: () => {
+      // Stop spiral animation when complete
+      if (spiralAnimation) {
+        spiralAnimation.kill()
+      }
+      emit('complete')
+    },
   }, '-=0.3')
 }
 
 onMounted(() => {
   setTimeout(() => initAnimation(), 50)
+})
+
+onUnmounted(() => {
+  if (spiralAnimation) {
+    spiralAnimation.kill()
+  }
 })
 </script>
 
@@ -282,25 +287,37 @@ onMounted(() => {
       <img src="/assets/images/logo/logo-bm-white.png" alt="BM" class="logo">
     </div>
 
-    <!-- Spiral Video -->
+    <!-- Hypnotic Spiral SVG (Skizophonic style) -->
     <div class="spiral-wrapper">
-      <video
-        class="spiral-video"
-        preload="auto"
-        autoplay
-        muted
-        loop
-        playsinline
-        disablepictureinpicture
+      <svg
+        class="hypnotic-spiral"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 1000 1000"
+        preserveAspectRatio="xMidYMid slice"
       >
-        <source src="/videos/spiral.mp4" type="video/mp4">
-      </video>
+        <!-- Outer circles -->
+        <circle class="circle" cx="500" cy="500" r="500" fill="#000" />
+        <circle class="circle" cx="500" cy="500" r="450" fill="#fff" />
+        <circle class="circle" cx="500" cy="500" r="400" fill="#000" />
+        <circle class="circle" cx="500" cy="500" r="355" fill="#fff" />
+        <circle class="circle" cx="500" cy="500" r="310" fill="#000" />
+        <circle class="circle" cx="500" cy="500" r="270" fill="#fff" />
+        <circle class="circle" cx="500" cy="500" r="230" fill="#000" />
+        <circle class="circle" cx="500" cy="500" r="195" fill="#fff" />
+        <circle class="circle" cx="500" cy="500" r="160" fill="#000" />
+        <circle class="circle" cx="500" cy="500" r="130" fill="#fff" />
+        <circle class="circle" cx="500" cy="500" r="100" fill="#000" />
+        <circle class="circle" cx="500" cy="500" r="75" fill="#fff" />
+        <circle class="circle" cx="500" cy="500" r="50" fill="#000" />
+        <circle class="circle" cx="500" cy="500" r="30" fill="#fff" />
+        <circle class="circle" cx="500" cy="500" r="12" fill="#000" />
+      </svg>
     </div>
 
-    <!-- Exit effect - subtle white flash -->
+    <!-- Exit effect -->
     <div class="white-flash" />
 
-    <!-- Text with character animation -->
+    <!-- Text -->
     <div class="text-container">
       <h1 class="title">
         <span class="char">B</span><span class="char">I</span><span class="char">L</span><span class="char">L</span><span class="char">Y</span>
@@ -353,7 +370,7 @@ onMounted(() => {
   will-change: transform, opacity, filter;
 }
 
-/* Spiral Video Wrapper */
+/* Hypnotic Spiral */
 .spiral-wrapper {
   position: absolute;
   top: 0;
@@ -363,13 +380,20 @@ onMounted(() => {
   z-index: 50;
   transform-origin: center center;
   will-change: clip-path, transform, opacity;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.spiral-video {
+.hypnotic-spiral {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  background: #000;
+  min-width: 100vw;
+  min-height: 100vh;
+}
+
+.hypnotic-spiral .circle {
+  will-change: transform;
 }
 
 /* Text */
@@ -422,7 +446,7 @@ onMounted(() => {
   will-change: transform, opacity, letter-spacing, filter;
 }
 
-/* White flash - breakthrough moment */
+/* White flash */
 .white-flash {
   position: absolute;
   inset: 0;
