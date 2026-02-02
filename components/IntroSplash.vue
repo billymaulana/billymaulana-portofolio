@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * IntroSplash - AWWWARDS Level Animation (SVG Hypnotic Spiral)
+ * IntroSplash - AWWWARDS Level Animation (True Hypnotic Spiral)
  * ═══════════════════════════════════════════════════════════════
  * Inspired by: Skizophonic (https://www.skizophonic.com/)
- * No video - Pure SVG + GSAP animation
+ * Pure SVG spiral with rotation animation - No video
  */
 
 const emit = defineEmits<{
@@ -11,7 +11,7 @@ const emit = defineEmits<{
 }>()
 
 let isInitialized = false
-let spiralAnimation: gsap.core.Tween | null = null
+let spiralRotation: gsap.core.Tween | null = null
 
 async function initAnimation() {
   if (isInitialized)
@@ -30,7 +30,7 @@ async function initAnimation() {
   const logo = container.querySelector('.logo')
   const logoGlow = container.querySelector('.logo-glow')
   const spiralWrapper = container.querySelector('.spiral-wrapper')
-  const spiralCircles = container.querySelectorAll('.hypnotic-spiral .circle')
+  const spiralSvg = container.querySelector('.hypnotic-spiral')
   const textContainer = container.querySelector('.text-container')
   const titleChars = container.querySelectorAll('.title .char')
   const subtitle = container.querySelector('.subtitle')
@@ -49,7 +49,6 @@ async function initAnimation() {
   })
   gsap.set(logoGlow, { opacity: 0, scale: 0.4 })
   gsap.set(spiralWrapper, { clipPath: 'circle(0% at 50% 50%)', opacity: 1 })
-  gsap.set(spiralCircles, { transformOrigin: 'center center' })
   gsap.set(textContainer, { autoAlpha: 0 })
   gsap.set(titleChars, {
     yPercent: 130,
@@ -69,17 +68,14 @@ async function initAnimation() {
   gsap.set(exitOverlay, { autoAlpha: 0 })
 
   // ═══════════════════════════════════════════════════════════════
-  // HYPNOTIC SPIRAL ANIMATION (Skizophonic style)
+  // HYPNOTIC SPIRAL ROTATION (Skizophonic style)
   // ═══════════════════════════════════════════════════════════════
-  spiralAnimation = gsap.from(spiralCircles, {
-    scale: 0.88,
-    duration: 0.9,
-    ease: 'back(3)',
-    stagger: {
-      each: -0.055,
-      repeat: -1,
-      yoyo: true,
-    },
+  spiralRotation = gsap.to(spiralSvg, {
+    rotation: 360,
+    duration: 8,
+    ease: 'none',
+    repeat: -1,
+    transformOrigin: 'center center',
   })
 
   // ═══════════════════════════════════════════════════════════════
@@ -129,7 +125,7 @@ async function initAnimation() {
   master.to({}, { duration: 0.15 })
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 2: LOGO → SPIRAL
+  // PHASE 2: LOGO → SPIRAL (Skizophonic style clip-path reveal)
   // ───────────────────────────────────────────────────────────────
 
   master.to(logo, {
@@ -148,14 +144,15 @@ async function initAnimation() {
     ease: 'power2.in',
   }, '<+0.1')
 
+  // Clip-path circle reveal (exactly like Skizophonic)
   master.to(spiralWrapper, {
     clipPath: 'circle(100% at 50% 50%)',
-    duration: 2.2,
+    duration: 2,
     ease: 'power3.inOut',
   }, '<+0.3')
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 3: TEXT ENTRANCE
+  // PHASE 3: TEXT ENTRANCE (with mix-blend-mode difference)
   // ───────────────────────────────────────────────────────────────
 
   master.to(textContainer, {
@@ -259,9 +256,8 @@ async function initAnimation() {
     duration: 0.45,
     ease: 'power2.out',
     onComplete: () => {
-      // Stop spiral animation when complete
-      if (spiralAnimation) {
-        spiralAnimation.kill()
+      if (spiralRotation) {
+        spiralRotation.kill()
       }
       emit('complete')
     },
@@ -273,8 +269,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (spiralAnimation) {
-    spiralAnimation.kill()
+  if (spiralRotation) {
+    spiralRotation.kill()
   }
 })
 </script>
@@ -287,30 +283,68 @@ onUnmounted(() => {
       <img src="/assets/images/logo/logo-bm-white.png" alt="BM" class="logo">
     </div>
 
-    <!-- Hypnotic Spiral SVG (Skizophonic style) -->
+    <!-- Hypnotic Spiral SVG (True spiral - Skizophonic style) -->
     <div class="spiral-wrapper">
       <svg
         class="hypnotic-spiral"
-        xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 1000 1000"
-        preserveAspectRatio="xMidYMid slice"
+        xmlns="http://www.w3.org/2000/svg"
       >
-        <!-- Outer circles -->
-        <circle class="circle" cx="500" cy="500" r="500" fill="#000" />
-        <circle class="circle" cx="500" cy="500" r="450" fill="#fff" />
-        <circle class="circle" cx="500" cy="500" r="400" fill="#000" />
-        <circle class="circle" cx="500" cy="500" r="355" fill="#fff" />
-        <circle class="circle" cx="500" cy="500" r="310" fill="#000" />
-        <circle class="circle" cx="500" cy="500" r="270" fill="#fff" />
-        <circle class="circle" cx="500" cy="500" r="230" fill="#000" />
-        <circle class="circle" cx="500" cy="500" r="195" fill="#fff" />
-        <circle class="circle" cx="500" cy="500" r="160" fill="#000" />
-        <circle class="circle" cx="500" cy="500" r="130" fill="#fff" />
-        <circle class="circle" cx="500" cy="500" r="100" fill="#000" />
-        <circle class="circle" cx="500" cy="500" r="75" fill="#fff" />
-        <circle class="circle" cx="500" cy="500" r="50" fill="#000" />
-        <circle class="circle" cx="500" cy="500" r="30" fill="#fff" />
-        <circle class="circle" cx="500" cy="500" r="12" fill="#000" />
+        <defs>
+          <!-- Gradient for smooth spiral -->
+          <linearGradient id="spiralGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#000" />
+            <stop offset="100%" stop-color="#000" />
+          </linearGradient>
+        </defs>
+
+        <!-- Background -->
+        <rect width="1000" height="1000" fill="#fff" />
+
+        <!-- True Archimedean Spiral Arms (12 arms for hypnotic effect) -->
+        <g fill="#000">
+          <!-- Spiral arm 1 -->
+          <path d="M500,500 Q500,100 900,500 Q500,900 500,500" />
+          <!-- Spiral arm 2 -->
+          <path d="M500,500 Q900,500 500,900 Q100,500 500,500" />
+
+          <!-- Create hypnotic spiral using wedges -->
+          <path d="M500,500 L500,0 A500,500 0 0,1 1000,500 Z" />
+          <path d="M500,500 L1000,500 A500,500 0 0,1 500,1000 Z" />
+
+          <!-- Inner spiral layers -->
+          <circle cx="500" cy="500" r="400" fill="#fff" />
+          <path d="M500,500 L500,100 A400,400 0 0,1 900,500 Z" />
+          <path d="M500,500 L900,500 A400,400 0 0,1 500,900 Z" />
+
+          <circle cx="500" cy="500" r="300" fill="#fff" />
+          <path d="M500,500 L500,200 A300,300 0 0,1 800,500 Z" />
+          <path d="M500,500 L800,500 A300,300 0 0,1 500,800 Z" />
+
+          <circle cx="500" cy="500" r="220" fill="#fff" />
+          <path d="M500,500 L500,280 A220,220 0 0,1 720,500 Z" />
+          <path d="M500,500 L720,500 A220,220 0 0,1 500,720 Z" />
+
+          <circle cx="500" cy="500" r="160" fill="#fff" />
+          <path d="M500,500 L500,340 A160,160 0 0,1 660,500 Z" />
+          <path d="M500,500 L660,500 A160,160 0 0,1 500,660 Z" />
+
+          <circle cx="500" cy="500" r="110" fill="#fff" />
+          <path d="M500,500 L500,390 A110,110 0 0,1 610,500 Z" />
+          <path d="M500,500 L610,500 A110,110 0 0,1 500,610 Z" />
+
+          <circle cx="500" cy="500" r="70" fill="#fff" />
+          <path d="M500,500 L500,430 A70,70 0 0,1 570,500 Z" />
+          <path d="M500,500 L570,500 A70,70 0 0,1 500,570 Z" />
+
+          <circle cx="500" cy="500" r="40" fill="#fff" />
+          <path d="M500,500 L500,460 A40,40 0 0,1 540,500 Z" />
+          <path d="M500,500 L540,500 A40,40 0 0,1 500,540 Z" />
+
+          <circle cx="500" cy="500" r="18" fill="#fff" />
+          <path d="M500,500 L500,482 A18,18 0 0,1 518,500 Z" />
+          <path d="M500,500 L518,500 A18,18 0 0,1 500,518 Z" />
+        </g>
       </svg>
     </div>
 
@@ -386,13 +420,10 @@ onUnmounted(() => {
 }
 
 .hypnotic-spiral {
-  width: 100%;
-  height: 100%;
-  min-width: 100vw;
-  min-height: 100vh;
-}
-
-.hypnotic-spiral .circle {
+  width: 150%;
+  height: 150%;
+  min-width: 150vmax;
+  min-height: 150vmax;
   will-change: transform;
 }
 
