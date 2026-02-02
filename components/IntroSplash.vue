@@ -1,7 +1,9 @@
 <script setup lang="ts">
 /**
- * IntroSplash - Enhanced Smooth Transitions
+ * IntroSplash - AWWWARDS Level Animation Orchestration
  * ═══════════════════════════════════════════════════════════════
+ * Inspired by: Skizophonic, Zajno, Linear, Stripe
+ * Key: Smooth overlaps, micro-delays, premium easing curves
  */
 
 const emit = defineEmits<{
@@ -21,7 +23,9 @@ async function initAnimation() {
 
   const { gsap } = await import('gsap')
 
-  // Elements
+  // ═══════════════════════════════════════════════════════════════
+  // ELEMENT REFERENCES
+  // ═══════════════════════════════════════════════════════════════
   const logo = container.querySelector('.logo')
   const logoGlow = container.querySelector('.logo-glow')
   const spiralWrapper = container.querySelector('.spiral-wrapper')
@@ -29,22 +33,37 @@ async function initAnimation() {
   const textContainer = container.querySelector('.text-container')
   const titleChars = container.querySelectorAll('.title .char')
   const subtitle = container.querySelector('.subtitle')
+  const whiteFlash = container.querySelector('.white-flash')
   const exitOverlay = container.querySelector('.exit-overlay')
 
-  // Initial states
-  gsap.set(logo, { opacity: 0, scale: 0.85 })
-  gsap.set(logoGlow, { opacity: 0, scale: 0.8 })
-  // Start with spiral visible for testing - will animate clip-path
+  // ═══════════════════════════════════════════════════════════════
+  // INITIAL STATES - Prepared for cinematic reveals
+  // ═══════════════════════════════════════════════════════════════
+  gsap.set(logo, {
+    opacity: 0,
+    scale: 0.7,
+    rotation: -3,
+    filter: 'blur(12px)',
+    y: 20,
+  })
+  gsap.set(logoGlow, { opacity: 0, scale: 0.4 })
   gsap.set(spiralWrapper, { clipPath: 'circle(0% at 50% 50%)', opacity: 1 })
   gsap.set(textContainer, { autoAlpha: 0 })
   gsap.set(titleChars, {
-    yPercent: 110,
+    yPercent: 130,
     opacity: 0,
+    rotation: 12,
+    scale: 0.85,
+    transformOrigin: 'left bottom',
   })
   gsap.set(subtitle, {
-    yPercent: 100,
+    yPercent: 80,
     opacity: 0,
+    letterSpacing: '1em',
+    filter: 'blur(8px)',
+    scale: 0.95,
   })
+  gsap.set(whiteFlash, { autoAlpha: 0 })
   gsap.set(exitOverlay, { autoAlpha: 0 })
 
   // Ensure video plays
@@ -52,183 +71,206 @@ async function initAnimation() {
     video.play().catch(() => {})
   }
 
-  const tl = gsap.timeline()
-
   // ═══════════════════════════════════════════════════════════════
-  // PHASE 1: LOGO ENTRANCE
+  // MASTER TIMELINE - Awwwards-level orchestration
   // ═══════════════════════════════════════════════════════════════
-
-  tl.to(logoGlow, {
-    opacity: 0.3,
-    scale: 1,
-    duration: 0.8,
-    ease: 'power2.out',
+  const master = gsap.timeline({
+    defaults: {
+      ease: 'power3.out', // Default smooth ease
+    },
   })
 
-  tl.to(logo, {
+  // ───────────────────────────────────────────────────────────────
+  // PHASE 1: LOGO ENTRANCE - Ethereal Materialization
+  // ───────────────────────────────────────────────────────────────
+
+  // Glow fades in first - prepares the stage
+  master.to(logoGlow, {
+    opacity: 0.15,
+    scale: 0.7,
+    duration: 0.8,
+    ease: 'sine.out',
+  })
+
+  // Logo materializes with smooth deceleration
+  master.to(logo, {
     opacity: 1,
     scale: 1,
-    duration: 1,
-    ease: 'power2.out',
-  }, '-=0.6')
+    rotation: 0,
+    filter: 'blur(0px)',
+    y: 0,
+    duration: 1.4,
+    ease: 'expo.out', // Fast start, smooth landing
+  }, '-=0.5') // 62% overlap - seamless flow
 
-  tl.to(logoGlow, {
+  // Glow breathes outward
+  master.to(logoGlow, {
     opacity: 0.5,
-    scale: 1.2,
-    duration: 0.8,
-    ease: 'sine.inOut',
-  }, '-=0.4')
-
-  tl.to({}, { duration: 0.3 })
-
-  // ═══════════════════════════════════════════════════════════════
-  // PHASE 2: LOGO → SPIRAL (smooth crossfade)
-  // ═══════════════════════════════════════════════════════════════
-
-  tl.to(logo, {
-    opacity: 0,
-    scale: 0.95,
-    filter: 'blur(4px)',
-    duration: 1,
-    ease: 'power2.inOut',
-  })
-
-  tl.to(logoGlow, {
-    opacity: 0,
-    scale: 1.8,
+    scale: 1.3,
     duration: 1.2,
     ease: 'power2.inOut',
-  }, '<')
+  }, '-=1.0') // Overlaps with logo settle
 
-  tl.to(spiralWrapper, {
+  // Glow subtle pulse back
+  master.to(logoGlow, {
+    opacity: 0.35,
+    scale: 1.15,
+    duration: 0.8,
+    ease: 'sine.inOut',
+  }, '-=0.3')
+
+  // Micro-pause for visual breathing
+  master.to({}, { duration: 0.15 })
+
+  // ───────────────────────────────────────────────────────────────
+  // PHASE 2: LOGO → SPIRAL - Dimensional Crossfade
+  // ───────────────────────────────────────────────────────────────
+
+  // Logo begins ethereal dissolve
+  master.to(logo, {
+    opacity: 0,
+    scale: 1.08,
+    filter: 'blur(25px)',
+    y: -10,
+    duration: 1.6,
+    ease: 'power2.inOut',
+  })
+
+  // Glow expands and dissolves
+  master.to(logoGlow, {
+    opacity: 0,
+    scale: 2.8,
+    duration: 1.8,
+    ease: 'power2.in',
+  }, '<+0.1') // Slight delay for depth
+
+  // Spiral iris wipe - perfectly timed with dissolve
+  master.to(spiralWrapper, {
     clipPath: 'circle(100% at 50% 50%)',
-    duration: 2.5,
-    ease: 'power3.inOut',
-  }, '-=0.8')
+    duration: 2.2,
+    ease: 'power3.inOut', // Smooth S-curve
+  }, '<+0.3') // Starts after dissolve begins
 
-  // ═══════════════════════════════════════════════════════════════
-  // PHASE 3: TEXT ENTRANCE (slide up mask reveal)
-  // ═══════════════════════════════════════════════════════════════
+  // ───────────────────────────────────────────────────────────────
+  // PHASE 3: TEXT ENTRANCE - Choreographed Reveal
+  // ───────────────────────────────────────────────────────────────
 
-  // Show text container
-  tl.to(textContainer, {
+  // Activate text container mid-spiral reveal
+  master.to(textContainer, {
     autoAlpha: 1,
-    duration: 0.1,
-  }, '-=1.8')
+    duration: 0.01,
+  }, '-=1.4')
 
-  // Title characters - clean slide up reveal
-  tl.to(titleChars, {
+  // Title characters cascade with rotation unwind
+  master.to(titleChars, {
     yPercent: 0,
     opacity: 1,
-    duration: 1,
-    ease: 'power4.out',
+    rotation: 0,
+    scale: 1,
+    duration: 1.0,
+    ease: 'power4.out', // Sharp deceleration
     stagger: {
-      each: 0.04,
+      each: 0.035, // Tight stagger for flow
       from: 'start',
+      ease: 'power1.in', // Accelerating stagger
     },
-  }, '-=1.6')
+  }, '-=1.2')
 
-  // Subtitle - slide up after title
-  tl.to(subtitle, {
+  // Subtitle contracts and sharpens
+  master.to(subtitle, {
     yPercent: 0,
-    opacity: 0.8,
-    duration: 0.8,
+    opacity: 0.85,
+    letterSpacing: '0.3em',
+    filter: 'blur(0px)',
+    scale: 1,
+    duration: 1.1,
     ease: 'power3.out',
-  }, '-=0.5')
+  }, '-=0.5') // Overlaps title finish
 
+  // ───────────────────────────────────────────────────────────────
+  // PHASE 4: HOLD - Let it breathe
+  // ───────────────────────────────────────────────────────────────
 
-  // ═══════════════════════════════════════════════════════════════
-  // PHASE 4: HOLD
-  // ═══════════════════════════════════════════════════════════════
+  master.to({}, { duration: 1.8 })
 
-  tl.to({}, { duration: 2 })
+  // ───────────────────────────────────────────────────────────────
+  // PHASE 5: TEXT EXIT - Accelerated Departure
+  // ───────────────────────────────────────────────────────────────
 
-  // ═══════════════════════════════════════════════════════════════
-  // PHASE 5: TEXT EXIT (slide up mask out)
-  // ═══════════════════════════════════════════════════════════════
-
-  // Subtitle - slide up out
-  tl.to(subtitle, {
-    yPercent: -110,
+  // Subtitle disperses first
+  master.to(subtitle, {
+    yPercent: -60,
     opacity: 0,
+    letterSpacing: '0.8em',
+    filter: 'blur(10px)',
+    scale: 0.98,
     duration: 0.6,
     ease: 'power3.in',
   })
 
-  // Title characters - slide up out with stagger
-  tl.to(titleChars, {
-    yPercent: -110,
+  // Title characters accelerate out with reverse cascade
+  master.to(titleChars, {
+    yPercent: -130,
     opacity: 0,
-    duration: 0.8,
-    ease: 'power4.in',
+    rotation: -8,
+    scale: 0.9,
+    duration: 0.75,
+    ease: 'power4.in', // Strong acceleration
     stagger: {
-      each: 0.03,
-      from: 'end',
+      each: 0.02,
+      from: 'end', // Reverse direction
+      ease: 'power2.in',
     },
-  }, '-=0.4')
+  }, '-=0.45') // Tight overlap
 
-  // Hide text container
-  tl.to(textContainer, {
+  // Container fade
+  master.to(textContainer, {
     autoAlpha: 0,
-    duration: 0.2,
+    duration: 0.1,
+  }, '-=0.1')
+
+  // ───────────────────────────────────────────────────────────────
+  // PHASE 6: SPIRAL EXIT - Hyperdrive Zoom
+  // ───────────────────────────────────────────────────────────────
+
+  // Spiral accelerates into infinity
+  master.to(spiralWrapper, {
+    scale: 3.5,
+    duration: 1.2,
+    ease: 'expo.in', // Dramatic exponential acceleration
+  }, '-=0.05')
+
+  // Spiral fades during zoom
+  master.to(spiralWrapper, {
+    opacity: 0,
+    duration: 0.9,
+    ease: 'power3.in',
+  }, '<+0.3')
+
+  // Breakthrough flash
+  master.to(whiteFlash, {
+    autoAlpha: 0.25,
+    duration: 0.12,
+    ease: 'power2.out',
   }, '-=0.2')
 
-  // ═══════════════════════════════════════════════════════════════
-  // PHASE 6: SPIRAL EXIT - Accelerated Infinity Zoom
-  // ═══════════════════════════════════════════════════════════════
-  // Concept: Slow start → RAPID acceleration into the spiral
-  // expo.in = starts gentle, ends FAST (like being sucked in)
-
-  const whiteFlash = container.querySelector('.white-flash')
-
-  // Initialize
-  gsap.set(whiteFlash, { autoAlpha: 0 })
-
-  // Create sub-timeline for orchestrated exit
-  const exitTl = gsap.timeline()
-
-  // 1. Accelerated zoom - EXPO easing for dramatic speed ramp
-  //    Starts slow, then RAPIDLY accelerates at the end
-  exitTl.to(spiralWrapper, {
-    scale: 3,
-    duration: 1.4,
-    ease: 'expo.in', // Dramatic acceleration curve
-  })
-
-  // 2. Spiral fades - matched timing with zoom
-  exitTl.to(spiralWrapper, {
-    opacity: 0,
-    duration: 1.0,
-    ease: 'power4.in', // Aggressive fade at the end
-  }, '-=1.0')
-
-  // 3. Quick flash at breakthrough moment
-  exitTl.to(whiteFlash, {
-    autoAlpha: 0.2,
-    duration: 0.15,
-    ease: 'power2.out',
-  }, '-=0.25')
-
-  exitTl.to(whiteFlash, {
+  master.to(whiteFlash, {
     autoAlpha: 0,
-    duration: 0.4,
+    duration: 0.35,
     ease: 'power2.out',
   })
 
-  // 4. Snap to black - quick, decisive finish
-  exitTl.to(exitOverlay, {
+  // Final black takeover
+  master.to(exitOverlay, {
     autoAlpha: 1,
-    duration: 0.5,
-    ease: 'power3.out',
+    duration: 0.45,
+    ease: 'power2.out',
     onComplete: () => emit('complete'),
-  }, '-=0.35')
-
-  // Add exit timeline to main timeline
-  tl.add(exitTl, '-=0.1')
+  }, '-=0.3')
 }
 
 onMounted(() => {
-  setTimeout(() => initAnimation(), 100)
+  setTimeout(() => initAnimation(), 50)
 })
 </script>
 
@@ -320,7 +362,7 @@ onMounted(() => {
   height: 100%;
   z-index: 50;
   transform-origin: center center;
-  will-change: clip-path, transform, opacity, filter;
+  will-change: clip-path, transform, opacity;
 }
 
 .spiral-video {
@@ -377,10 +419,10 @@ onMounted(() => {
   font-weight: 500;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  will-change: transform, opacity;
+  will-change: transform, opacity, letter-spacing, filter;
 }
 
-/* White flash - subtle breakthrough moment */
+/* White flash - breakthrough moment */
 .white-flash {
   position: absolute;
   inset: 0;
@@ -389,8 +431,8 @@ onMounted(() => {
   background: radial-gradient(
     circle at 50% 50%,
     rgba(255, 255, 255, 1) 0%,
-    rgba(255, 255, 255, 0.6) 30%,
-    rgba(255, 255, 255, 0.2) 60%,
+    rgba(255, 255, 255, 0.5) 35%,
+    rgba(255, 255, 255, 0.15) 60%,
     transparent 80%
   );
   will-change: opacity;
