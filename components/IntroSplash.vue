@@ -261,176 +261,77 @@ async function initAnimation() {
   master.to({}, { duration: 1.8 })
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 5: TEXT EXIT (MIND-BLOWING VAPORIZE EFFECT)
-  // Glitch → Chromatic split → Explosive scatter → Dissolve
+  // PHASE 5: TEXT EXIT - "CINEMATIC ASCEND"
+  // Concept: Elegant upward float like smoke dissolving
+  // Inspired by: Apple keynotes, high-end fashion films
   // ───────────────────────────────────────────────────────────────
 
-  const totalChars = titleChars.length
-  const centerIndex = totalChars / 2
-
-  // Step 1: Anticipation "breath" - slight expansion
-  master.to([titleChars, subtitle], {
-    scale: 1.03,
-    duration: 0.2,
-    ease: 'power2.out',
-  })
-
-  // Step 2: Glitch micro-shake (creates tension)
-  master.to(titleChars, {
-    x: (i: number) => (i % 2 === 0 ? 3 : -3),
-    duration: 0.05,
-    ease: 'none',
-  })
-  master.to(titleChars, {
-    x: (i: number) => (i % 2 === 0 ? -2 : 2),
-    duration: 0.05,
-    ease: 'none',
-  })
-  master.to(titleChars, {
-    x: 0,
-    scale: 1,
-    duration: 0.08,
-    ease: 'power2.out',
-  })
-
-  // Step 3: Subtitle - ethereal dissolve upward
+  // Subtitle fades first - gentle float upward
   master.to(subtitle, {
-    yPercent: -80,
+    yPercent: -30,
     opacity: 0,
-    letterSpacing: '2em',
-    filter: 'blur(30px)',
-    scale: 1.3,
-    duration: 1.0,
-    ease: 'power2.in',
-  })
-
-  // Step 4: Title chars - EXPLOSIVE VAPORIZE from center
-  // Each char gets unique physics-based trajectory
-  master.to(titleChars, {
-    yPercent: (i: number) => {
-      const distFromCenter = i - centerIndex
-      const direction = distFromCenter < 0 ? -1 : 1
-      // Parabolic trajectory - chars arc outward
-      return -150 - (Math.abs(distFromCenter) * 25 * direction * 0.3)
-    },
-    xPercent: (i: number) => {
-      const distFromCenter = i - centerIndex
-      // Exponential spread - chars accelerate outward
-      return distFromCenter * 35
-    },
-    rotation: (i: number) => {
-      const distFromCenter = i - centerIndex
-      // Spinning as they fly - more spin for outer chars
-      return distFromCenter * -8
-    },
-    scale: (i: number) => {
-      // Chars shrink as they "vaporize"
-      return 0.2
-    },
-    opacity: 0,
-    filter: 'blur(20px)',
-    duration: 1.2,
-    ease: 'expo.in',
-    stagger: {
-      each: 0.03,
-      from: 'center',
-      ease: 'power4.in',
-    },
-  }, '-=0.85')
-
-  // Hide text container
-  master.to(textContainer, {
-    autoAlpha: 0,
-    duration: 0.15,
-  }, '-=0.3')
-
-  // ───────────────────────────────────────────────────────────────
-  // PHASE 6: SPIRAL EXIT (BLACK HOLE COLLAPSE)
-  // Pulse → Hyper-rotation → Deep implosion → Explosive release
-  // ───────────────────────────────────────────────────────────────
-
-  // Step 1: Ominous pulse - spiral "breathes" before collapse
-  master.to(spiralWrapper, {
-    scale: 1.08,
-    duration: 0.25,
-    ease: 'power2.out',
-  }, '-=1.0')
-
-  master.to(spiralWrapper, {
-    scale: 1,
-    duration: 0.15,
-    ease: 'power2.in',
-  })
-
-  // Step 2: HYPER rotation acceleration (warp drive engaging)
-  master.to(spiralSvg, {
-    rotation: '+=1800', // 5 full rotations - intense!
-    duration: 2.2,
-    ease: 'power4.in',
-  }, '-=0.1')
-
-  // Step 3: Deep implosion - black hole sucking in
-  master.to(spiralWrapper, {
-    scale: 0.6,
-    filter: 'blur(5px)',
-    duration: 0.5,
-    ease: 'power3.in',
-  }, '-=2.0')
-
-  // Step 4: EXPLOSIVE release - supernova expansion
-  master.to(spiralWrapper, {
-    scale: 8,
-    filter: 'blur(50px)',
-    duration: 1.5,
-    ease: 'expo.in',
-  })
-
-  // Step 5: Rapid fade during explosion
-  master.to(spiralWrapper, {
-    opacity: 0,
-    duration: 0.9,
-    ease: 'power4.in',
-  }, '<+0.5')
-
-  // Step 6: DOUBLE FLASH - Cinematic impact (like camera flash)
-  // First flash - sharp burst
-  master.to(whiteFlash, {
-    autoAlpha: 0.9,
-    duration: 0.08,
-    ease: 'power4.out',
-  }, '-=0.7')
-
-  master.to(whiteFlash, {
-    autoAlpha: 0.3,
-    duration: 0.12,
-    ease: 'power2.in',
-  })
-
-  // Second flash - softer afterglow
-  master.to(whiteFlash, {
-    autoAlpha: 0.6,
-    duration: 0.1,
-    ease: 'power3.out',
-  }, '+=0.02')
-
-  master.to(whiteFlash, {
-    autoAlpha: 0,
-    duration: 0.6,
+    filter: 'blur(8px)',
+    duration: 0.8,
     ease: 'power2.inOut',
   })
 
-  // Final black overlay - smooth cinematic wipe
+  // Title chars - smooth cascading ascend (wave from left to right)
+  master.to(titleChars, {
+    yPercent: -120,
+    opacity: 0,
+    filter: 'blur(6px)',
+    duration: 0.9,
+    ease: 'power3.inOut',
+    stagger: {
+      each: 0.04,
+      from: 'start',
+    },
+  }, '-=0.5')
+
+  master.to(textContainer, {
+    autoAlpha: 0,
+    duration: 0.1,
+  }, '-=0.2')
+
+  // ───────────────────────────────────────────────────────────────
+  // PHASE 6: SPIRAL EXIT - "IRIS CLOSE"
+  // Concept: Camera iris/shutter closing - cinematic film transition
+  // Smooth, intentional, premium feel
+  // ───────────────────────────────────────────────────────────────
+
+  // Spiral rotation gracefully slows down (not speeds up)
+  master.to(spiralSvg, {
+    rotation: '+=180',
+    duration: 1.8,
+    ease: 'power2.out',
+  }, '-=0.6')
+
+  // Iris close - clip-path shrinks to center
+  master.to(spiralWrapper, {
+    clipPath: 'circle(0% at 50% 50%)',
+    duration: 1.4,
+    ease: 'power3.inOut',
+  }, '-=1.5')
+
+  // Subtle scale during close for depth
+  master.to(spiralWrapper, {
+    scale: 1.1,
+    duration: 1.4,
+    ease: 'power2.inOut',
+  }, '<')
+
+  // Clean fade to black - no flash, just smooth
   master.to(exitOverlay, {
     autoAlpha: 1,
-    duration: 0.7,
-    ease: 'power3.inOut',
+    duration: 0.8,
+    ease: 'power2.inOut',
     onComplete: () => {
       if (spiralRotation) {
         spiralRotation.kill()
       }
       emit('complete')
     },
-  }, '-=0.5')
+  }, '-=0.3')
 }
 
 onMounted(() => {
