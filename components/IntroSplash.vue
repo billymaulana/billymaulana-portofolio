@@ -174,23 +174,57 @@ async function initAnimation() {
   }, '-=0.2')
 
   // ═══════════════════════════════════════════════════════════════
-  // PHASE 6: SPIRAL EXIT (smooth)
+  // PHASE 6: SPIRAL EXIT - Accelerated Infinity Zoom
   // ═══════════════════════════════════════════════════════════════
+  // Concept: Slow start → RAPID acceleration into the spiral
+  // expo.in = starts gentle, ends FAST (like being sucked in)
 
-  tl.to(spiralWrapper, {
-    scale: 1.1,
-    filter: 'blur(15px)',
+  const whiteFlash = container.querySelector('.white-flash')
+
+  // Initialize
+  gsap.set(whiteFlash, { autoAlpha: 0 })
+
+  // Create sub-timeline for orchestrated exit
+  const exitTl = gsap.timeline()
+
+  // 1. Accelerated zoom - EXPO easing for dramatic speed ramp
+  //    Starts slow, then RAPIDLY accelerates at the end
+  exitTl.to(spiralWrapper, {
+    scale: 3,
+    duration: 1.4,
+    ease: 'expo.in', // Dramatic acceleration curve
+  })
+
+  // 2. Spiral fades - matched timing with zoom
+  exitTl.to(spiralWrapper, {
     opacity: 0,
-    duration: 1.2,
-    ease: 'power2.inOut',
-  }, '-=0.2')
+    duration: 1.0,
+    ease: 'power4.in', // Aggressive fade at the end
+  }, '-=1.0')
 
-  tl.to(exitOverlay, {
+  // 3. Quick flash at breakthrough moment
+  exitTl.to(whiteFlash, {
+    autoAlpha: 0.2,
+    duration: 0.15,
+    ease: 'power2.out',
+  }, '-=0.25')
+
+  exitTl.to(whiteFlash, {
+    autoAlpha: 0,
+    duration: 0.4,
+    ease: 'power2.out',
+  })
+
+  // 4. Snap to black - quick, decisive finish
+  exitTl.to(exitOverlay, {
     autoAlpha: 1,
-    duration: 1,
-    ease: 'power2.inOut',
+    duration: 0.5,
+    ease: 'power3.out',
     onComplete: () => emit('complete'),
-  }, '-=0.9')
+  }, '-=0.35')
+
+  // Add exit timeline to main timeline
+  tl.add(exitTl, '-=0.1')
 }
 
 onMounted(() => {
@@ -220,6 +254,9 @@ onMounted(() => {
         <source src="/videos/spiral.mp4" type="video/mp4">
       </video>
     </div>
+
+    <!-- Exit effect - subtle white flash -->
+    <div class="white-flash" />
 
     <!-- Text with character animation -->
     <div class="text-container">
@@ -282,6 +319,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   z-index: 50;
+  transform-origin: center center;
   will-change: clip-path, transform, opacity, filter;
 }
 
@@ -340,6 +378,22 @@ onMounted(() => {
   letter-spacing: 0.3em;
   text-transform: uppercase;
   will-change: transform, opacity;
+}
+
+/* White flash - subtle breakthrough moment */
+.white-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 51;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.6) 30%,
+    rgba(255, 255, 255, 0.2) 60%,
+    transparent 80%
+  );
+  will-change: opacity;
 }
 
 /* Exit overlay */
