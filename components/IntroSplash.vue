@@ -13,6 +13,71 @@ const emit = defineEmits<{
 let isInitialized = false
 let spiralRotation: gsap.core.Tween | null = null
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ARCHIMEDEAN SPIRAL PATH GENERATION (Skizophonic-style hypnotic effect)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Generate Skizophonic-style hypnotic spiral
+ * - Fewer turns (3) for bolder, chunkier bands
+ * - Variable arm width that tapers toward center
+ * - Smooth organic curves
+ *
+ * When rotated clockwise, creates optical illusion of "pulling inward"
+ */
+function generateSpiralArm(offsetAngle: number): string {
+  const cx = 500 // center x
+  const cy = 500 // center y
+  const turns = 3 // fewer turns = chunkier bands like Skizophonic
+  const startRadius = 550 // slightly larger to fill viewport
+  const endRadius = 8 // tiny center point
+  const points: string[] = []
+  const steps = 180 // smoothness
+
+  const maxTheta = turns * 2 * Math.PI
+
+  // Generate outer edge of spiral arm (going inward)
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    const theta = t * maxTheta + offsetAngle
+    // Use eased radius for more organic feel
+    const easeT = t * t * (3 - 2 * t) // smoothstep easing
+    const r = startRadius - (startRadius - endRadius) * easeT
+
+    const x = cx + r * Math.cos(theta)
+    const y = cy + r * Math.sin(theta)
+
+    if (i === 0) {
+      points.push(`M ${x.toFixed(2)},${y.toFixed(2)}`)
+    }
+    else {
+      points.push(`L ${x.toFixed(2)},${y.toFixed(2)}`)
+    }
+  }
+
+  // Generate inner edge of spiral arm (going outward)
+  // Arm width = half turn (180°) for equal black/white distribution
+  const armWidth = Math.PI
+  for (let i = steps; i >= 0; i--) {
+    const t = i / steps
+    const theta = t * maxTheta + offsetAngle + armWidth
+    const easeT = t * t * (3 - 2 * t)
+    const r = startRadius - (startRadius - endRadius) * easeT
+
+    const x = cx + r * Math.cos(theta)
+    const y = cy + r * Math.sin(theta)
+
+    points.push(`L ${x.toFixed(2)},${y.toFixed(2)}`)
+  }
+
+  points.push('Z')
+  return points.join(' ')
+}
+
+// Two spiral arms offset by 180° for classic hypnotic pattern
+const spiralPath1 = computed(() => generateSpiralArm(0))
+const spiralPath2 = computed(() => generateSpiralArm(Math.PI))
+
 async function initAnimation() {
   if (isInitialized)
     return
@@ -69,10 +134,12 @@ async function initAnimation() {
 
   // ═══════════════════════════════════════════════════════════════
   // HYPNOTIC SPIRAL ROTATION (Skizophonic style)
+  // Clockwise rotation creates "pulling inward" illusion
+  // 6s duration = optimal hypnotic speed (not too fast, not too slow)
   // ═══════════════════════════════════════════════════════════════
   spiralRotation = gsap.to(spiralSvg, {
     rotation: 360,
-    duration: 8,
+    duration: 6,
     ease: 'none',
     repeat: -1,
     transformOrigin: 'center center',
@@ -283,68 +350,24 @@ onUnmounted(() => {
       <img src="/assets/images/logo/logo-bm-white.png" alt="BM" class="logo">
     </div>
 
-    <!-- Hypnotic Spiral SVG (True spiral - Skizophonic style) -->
+    <!-- Hypnotic Spiral SVG (True Archimedean Spiral - Skizophonic style) -->
     <div class="spiral-wrapper">
       <svg
+        ref="spiralSvgRef"
         class="hypnotic-spiral"
         viewBox="0 0 1000 1000"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <defs>
-          <!-- Gradient for smooth spiral -->
-          <linearGradient id="spiralGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#000" />
-            <stop offset="100%" stop-color="#000" />
-          </linearGradient>
-        </defs>
-
         <!-- Background -->
         <rect width="1000" height="1000" fill="#fff" />
 
-        <!-- True Archimedean Spiral Arms (12 arms for hypnotic effect) -->
-        <g fill="#000">
-          <!-- Spiral arm 1 -->
-          <path d="M500,500 Q500,100 900,500 Q500,900 500,500" />
-          <!-- Spiral arm 2 -->
-          <path d="M500,500 Q900,500 500,900 Q100,500 500,500" />
-
-          <!-- Create hypnotic spiral using wedges -->
-          <path d="M500,500 L500,0 A500,500 0 0,1 1000,500 Z" />
-          <path d="M500,500 L1000,500 A500,500 0 0,1 500,1000 Z" />
-
-          <!-- Inner spiral layers -->
-          <circle cx="500" cy="500" r="400" fill="#fff" />
-          <path d="M500,500 L500,100 A400,400 0 0,1 900,500 Z" />
-          <path d="M500,500 L900,500 A400,400 0 0,1 500,900 Z" />
-
-          <circle cx="500" cy="500" r="300" fill="#fff" />
-          <path d="M500,500 L500,200 A300,300 0 0,1 800,500 Z" />
-          <path d="M500,500 L800,500 A300,300 0 0,1 500,800 Z" />
-
-          <circle cx="500" cy="500" r="220" fill="#fff" />
-          <path d="M500,500 L500,280 A220,220 0 0,1 720,500 Z" />
-          <path d="M500,500 L720,500 A220,220 0 0,1 500,720 Z" />
-
-          <circle cx="500" cy="500" r="160" fill="#fff" />
-          <path d="M500,500 L500,340 A160,160 0 0,1 660,500 Z" />
-          <path d="M500,500 L660,500 A160,160 0 0,1 500,660 Z" />
-
-          <circle cx="500" cy="500" r="110" fill="#fff" />
-          <path d="M500,500 L500,390 A110,110 0 0,1 610,500 Z" />
-          <path d="M500,500 L610,500 A110,110 0 0,1 500,610 Z" />
-
-          <circle cx="500" cy="500" r="70" fill="#fff" />
-          <path d="M500,500 L500,430 A70,70 0 0,1 570,500 Z" />
-          <path d="M500,500 L570,500 A70,70 0 0,1 500,570 Z" />
-
-          <circle cx="500" cy="500" r="40" fill="#fff" />
-          <path d="M500,500 L500,460 A40,40 0 0,1 540,500 Z" />
-          <path d="M500,500 L540,500 A40,40 0 0,1 500,540 Z" />
-
-          <circle cx="500" cy="500" r="18" fill="#fff" />
-          <path d="M500,500 L500,482 A18,18 0 0,1 518,500 Z" />
-          <path d="M500,500 L518,500 A18,18 0 0,1 500,518 Z" />
-        </g>
+        <!--
+          True Archimedean Spiral Arms
+          Generated mathematically: r = startRadius - (startRadius * θ / maxTheta)
+          Creates authentic hypnotic "inward pull" illusion when rotated
+        -->
+        <path :d="spiralPath1" fill="#000" />
+        <path :d="spiralPath2" fill="#000" />
       </svg>
     </div>
 
