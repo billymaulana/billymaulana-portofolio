@@ -146,11 +146,14 @@ async function initAnimation() {
   })
 
   // ═══════════════════════════════════════════════════════════════
-  // MASTER TIMELINE
+  // MASTER TIMELINE (GPU-accelerated for 60fps)
   // ═══════════════════════════════════════════════════════════════
+  gsap.defaults({ force3D: true }) // GPU acceleration
+
   const master = gsap.timeline({
     defaults: {
       ease: 'power3.out',
+      force3D: true,
     },
   })
 
@@ -258,77 +261,136 @@ async function initAnimation() {
   master.to({}, { duration: 1.8 })
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 5: TEXT EXIT
+  // PHASE 5: TEXT EXIT (STUNNING AWWWARDS-LEVEL)
+  // Cinematic text dispersal with blur, scale, and stagger
   // ───────────────────────────────────────────────────────────────
 
-  master.to(subtitle, {
-    yPercent: -60,
-    opacity: 0,
-    letterSpacing: '0.8em',
-    filter: 'blur(10px)',
-    scale: 0.98,
-    duration: 0.6,
-    ease: 'power3.in',
+  // Quick anticipation pulse before exit (subtle scale bump)
+  master.to([titleChars, subtitle], {
+    scale: 1.02,
+    duration: 0.15,
+    ease: 'power2.out',
   })
 
-  master.to(titleChars, {
-    yPercent: -130,
+  master.to([titleChars, subtitle], {
+    scale: 1,
+    duration: 0.1,
+    ease: 'power2.in',
+  })
+
+  // Subtitle exits with elegant dissolve + drift
+  master.to(subtitle, {
+    yPercent: -50,
     opacity: 0,
-    rotation: -8,
-    scale: 0.9,
-    duration: 0.75,
+    letterSpacing: '1.5em',
+    filter: 'blur(25px)',
+    scale: 1.15,
+    duration: 0.9,
+    ease: 'power3.inOut',
+  })
+
+  // Title chars: cinematic "scatter explosion" from center outward
+  const totalChars = titleChars.length
+  const centerIndex = totalChars / 2
+
+  master.to(titleChars, {
+    yPercent: (i: number) => {
+      // Chars scatter with varied trajectories
+      const distFromCenter = i - centerIndex
+      const direction = distFromCenter < 0 ? -1 : 1
+      return -100 + (direction * Math.abs(distFromCenter) * 12)
+    },
+    xPercent: (i: number) => {
+      // Strong horizontal spread from center
+      const distFromCenter = i - centerIndex
+      return distFromCenter * 20
+    },
+    opacity: 0,
+    rotation: (i: number) => {
+      // Dynamic rotation based on position
+      const distFromCenter = i - centerIndex
+      return distFromCenter * -4
+    },
+    scale: (i: number) => {
+      // Center chars shrink more
+      const distFromCenter = Math.abs(i - centerIndex)
+      return 0.4 + (distFromCenter * 0.05)
+    },
+    filter: 'blur(15px)',
+    duration: 1.1,
     ease: 'power4.in',
     stagger: {
-      each: 0.02,
-      from: 'end',
-      ease: 'power2.in',
+      each: 0.045,
+      from: 'center',
+      ease: 'power3.in',
     },
-  }, '-=0.45')
+  }, '-=0.7')
 
   master.to(textContainer, {
     autoAlpha: 0,
-    duration: 0.1,
-  }, '-=0.1')
+    duration: 0.2,
+  }, '-=0.25')
 
   // ───────────────────────────────────────────────────────────────
-  // PHASE 6: SPIRAL EXIT
+  // PHASE 6: SPIRAL EXIT (STUNNING VORTEX WARP)
+  // Accelerating rotation + implosion + explosion for "warp" effect
   // ───────────────────────────────────────────────────────────────
 
+  // Accelerate spiral rotation dramatically (warp speed)
+  master.to(spiralSvg, {
+    rotation: '+=1080', // 3 full rotations for intense effect
+    duration: 2.0,
+    ease: 'power3.in',
+  }, '-=1.0')
+
+  // Spiral "implodes" - brief inward pull
   master.to(spiralWrapper, {
-    scale: 3.5,
-    duration: 1.2,
-    ease: 'expo.in',
-  }, '-=0.05')
+    scale: 0.8,
+    filter: 'blur(3px)',
+    duration: 0.35,
+    ease: 'power3.in',
+  }, '-=1.8')
 
+  // Explosive expansion with intense blur
+  master.to(spiralWrapper, {
+    scale: 6,
+    filter: 'blur(40px)',
+    duration: 1.4,
+    ease: 'expo.in',
+  })
+
+  // Fade out synchronized with expansion
   master.to(spiralWrapper, {
     opacity: 0,
-    duration: 0.9,
+    duration: 1.0,
     ease: 'power3.in',
-  }, '<+0.3')
+  }, '<+0.4')
 
+  // Cinematic white flash burst (brighter, snappier)
   master.to(whiteFlash, {
-    autoAlpha: 0.25,
+    autoAlpha: 0.75,
     duration: 0.12,
-    ease: 'power2.out',
-  }, '-=0.2')
+    ease: 'power4.out',
+  }, '-=0.6')
 
   master.to(whiteFlash, {
     autoAlpha: 0,
-    duration: 0.35,
-    ease: 'power2.out',
-  })
+    duration: 0.55,
+    ease: 'power3.inOut',
+  }, '+=0.02')
 
+  // Final black overlay - smooth cinematic fade
   master.to(exitOverlay, {
     autoAlpha: 1,
-    duration: 0.45,
-    ease: 'power2.out',
+    duration: 0.65,
+    ease: 'power2.inOut',
     onComplete: () => {
       if (spiralRotation) {
         spiralRotation.kill()
       }
       emit('complete')
     },
-  }, '-=0.3')
+  }, '-=0.45')
 }
 
 onMounted(() => {
@@ -436,7 +498,7 @@ onUnmounted(() => {
   height: 100%;
   z-index: 50;
   transform-origin: center center;
-  will-change: clip-path, transform, opacity;
+  will-change: clip-path, transform, opacity, filter;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -479,7 +541,7 @@ onUnmounted(() => {
 
 .char {
   display: inline-block;
-  will-change: transform, opacity;
+  will-change: transform, opacity, filter;
 }
 
 .space {
