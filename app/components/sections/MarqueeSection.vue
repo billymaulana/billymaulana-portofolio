@@ -147,8 +147,8 @@ onMounted(async () => {
   overflow: hidden;
   background: #000;
   position: relative;
-  border-top: 1px solid rgba(0, 245, 255, 0.15);
-  border-bottom: 1px solid rgba(0, 245, 255, 0.15);
+  border-top: 1px solid rgba(124, 58, 237, 0.15);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.15);
 }
 
 .marquee-row {
@@ -198,7 +198,7 @@ onMounted(async () => {
 .item-dot {
   width: 6px;
   height: 6px;
-  background: #00F5FF;
+  background: #7C3AED;
   border-radius: 50%;
   flex-shrink: 0;
   opacity: 0.6;
@@ -214,28 +214,28 @@ onMounted(async () => {
   font-family: 'Satoshi', sans-serif;
   font-size: clamp(40px, 6vw, 80px);
   font-weight: 700;
-  color: rgba(0, 245, 255, 0.3);
+  color: rgba(124, 58, 237, 0.3);
   text-transform: uppercase;
   letter-spacing: -0.02em;
   transition: color 0.3s ease, text-shadow 0.3s ease;
 }
 
 .marquee-item:hover .item-text {
-  color: rgba(0, 245, 255, 0.6);
-  text-shadow: 0 0 40px rgba(0, 245, 255, 0.4);
+  color: rgba(124, 58, 237, 0.6);
+  text-shadow: 0 0 40px rgba(124, 58, 237, 0.4);
 }
 
 /* Stats row - purple outline style */
 .stat-item .item-text {
   color: transparent;
-  -webkit-text-stroke: 1.5px rgba(0, 245, 255, 0.4);
+  -webkit-text-stroke: 1.5px rgba(124, 58, 237, 0.4);
   -webkit-text-fill-color: transparent;
   transition: all 0.3s ease;
 }
 
 .stat-item:hover .item-text {
-  -webkit-text-stroke: 2px #00F5FF;
-  filter: drop-shadow(0 0 30px rgba(0, 245, 255, 0.5));
+  -webkit-text-stroke: 2px #7C3AED;
+  filter: drop-shadow(0 0 30px rgba(124, 58, 237, 0.5));
 }
 
 /* Divider - minimal */
@@ -250,13 +250,13 @@ onMounted(async () => {
 .divider-line {
   width: 80px;
   height: 1px;
-  background: rgba(0, 245, 255, 0.2);
+  background: rgba(124, 58, 237, 0.2);
 }
 
 .divider-dot {
   width: 6px;
   height: 6px;
-  background: #00F5FF;
+  background: #7C3AED;
   border-radius: 50%;
 }
 

@@ -112,13 +112,13 @@ function onMouseLeave() {
 }
 
 .marquee-item:hover {
-  color: #00F5FF;
+  color: #7C3AED;
 }
 
 .marquee-separator {
   flex-shrink: 0;
   padding: 0 0.5em;
-  color: #00F5FF;
+  color: #7C3AED;
   opacity: 0.6;
 }
 

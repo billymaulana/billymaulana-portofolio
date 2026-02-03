@@ -193,7 +193,7 @@ const name = 'Billy Maulana'.split('')
 .splash-progress-bar {
   height: 100%;
   width: 0;
-  background: #00F5FF;
+  background: #7C3AED;
   box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
 }
 
@@ -211,7 +211,7 @@ const name = 'Billy Maulana'.split('')
   position: absolute;
   width: 60px;
   height: 60px;
-  border-color: #00F5FF;
+  border-color: #7C3AED;
   border-style: solid;
   border-width: 0;
   opacity: 0.3;
