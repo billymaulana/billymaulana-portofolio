@@ -3,8 +3,10 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
-  ssr: false,
-
+  ssr: true,
+  experimental: {
+    payloadExtraction: true,
+  },
   modules: [
     '@unocss/nuxt',
     '@nuxt/icon',
@@ -15,7 +17,6 @@ export default defineNuxtConfig({
 
   css: [
     '@unocss/reset/tailwind.css',
-    '~/assets/css/main.css',
   ],
 
   icon: {
@@ -40,7 +41,9 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      htmlAttrs: { lang: 'en' },
+      htmlAttrs: {
+        lang: 'en',
+      },
       title: 'Billy Maulana - Portfolio',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
