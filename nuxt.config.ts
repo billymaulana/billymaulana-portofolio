@@ -1,5 +1,9 @@
 export default defineNuxtConfig({
-  ssr: false, // Disable SSR to fix client-side hydration issues
+  future: {
+    compatibilityVersion: 4,
+  },
+
+  ssr: false,
 
   modules: [
     '@unocss/nuxt',

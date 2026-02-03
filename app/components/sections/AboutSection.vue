@@ -313,7 +313,7 @@ const timelineExperiences = computed(() => {
   letter-spacing: -0.03em;
   margin: 0 0 64px;
   padding-bottom: 32px;
-  border-bottom: 1px solid rgba(124, 58, 237, 0.15);
+  border-bottom: 1px solid rgba(0, 245, 255, 0.15);
   color: #fff;
 }
 
@@ -371,7 +371,7 @@ const timelineExperiences = computed(() => {
 }
 
 .stat-item:hover .stat-number {
-  color: #7C3AED;
+  color: #00F5FF;
 }
 
 .stat-label {
@@ -423,7 +423,7 @@ const timelineExperiences = computed(() => {
 /* Purple accent button */
 .btn-outline {
   padding: 16px 32px;
-  border: 1px solid rgba(124, 58, 237, 0.3);
+  border: 1px solid rgba(0, 245, 255, 0.3);
   font-family: 'Satoshi', sans-serif;
   font-size: 13px;
   font-weight: 600;
@@ -435,10 +435,10 @@ const timelineExperiences = computed(() => {
 }
 
 .btn-outline:hover {
-  border-color: #7C3AED;
-  background: rgba(124, 58, 237, 0.1);
-  color: #7C3AED;
-  box-shadow: 0 0 30px rgba(124, 58, 237, 0.3);
+  border-color: #00F5FF;
+  background: rgba(0, 245, 255, 0.1);
+  color: #00F5FF;
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.3);
 }
 
 .btn-text {
@@ -451,15 +451,15 @@ const timelineExperiences = computed(() => {
 }
 
 .btn-text:hover {
-  color: #7C3AED;
-  text-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+  color: #00F5FF;
+  text-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
 }
 
 /* Timeline - purple accent */
 .about-timeline {
   position: relative;
   padding-top: 48px;
-  border-top: 1px solid rgba(124, 58, 237, 0.15);
+  border-top: 1px solid rgba(0, 245, 255, 0.15);
 }
 
 .timeline-line {
@@ -468,12 +468,12 @@ const timelineExperiences = computed(() => {
   left: 0;
   right: 0;
   height: 1px;
-  background: rgba(124, 58, 237, 0.15);
+  background: rgba(0, 245, 255, 0.15);
 }
 
 .timeline-line-progress {
   height: 100%;
-  background: #7C3AED;
+  background: #00F5FF;
   transform-origin: left;
 }
 
@@ -496,7 +496,7 @@ const timelineExperiences = computed(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #7C3AED;
+  background: #00F5FF;
   position: absolute;
   top: -32px;
   transform: translateY(-50%);
@@ -506,7 +506,7 @@ const timelineExperiences = computed(() => {
   font-family: 'Satoshi', sans-serif;
   font-size: 13px;
   font-weight: 500;
-  color: #7C3AED;
+  color: #00F5FF;
   margin-bottom: 8px;
 }
 

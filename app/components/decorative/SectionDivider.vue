@@ -6,7 +6,7 @@ interface Props {
 
 withDefaults(defineProps<Props>(), {
   variant: 'gradient',
-  color: '#7C3AED',
+  color: '#00F5FF',
 })
 </script>
 
