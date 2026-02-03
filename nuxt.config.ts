@@ -15,6 +15,7 @@ export default defineNuxtConfig({
   ],
 
   icon: {
+    componentName: 'NuxtIcon',
     serverBundle: 'remote',
     clientBundle: {
       scan: true,

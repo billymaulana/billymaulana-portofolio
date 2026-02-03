@@ -356,7 +356,6 @@ onUnmounted(() => {
     <!-- Hypnotic Spiral SVG (True Archimedean Spiral - Skizophonic style) -->
     <div class="spiral-wrapper">
       <svg
-        ref="spiralSvgRef"
         class="hypnotic-spiral"
         viewBox="0 0 1000 1000"
         xmlns="http://www.w3.org/2000/svg"
@@ -385,7 +384,9 @@ onUnmounted(() => {
         <span class="char">M</span><span class="char">A</span><span class="char">U</span><span class="char">L</span><span class="char">A</span><span class="char">N</span><span class="char">A</span>
       </h1>
       <div class="subtitle-wrapper">
-        <p class="subtitle">Frontend Developer</p>
+        <p class="subtitle">
+          Frontend Developer
+        </p>
       </div>
     </div>
 
