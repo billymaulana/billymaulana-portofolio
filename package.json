@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-boilerplate",
+  "name": "billy-maulana-portfolio",
   "type": "module",
   "version": "0.1.0",
   "private": true,
@@ -12,7 +12,8 @@
     "postinstall": "nuxi prepare",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "prepare": "simple-git-hooks"
   },
   "dependencies": {
     "@antfu/utils": "^9.3.0",
@@ -22,15 +23,25 @@
     "@antfu/eslint-config": "^7.2.0",
     "@nuxt/icon": "^2.2.1",
     "@nuxt/image": "^2.0.0",
+    "@nuxtjs/robots": "^5.7.0",
+    "@nuxtjs/sitemap": "^7.6.0",
     "@pinia/nuxt": "^0.11.3",
     "@unocss/eslint-plugin": "^66.6.0",
     "@unocss/nuxt": "^66.6.0",
     "@vueuse/nuxt": "^14.2.0",
     "eslint": "^9.39.2",
+    "lint-staged": "^15.5.1",
     "nuxt": "4.3.0",
     "pinia": "^3.0.4",
+    "simple-git-hooks": "^2.13.0",
     "typescript": "^5.9.3",
     "unocss": "^66.6.0",
     "vue-tsc": "^3.2.4"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*": "eslint --fix"
   }
 }

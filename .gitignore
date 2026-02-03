@@ -1,15 +1,39 @@
+# Dependencies
 node_modules
-*.log
+
+# Build outputs
 dist
 .output
 .nuxt
+
+# Environment
 .env
-.vercel_build_output
+.env.*
+!.env.example
+
+# IDE
 .idea/
+.vscode/mcp.json
+*.sublime-*
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Nuxt/Vercel/Netlify
 .vercel
+.vercel_build_output
 .netlify
 node-compile-cache
-.vscode
+
+# Claude
 .claude
 CLAUDE.md
+
+# Private assets
 public/cv
