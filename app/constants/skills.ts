@@ -49,7 +49,7 @@ export const marqueeSkills = [
 
 // For marquee row 2 - Stats and keywords
 export const marqueeStats = [
-  '6+ YEARS',
+  '7+ YEARS',
   '23+ PROJECTS',
   'FRONTEND',
   'ANIMATIONS',

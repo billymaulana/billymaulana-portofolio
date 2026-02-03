@@ -1,6 +1,9 @@
 {
-  "name": "Billy Maulana",
-  "short_name": "BM",
+  "name": "Billy Maulana | Frontend Architect",
+  "short_name": "Billy M",
+  "description": "Frontend Architect with 6+ years experience building high-performance Vue.js applications",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/assets/favicon/web-app-manifest-192x192.png",
@@ -13,9 +16,18 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/assets/favicon/favicon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "theme_color": "#000000",
   "background_color": "#000000",
-  "display": "standalone"
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["portfolio", "business"],
+  "lang": "en"
 }

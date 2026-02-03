@@ -22,9 +22,9 @@ export const profile: Profile = {
   name: 'Billy Maulana',
   firstName: 'billy',
   lastName: 'maulana',
-  title: 'Frontend Architect',
+  title: 'Frontend Engineer',
   tagline: 'Transforming pixels into performance. Building interfaces that move millions.',
-  bio: `Bandung, Indonesia. 6+ years deep in the Vue.js trenches, turning Figma dreams into buttery-smooth reality.
+  bio: `Bandung, Indonesia. 7+ years deep in the Vue.js trenches, turning Figma dreams into buttery-smooth reality.
 
 Built PLN Mobile — Indonesia's utility super app serving 80M+ users. Architected design systems that 200+ developers ship with daily. I don't just write code; I craft experiences that users feel.
 
@@ -36,7 +36,7 @@ Currently leading frontend at SigmaTech. Always hunting for that perfect 60fps.`
   linkedin: 'https://linkedin.com/in/billy-maulana',
   github: 'https://github.com/billymaulana',
   instagram: 'https://instagram.com/billymaulana',
-  yearsExperience: 6,
+  yearsExperience: 7,
   projectsCount: 23,
   companiesCount: 4,
   resumeUrl: '/Billy Maulana - Resume.pdf',
