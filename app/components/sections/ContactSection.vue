@@ -229,9 +229,9 @@ onMounted(async () => {
 
 /* Purple accent outline with glow */
 .headline-accent {
-  -webkit-text-stroke: 2px #7C3AED;
+  -webkit-text-stroke: 2px #00F5FF;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.2));
+  filter: drop-shadow(0 0 20px rgba(0, 245, 255, 0.2));
 }
 
 /* Prism - with purple tint */
@@ -263,7 +263,7 @@ onMounted(async () => {
 .contact-cta {
   margin-top: 72px;
   padding: 22px 56px;
-  background: linear-gradient(135deg, #7C3AED 0%, #9333EA 100%);
+  background: linear-gradient(135deg, #00F5FF 0%, #FF006E 100%);
   font-family: 'Satoshi', sans-serif;
   font-size: 14px;
   font-weight: 600;
@@ -280,15 +280,15 @@ onMounted(async () => {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #9333EA 0%, #7C3AED 100%);
+  background: linear-gradient(135deg, #FF006E 0%, #00F5FF 100%);
   opacity: 0;
   transition: opacity 0.4s ease;
 }
 
 .contact-cta:hover {
   box-shadow:
-    0 0 60px rgba(124, 58, 237, 0.5),
-    0 0 100px rgba(124, 58, 237, 0.3);
+    0 0 60px rgba(0, 245, 255, 0.5),
+    0 0 100px rgba(0, 245, 255, 0.3);
   transform: translateY(-2px);
 }
 
@@ -299,7 +299,7 @@ onMounted(async () => {
 /* Footer - enhanced colors */
 .contact-footer {
   padding-top: 80px;
-  border-top: 1px solid rgba(124, 58, 237, 0.15);
+  border-top: 1px solid rgba(0, 245, 255, 0.15);
   max-width: 1440px;
   margin: 0 auto;
   width: 100%;
@@ -318,7 +318,7 @@ onMounted(async () => {
 
 .footer-logo:hover {
   opacity: 1;
-  filter: drop-shadow(0 0 10px rgba(124, 58, 237, 0.3));
+  filter: drop-shadow(0 0 10px rgba(0, 245, 255, 0.3));
 }
 
 .footer-socials {
@@ -339,8 +339,8 @@ onMounted(async () => {
 }
 
 .social-link:hover {
-  color: #7C3AED;
-  text-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+  color: #00F5FF;
+  text-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
 }
 
 .social-link .nuxt-icon {
@@ -374,7 +374,7 @@ onMounted(async () => {
 .footer-tagline {
   font-family: 'Satoshi', sans-serif;
   font-size: 12px;
-  color: rgba(124, 58, 237, 0.4);
+  color: rgba(0, 245, 255, 0.4);
   text-align: center;
   margin: 20px 0 0;
 }
@@ -391,7 +391,7 @@ onMounted(async () => {
   }
 
   .headline-accent {
-    -webkit-text-stroke: 1.5px #7C3AED;
+    -webkit-text-stroke: 1.5px #00F5FF;
   }
 
   .contact-cta {

@@ -306,7 +306,7 @@ onMounted(async () => {
   justify-content: space-between;
   margin-bottom: 80px;
   padding-bottom: 48px;
-  border-bottom: 1px solid rgba(124, 58, 237, 0.15);
+  border-bottom: 1px solid rgba(0, 245, 255, 0.15);
 }
 
 .section-title {
@@ -339,7 +339,7 @@ onMounted(async () => {
   font-family: 'Satoshi', sans-serif;
   font-size: 32px;
   font-weight: 700;
-  color: rgba(124, 58, 237, 0.5);
+  color: rgba(0, 245, 255, 0.5);
   line-height: 1;
 }
 
@@ -384,26 +384,26 @@ onMounted(async () => {
   left: 0;
   right: 0;
   height: 1px;
-  background: rgba(124, 58, 237, 0.15);
+  background: rgba(0, 245, 255, 0.15);
   transform-origin: left;
   transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .project-item:hover .project-line {
-  background: #7C3AED;
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+  background: #00F5FF;
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
 }
 
 .project-index {
   font-family: 'Satoshi', sans-serif;
   font-size: 14px;
   font-weight: 500;
-  color: rgba(124, 58, 237, 0.4);
+  color: rgba(0, 245, 255, 0.4);
   transition: color 0.3s ease;
 }
 
 .project-item:hover .project-index {
-  color: #7C3AED;
+  color: #00F5FF;
 }
 
 .project-info {
@@ -422,7 +422,7 @@ onMounted(async () => {
 }
 
 .project-item:hover .project-name {
-  color: #7C3AED;
+  color: #00F5FF;
   transform: translateX(10px);
 }
 
@@ -441,10 +441,10 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(124, 58, 237, 0.3);
+  border: 1px solid rgba(0, 245, 255, 0.3);
   border-radius: 50%;
   font-size: 20px;
-  color: rgba(124, 58, 237, 0.5);
+  color: rgba(0, 245, 255, 0.5);
   transition: all 0.3s ease;
   opacity: 0;
   transform: translateX(-20px);
@@ -453,8 +453,8 @@ onMounted(async () => {
 .project-item:hover .project-arrow {
   opacity: 1;
   transform: translateX(0);
-  border-color: #7C3AED;
-  color: #7C3AED;
+  border-color: #00F5FF;
+  color: #00F5FF;
 }
 
 /* View All CTA */
@@ -470,7 +470,7 @@ onMounted(async () => {
   justify-content: center;
   padding: 16px 32px;
   background: transparent;
-  border: 1px solid rgba(124, 58, 237, 0.3);
+  border: 1px solid rgba(0, 245, 255, 0.3);
   font-family: 'Satoshi', sans-serif;
   font-size: 13px;
   font-weight: 600;
@@ -482,10 +482,10 @@ onMounted(async () => {
 }
 
 .view-all-btn:hover {
-  background: #7C3AED;
-  border-color: #7C3AED;
+  background: #00F5FF;
+  border-color: #00F5FF;
   color: #000;
-  box-shadow: 0 0 40px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 0 40px rgba(0, 245, 255, 0.4);
 }
 
 /* Responsive */

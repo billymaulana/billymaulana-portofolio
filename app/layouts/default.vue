@@ -54,9 +54,9 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Selection color - Acid Lime accent */
+/* Selection color - Electric Cyan accent */
 ::selection {
-  background: #7C3AED;
+  background: #00F5FF;
   color: #000;
 }
 </style>

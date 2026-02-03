@@ -168,8 +168,8 @@ onMounted(async () => {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(124, 58, 237, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124, 58, 237, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
   background-size: 80px 80px;
 }
 
@@ -177,8 +177,8 @@ onMounted(async () => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(124, 58, 237, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0, 245, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(0, 245, 255, 0.05) 0%, transparent 50%);
 }
 
 /* Decorative Lines */
@@ -192,7 +192,7 @@ onMounted(async () => {
 .decor-line {
   position: absolute;
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, rgba(124, 58, 237, 0.3) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 245, 255, 0.3) 50%, transparent 100%);
   transform-origin: center;
 }
 
@@ -247,13 +247,13 @@ onMounted(async () => {
 
 /* Hover effect with glow */
 .name-scramble:hover {
-  color: #7C3AED;
-  text-shadow: 0 0 60px rgba(124, 58, 237, 0.3);
+  color: #00F5FF;
+  text-shadow: 0 0 60px rgba(0, 245, 255, 0.3);
 }
 
 .name-outline.name-scramble:hover {
-  -webkit-text-stroke-color: #7C3AED;
-  filter: drop-shadow(0 0 30px rgba(124, 58, 237, 0.3));
+  -webkit-text-stroke-color: #00F5FF;
+  filter: drop-shadow(0 0 30px rgba(0, 245, 255, 0.3));
 }
 
 .hero-char {
@@ -264,7 +264,7 @@ onMounted(async () => {
 
 /* Outlined text for last name with purple stroke */
 .name-outline {
-  -webkit-text-stroke: 2px rgba(124, 58, 237, 0.6);
+  -webkit-text-stroke: 2px rgba(0, 245, 255, 0.6);
   -webkit-text-fill-color: transparent;
   transition: -webkit-text-stroke-color 0.4s ease, filter 0.4s ease;
 }
@@ -291,15 +291,15 @@ onMounted(async () => {
 
 /* Purple accent word */
 .subtitle-word.accent {
-  color: rgba(124, 58, 237, 0.9);
+  color: rgba(0, 245, 255, 0.9);
   font-weight: 500;
 }
 
 /* Highlight with glow */
 .subtitle-word.highlight {
-  color: #7C3AED;
+  color: #00F5FF;
   font-weight: 600;
-  text-shadow: 0 0 30px rgba(124, 58, 237, 0.3);
+  text-shadow: 0 0 30px rgba(0, 245, 255, 0.3);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -328,7 +328,7 @@ onMounted(async () => {
 }
 
 .hero-scroll:hover .scroll-text {
-  color: #7C3AED;
+  color: #00F5FF;
 }
 
 .scroll-line {
@@ -342,7 +342,7 @@ onMounted(async () => {
 .scroll-progress {
   width: 100%;
   height: 20px;
-  background: linear-gradient(180deg, #7C3AED 0%, transparent 100%);
+  background: linear-gradient(180deg, #00F5FF 0%, transparent 100%);
   position: absolute;
   top: 0;
   animation: scroll-pulse 2s ease-in-out infinite;
@@ -375,7 +375,7 @@ onMounted(async () => {
   position: absolute;
   width: 40px;
   height: 40px;
-  border-color: rgba(124, 58, 237, 0.2);
+  border-color: rgba(0, 245, 255, 0.2);
   border-style: solid;
   border-width: 0;
 }
@@ -443,7 +443,7 @@ onMounted(async () => {
   }
 
   .name-outline {
-    -webkit-text-stroke: 1.5px rgba(124, 58, 237, 0.6);
+    -webkit-text-stroke: 1.5px rgba(0, 245, 255, 0.6);
   }
 
   .hero-subtitle {
