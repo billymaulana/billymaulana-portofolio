@@ -188,7 +188,7 @@ const skewY = computed(() => Math.min(Math.max(state.velocity.y * 0.5, -15), 15)
   width: 8px;
   height: 8px;
   margin: -4px 0 0 -4px;
-  background: #00F5FF;
+  background: #7C3AED;
   border-radius: 50%;
   transition: width 0.2s ease, height 0.2s ease, margin 0.2s ease, background 0.2s ease;
   z-index: 10000;
@@ -228,7 +228,7 @@ const skewY = computed(() => Math.min(Math.max(state.velocity.y * 0.5, -15), 15)
   height: 80px;
   margin: -40px 0 0 -40px;
   background: rgba(124, 58, 237, 0.05);
-  border-color: #00F5FF;
+  border-color: #7C3AED;
 }
 
 .cursor-ring.is-pressed {
@@ -250,7 +250,7 @@ const skewY = computed(() => Math.min(Math.max(state.velocity.y * 0.5, -15), 15)
   height: 100px;
   margin: -50px 0 0 -50px;
   background: rgba(124, 58, 237, 0.08);
-  border-color: #00F5FF;
+  border-color: #7C3AED;
 }
 
 /* Mode: Drag - square shape */
@@ -269,8 +269,8 @@ const skewY = computed(() => Math.min(Math.max(state.velocity.y * 0.5, -15), 15)
   height: auto;
   padding: 12px 24px;
   margin: -25px 0 0 -50px;
-  background: #00F5FF;
-  border-color: #00F5FF;
+  background: #7C3AED;
+  border-color: #7C3AED;
   border-radius: 100px;
 }
 

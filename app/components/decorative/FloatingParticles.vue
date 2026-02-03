@@ -6,7 +6,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   count: 20,
-  colors: () => ['#00F5FF', '#00FFFF', '#FF0080', '#00F5FF'],
+  colors: () => ['#7C3AED', '#00FFFF', '#FF0080', '#7C3AED'],
 })
 
 const particles = computed(() => {

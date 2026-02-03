@@ -56,7 +56,7 @@ html {
 
 /* Selection color - Electric Cyan accent */
 ::selection {
-  background: #00F5FF;
+  background: #7C3AED;
   color: #000;
 }
 </style>

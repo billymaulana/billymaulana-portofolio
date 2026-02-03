@@ -10,7 +10,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  color1: '#00F5FF',
+  color1: '#7C3AED',
   color2: '#00FFFF',
   color3: '#FF0080',
   size: '600px',

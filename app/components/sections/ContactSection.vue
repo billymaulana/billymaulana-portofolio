@@ -229,9 +229,9 @@ onMounted(async () => {
 
 /* Purple accent outline with glow */
 .headline-accent {
-  -webkit-text-stroke: 2px #00F5FF;
+  -webkit-text-stroke: 2px #7C3AED;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 20px rgba(0, 245, 255, 0.2));
+  filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.2));
 }
 
 /* Prism - with purple tint */
@@ -259,11 +259,11 @@ onMounted(async () => {
   50% { transform: translateY(-20px) rotate(10deg); }
 }
 
-/* CTA - purple gradient button with white text */
+/* CTA - purple gradient button with premium hover */
 .contact-cta {
   margin-top: 72px;
   padding: 22px 56px;
-  background: linear-gradient(135deg, #00F5FF 0%, #FF006E 100%);
+  background: linear-gradient(135deg, #7C3AED 0%, #9333EA 100%);
   font-family: 'Satoshi', sans-serif;
   font-size: 14px;
   font-weight: 600;
@@ -271,35 +271,65 @@ onMounted(async () => {
   letter-spacing: 0.12em;
   color: #fff;
   text-decoration: none;
-  transition: all 0.4s ease;
+  transition: all 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
   position: relative;
   overflow: hidden;
+  border: 1px solid transparent;
 }
 
+/* Gradient overlay for hover */
 .contact-cta::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #FF006E 0%, #00F5FF 100%);
+  background: linear-gradient(135deg, #9333EA 0%, #A855F7 50%, #7C3AED 100%);
   opacity: 0;
   transition: opacity 0.4s ease;
 }
 
+/* Shine effect */
+.contact-cta::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.6s ease;
+}
+
 .contact-cta:hover {
+  transform: translateY(-4px) scale(1.02);
   box-shadow:
-    0 0 60px rgba(0, 245, 255, 0.5),
-    0 0 100px rgba(0, 245, 255, 0.3);
-  transform: translateY(-2px);
+    0 10px 40px rgba(124, 58, 237, 0.4),
+    0 0 80px rgba(124, 58, 237, 0.3),
+    0 0 120px rgba(147, 51, 234, 0.2);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .contact-cta:hover::before {
   opacity: 1;
 }
 
+.contact-cta:hover::after {
+  left: 100%;
+}
+
+/* Active state */
+.contact-cta:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
 /* Footer - enhanced colors */
 .contact-footer {
   padding-top: 80px;
-  border-top: 1px solid rgba(0, 245, 255, 0.15);
+  border-top: 1px solid rgba(124, 58, 237, 0.15);
   max-width: 1440px;
   margin: 0 auto;
   width: 100%;
@@ -318,7 +348,7 @@ onMounted(async () => {
 
 .footer-logo:hover {
   opacity: 1;
-  filter: drop-shadow(0 0 10px rgba(0, 245, 255, 0.3));
+  filter: drop-shadow(0 0 10px rgba(124, 58, 237, 0.3));
 }
 
 .footer-socials {
@@ -339,8 +369,8 @@ onMounted(async () => {
 }
 
 .social-link:hover {
-  color: #00F5FF;
-  text-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+  color: #7C3AED;
+  text-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
 }
 
 .social-link .nuxt-icon {
@@ -374,7 +404,7 @@ onMounted(async () => {
 .footer-tagline {
   font-family: 'Satoshi', sans-serif;
   font-size: 12px;
-  color: rgba(0, 245, 255, 0.4);
+  color: rgba(124, 58, 237, 0.4);
   text-align: center;
   margin: 20px 0 0;
 }
@@ -391,7 +421,7 @@ onMounted(async () => {
   }
 
   .headline-accent {
-    -webkit-text-stroke: 1.5px #00F5FF;
+    -webkit-text-stroke: 1.5px #7C3AED;
   }
 
   .contact-cta {

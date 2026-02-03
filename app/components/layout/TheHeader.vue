@@ -124,7 +124,7 @@ function setNavRef(el: HTMLElement | null, index: number) {
 .logo-img:hover {
   opacity: 0.9;
   transform: scale(1.05);
-  filter: drop-shadow(0 0 12px rgba(0, 245, 255, 0.4));
+  filter: drop-shadow(0 0 12px rgba(124, 58, 237, 0.4));
 }
 
 .header-nav {
@@ -152,7 +152,7 @@ function setNavRef(el: HTMLElement | null, index: number) {
   left: 0;
   width: 0;
   height: 1px;
-  background: #00F5FF;
+  background: #7C3AED;
   transition: width 0.3s ease;
 }
 
