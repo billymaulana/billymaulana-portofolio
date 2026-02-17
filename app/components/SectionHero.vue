@@ -74,6 +74,9 @@ const distortionLines = [
   justify-content: center;
   overflow: hidden;
   background-color: #000000;
+  /* Offset center to account for nav height (~68px top) + bottom bar (~80px) */
+  padding-top: clamp(4rem, 8vh, 7rem);
+  padding-bottom: clamp(5rem, 10vh, 8rem);
 }
 
 /* ─ Main content ─ */
@@ -85,8 +88,8 @@ const distortionLines = [
 }
 
 .hero__name {
-  width: 90%;
-  max-width: 90%;
+  width: 88%;
+  max-width: 88%;
 }
 
 .hero__distortion {
@@ -97,7 +100,7 @@ const distortionLines = [
 /* ─ Bottom bar — subtitle + scroll ─ */
 .hero__bottom {
   position: absolute;
-  bottom: clamp(1.5rem, 3vh, 2.5rem);
+  bottom: clamp(2rem, 4vh, 3.5rem);
   left: 0;
   right: 0;
   display: flex;

@@ -97,7 +97,7 @@ watch(isMenuOpen, (open) => {
                 <span class="nav__menu-index">{{ String(i + 1).padStart(2, '0') }}</span>
                 <span class="nav__menu-text">{{ item.label }}</span>
               </a>
-              <span class="nav__menu-divider" />
+              <span class="nav__menu-divider" :style="{ '--delay': `${0.15 + i * 0.08}s` }" />
             </li>
           </ul>
 
@@ -221,7 +221,11 @@ watch(isMenuOpen, (open) => {
   height: 2px;
   background: var(--color-text-secondary);
   transform-origin: center;
-  transition: transform 0.5s var(--ease-out-expo), background 0.4s;
+  transition: transform 0.6s var(--ease-out-expo), background 0.4s, width 0.5s var(--ease-out-expo);
+}
+
+.nav__trigger--open .nav__trigger-line {
+  width: 24px;
 }
 
 .nav__trigger:hover .nav__trigger-line {
@@ -262,8 +266,8 @@ watch(isMenuOpen, (open) => {
   flex-direction: column;
   justify-content: center;
   gap: clamp(3rem, 6vh, 5rem);
-  padding-top: 6rem;
-  padding-bottom: clamp(2rem, 4vh, 4rem);
+  padding-top: clamp(5rem, 10vh, 8rem);
+  padding-bottom: clamp(3rem, 6vh, 5rem);
   min-height: 100vh;
 }
 
@@ -368,20 +372,31 @@ watch(isMenuOpen, (open) => {
 @keyframes menuItemIn {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(40px) skewY(2deg);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) skewY(0);
   }
 }
 
+@keyframes menuDividerIn {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.nav__menu-divider {
+  transform-origin: left;
+  animation: menuDividerIn 0.6s var(--ease-out-expo) both;
+  animation-delay: calc(var(--delay, 0.15s) + 0.1s);
+}
+
 .menu-enter-active {
-  transition: clip-path 0.7s var(--ease-out-expo), opacity 0.4s;
+  transition: clip-path 0.8s var(--ease-out-expo), opacity 0.5s;
 }
 
 .menu-leave-active {
-  transition: clip-path 0.6s var(--ease-in-out), opacity 0.3s 0.2s;
+  transition: clip-path 0.7s var(--ease-in-out), opacity 0.3s 0.15s;
 }
 
 .menu-enter-from {

@@ -63,11 +63,12 @@ const defaultConfig: FluidConfig = {
   splatRadius: 1.5,
   splatForce: 1500,
   colorPalette: [
-    [0.0, 0.18, 1.0], // Electric Blue (dominant)
-    [0.0, 0.28, 1.0], // Bright Blue
-    [0.1, 0.15, 0.95], // Royal Blue
-    [0.05, 0.35, 1.0], // Azure Blue
-    [0.15, 0.1, 1.0], // Indigo Blue
+    [0.0, 0.2, 1.0], // Electric Blue (dominant)
+    [0.0, 0.32, 1.0], // Bright Blue
+    [0.12, 0.12, 1.0], // Royal Indigo
+    [0.0, 0.4, 0.95], // Azure Blue
+    [0.2, 0.08, 1.0], // Deep Violet Blue
+    [0.05, 0.25, 1.0], // Ocean Blue
   ],
 }
 
@@ -528,6 +529,22 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
   }
 
   let lastSoftClear = 0
+  let lastAmbientSplat = 0
+
+  function injectAmbientSplat() {
+    // Very gentle ambient splat — subtle accent that drifts slowly
+    const color = getNextColor()
+    // Reduce color intensity for ambient (much dimmer than mouse splats)
+    const dimColor: [number, number, number] = [color[0] * 0.3, color[1] * 0.3, color[2] * 0.3]
+    const x = 0.2 + Math.random() * 0.6
+    const y = 0.2 + Math.random() * 0.6
+    // Slow, gentle velocity — like a breathing motion
+    const angle = Math.random() * Math.PI * 2
+    const speed = 15 + Math.random() * 25
+    const dx = Math.cos(angle) * speed
+    const dy = Math.sin(angle) * speed
+    splatAtPoint(x, y, dx, dy, dimColor)
+  }
 
   function update() {
     const now = Date.now()
@@ -539,12 +556,18 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
       multipleSplats(splatStack.pop()!)
     }
 
-    // Gentle soft-clear every 5 seconds — keeps fluid dense but prevents full saturation
-    if (now - lastSoftClear > 5000) {
+    // Ambient splats every 4 seconds — keeps background alive with subtle blue glow
+    if (now - lastAmbientSplat > 4000) {
+      lastAmbientSplat = now
+      injectAmbientSplat()
+    }
+
+    // Gentle soft-clear every 6 seconds — prevents saturation
+    if (now - lastSoftClear > 6000) {
       lastSoftClear = now
       clearProgram.bind()
       gl!.uniform1i(clearProgram.uniforms.uTexture!, dye.read.attach(0))
-      gl!.uniform1f(clearProgram.uniforms.value!, 0.92)
+      gl!.uniform1f(clearProgram.uniforms.value!, 0.93)
       blit(dye.write)
       dye.swap()
     }
