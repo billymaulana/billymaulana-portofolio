@@ -527,7 +527,6 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
     }
   }
 
-  let lastAutoSplat = 0
   let lastSoftClear = 0
 
   function update() {
@@ -540,14 +539,8 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
       multipleSplats(splatStack.pop()!)
     }
 
-    // Auto-splat every 3 seconds for ambient life
-    if (now - lastAutoSplat > 3000) {
-      lastAutoSplat = now
-      multipleSplats(2)
-    }
-
-    // Gentle soft-clear every 4 seconds — keeps fluid dense but prevents full saturation
-    if (now - lastSoftClear > 4000) {
+    // Gentle soft-clear every 5 seconds — keeps fluid dense but prevents full saturation
+    if (now - lastSoftClear > 5000) {
       lastSoftClear = now
       clearProgram.bind()
       gl!.uniform1i(clearProgram.uniforms.uTexture!, dye.read.attach(0))

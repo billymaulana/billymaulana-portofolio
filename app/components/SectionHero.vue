@@ -1,24 +1,22 @@
 <script setup lang="ts">
-import { profile } from '~/constants/profile'
-
 onMounted(async () => {
   const gsap = (await import('gsap')).default
 
   const tl = gsap.timeline({ delay: 0.6 })
 
   tl.from('.hero__name', {
-    y: 60,
+    y: 80,
     opacity: 0,
-    duration: 1.2,
+    duration: 1.4,
     ease: 'power4.out',
   })
 
-  tl.from('.hero__subtitle', {
-    y: 20,
+  tl.from('.hero__tagline', {
+    y: 30,
     opacity: 0,
-    duration: 0.8,
+    duration: 0.9,
     ease: 'power3.out',
-  }, '-=0.6')
+  }, '-=0.7')
 
   tl.from('.hero__bottom-left', {
     opacity: 0,
@@ -37,7 +35,7 @@ onMounted(async () => {
 
 const distortionLines = [
   { text: 'BILLY', indent: 0 },
-  { text: 'MAULANA', indent: 80 },
+  { text: 'MAULANA', indent: 0 },
 ]
 </script>
 
@@ -67,10 +65,9 @@ const distortionLines = [
         />
       </div>
 
-      <div class="hero__subtitle">
-        <span class="hero__subtitle-line" />
-        <span class="hero__subtitle-text">{{ profile.title }}</span>
-      </div>
+      <p class="hero__tagline">
+        Frontend Engineer from Indonesia
+      </p>
     </div>
 
     <div class="hero__bottom">
@@ -95,6 +92,7 @@ const distortionLines = [
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   overflow: hidden;
   background-color: var(--color-bg);
 }
@@ -103,49 +101,42 @@ const distortionLines = [
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(0, 71, 255, 0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 70% at 20% 60%, rgba(0, 245, 255, 0.03) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0, 71, 255, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 70% at 30% 50%, rgba(0, 245, 255, 0.03) 0%, transparent 60%);
   pointer-events: none;
   z-index: 2;
 }
 
-/* ─ Main typography block ─ */
+/* ─ Centered typography block ─ */
 .hero__center {
   position: relative;
   z-index: var(--z-content, 10);
-  padding-left: var(--page-margin);
-  padding-right: var(--page-margin);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .hero__name {
   width: 100%;
+  max-width: 100%;
+  padding-left: var(--page-margin);
+  padding-right: var(--page-margin);
 }
 
 .hero__distortion {
   position: relative;
   z-index: 2;
+  margin: 0 auto;
 }
 
-.hero__subtitle {
-  display: flex;
-  align-items: center;
-  gap: clamp(0.75rem, 1.5vw, 1.5rem);
-  margin-top: clamp(1rem, 2vw, 2rem);
-  padding-left: clamp(0, 4vw, 5rem);
-}
-
-.hero__subtitle-line {
-  width: clamp(2rem, 4vw, 4rem);
-  height: 1px;
-  background: var(--color-text-tertiary);
-  flex-shrink: 0;
-}
-
-.hero__subtitle-text {
+.hero__tagline {
+  margin-top: clamp(1rem, 2.5vw, 2rem);
   font-size: var(--text-label);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  letter-spacing: 0.3em;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.35em;
   text-transform: uppercase;
 }
 
@@ -236,10 +227,6 @@ const distortionLines = [
 
 @media (max-width: 480px) {
   .hero__bottom-left {
-    display: none;
-  }
-
-  .hero__subtitle-line {
     display: none;
   }
 

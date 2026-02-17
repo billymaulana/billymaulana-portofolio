@@ -172,7 +172,7 @@ watch(isMenuOpen, (open) => {
 }
 
 .nav__logo-img {
-  height: 28px;
+  height: 36px;
   width: auto;
   filter: brightness(1.1);
 }

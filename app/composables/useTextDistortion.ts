@@ -18,9 +18,9 @@ const defaultDistortionConfig: DistortionConfig = {
   fontSize: 200,
   fontWeight: 900,
   fontFamily: 'Satoshi, system-ui, sans-serif',
-  radius: 0.4,
-  intensity: 0.18,
-  chromaticSpread: 0.025,
+  radius: 0.22,
+  intensity: 0.15,
+  chromaticSpread: 0.02,
   lines: [
     { text: 'BILLY', indent: 0 },
     { text: 'MAULANA', indent: 60 },
@@ -178,7 +178,8 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
 
     for (let i = 0; i < cfg.lines.length; i++) {
       const line = cfg.lines[i]!
-      const x = padding + line.indent * indentScale
+      const lineWidth = ctx.measureText(line.text).width
+      const x = (offscreen.width - lineWidth) / 2 + line.indent * indentScale
       const y = padding + i * lineHeight
       ctx.fillText(line.text, x, y)
     }

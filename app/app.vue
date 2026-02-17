@@ -6,6 +6,8 @@ useHead({
 
 <template>
   <div class="app">
+    <AppNavigation />
+    <AppCursor />
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
