@@ -14,7 +14,8 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
-  ssr: true,
+  // TODO: Re-enable SSR after Nuxt #vite-node Windows/pnpm fix
+  ssr: false,
 
   experimental: {
     payloadExtraction: true,

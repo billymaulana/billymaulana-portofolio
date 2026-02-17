@@ -272,7 +272,7 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
   function getNextColor(): [number, number, number] {
     const c = cfg.colorPalette[colorIndex % cfg.colorPalette.length]
     colorIndex++
-    return [c[0] * 0.6, c[1] * 0.6, c[2] * 0.6]
+    return [c![0] * 0.6, c![1] * 0.6, c![2] * 0.6]
   }
 
   function compileShader(type: number, source: string): WebGLShader {
@@ -393,7 +393,7 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
     let rFormat: number
 
     if (isWebGL2) {
-      texType = gl!.HALF_FLOAT as number
+      texType = gl2.HALF_FLOAT as number
       rgba = gl2.RGBA16F
       rg = gl2.RG16F
       r = gl2.R16F
@@ -427,16 +427,16 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
 
   function splatAtPoint(x: number, y: number, dx: number, dy: number, color: [number, number, number]) {
     splatProgram.bind()
-    gl!.uniform1i(splatProgram.uniforms.uTarget, velocity.read.attach(0))
-    gl!.uniform1f(splatProgram.uniforms.aspectRatio, canvas!.width / canvas!.height)
-    gl!.uniform2f(splatProgram.uniforms.point, x, y)
-    gl!.uniform3f(splatProgram.uniforms.color, dx, dy, 0.0)
-    gl!.uniform1f(splatProgram.uniforms.radius, correctRadius(cfg.splatRadius / 100.0))
+    gl!.uniform1i(splatProgram.uniforms.uTarget!, velocity.read.attach(0))
+    gl!.uniform1f(splatProgram.uniforms.aspectRatio!, canvas!.width / canvas!.height)
+    gl!.uniform2f(splatProgram.uniforms.point!, x, y)
+    gl!.uniform3f(splatProgram.uniforms.color!, dx, dy, 0.0)
+    gl!.uniform1f(splatProgram.uniforms.radius!, correctRadius(cfg.splatRadius / 100.0))
     blit(velocity.write)
     velocity.swap()
 
-    gl!.uniform1i(splatProgram.uniforms.uTarget, dye.read.attach(0))
-    gl!.uniform3f(splatProgram.uniforms.color, color[0], color[1], color[2])
+    gl!.uniform1i(splatProgram.uniforms.uTarget!, dye.read.attach(0))
+    gl!.uniform3f(splatProgram.uniforms.color!, color[0], color[1], color[2])
     blit(dye.write)
     dye.swap()
   }
@@ -446,58 +446,58 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
 
     // 1. Divergence
     divergenceProgram.bind()
-    gl!.uniform2f(divergenceProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY)
-    gl!.uniform1i(divergenceProgram.uniforms.uVelocity, velocity.read.attach(0))
+    gl!.uniform2f(divergenceProgram.uniforms.texelSize!, velocity.texelSizeX, velocity.texelSizeY)
+    gl!.uniform1i(divergenceProgram.uniforms.uVelocity!, velocity.read.attach(0))
     blit(divergenceFBO)
 
     // 2. Clear pressure
     clearProgram.bind()
-    gl!.uniform1i(clearProgram.uniforms.uTexture, pressure.read.attach(0))
-    gl!.uniform1f(clearProgram.uniforms.value, 0.8)
+    gl!.uniform1i(clearProgram.uniforms.uTexture!, pressure.read.attach(0))
+    gl!.uniform1f(clearProgram.uniforms.value!, 0.8)
     blit(pressure.write)
     pressure.swap()
 
     // 3. Pressure solve (Jacobi)
     pressureProgram.bind()
-    gl!.uniform2f(pressureProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY)
-    gl!.uniform1i(pressureProgram.uniforms.uDivergence, divergenceFBO.attach(0))
+    gl!.uniform2f(pressureProgram.uniforms.texelSize!, velocity.texelSizeX, velocity.texelSizeY)
+    gl!.uniform1i(pressureProgram.uniforms.uDivergence!, divergenceFBO.attach(0))
     for (let i = 0; i < cfg.pressureIterations; i++) {
-      gl!.uniform1i(pressureProgram.uniforms.uPressure, pressure.read.attach(1))
+      gl!.uniform1i(pressureProgram.uniforms.uPressure!, pressure.read.attach(1))
       blit(pressure.write)
       pressure.swap()
     }
 
     // 4. Gradient subtract
     gradientSubtractProgram.bind()
-    gl!.uniform2f(gradientSubtractProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY)
-    gl!.uniform1i(gradientSubtractProgram.uniforms.uPressure, pressure.read.attach(0))
-    gl!.uniform1i(gradientSubtractProgram.uniforms.uVelocity, velocity.read.attach(1))
+    gl!.uniform2f(gradientSubtractProgram.uniforms.texelSize!, velocity.texelSizeX, velocity.texelSizeY)
+    gl!.uniform1i(gradientSubtractProgram.uniforms.uPressure!, pressure.read.attach(0))
+    gl!.uniform1i(gradientSubtractProgram.uniforms.uVelocity!, velocity.read.attach(1))
     blit(velocity.write)
     velocity.swap()
 
     // 5. Advect velocity
     advectionProgram.bind()
-    gl!.uniform2f(advectionProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY)
-    gl!.uniform1i(advectionProgram.uniforms.uVelocity, velocity.read.attach(0))
-    gl!.uniform1i(advectionProgram.uniforms.uSource, velocity.read.attach(0))
-    gl!.uniform1f(advectionProgram.uniforms.dt, dt)
-    gl!.uniform1f(advectionProgram.uniforms.dissipation, cfg.velocityDissipation)
+    gl!.uniform2f(advectionProgram.uniforms.texelSize!, velocity.texelSizeX, velocity.texelSizeY)
+    gl!.uniform1i(advectionProgram.uniforms.uVelocity!, velocity.read.attach(0))
+    gl!.uniform1i(advectionProgram.uniforms.uSource!, velocity.read.attach(0))
+    gl!.uniform1f(advectionProgram.uniforms.dt!, dt)
+    gl!.uniform1f(advectionProgram.uniforms.dissipation!, cfg.velocityDissipation)
     blit(velocity.write)
     velocity.swap()
 
     // 6. Advect dye
     advectionProgram.bind()
-    gl!.uniform2f(advectionProgram.uniforms.texelSize, velocity.texelSizeX, velocity.texelSizeY)
-    gl!.uniform1i(advectionProgram.uniforms.uVelocity, velocity.read.attach(0))
-    gl!.uniform1i(advectionProgram.uniforms.uSource, dye.read.attach(1))
-    gl!.uniform1f(advectionProgram.uniforms.dt, dt)
-    gl!.uniform1f(advectionProgram.uniforms.dissipation, cfg.densityDissipation)
+    gl!.uniform2f(advectionProgram.uniforms.texelSize!, velocity.texelSizeX, velocity.texelSizeY)
+    gl!.uniform1i(advectionProgram.uniforms.uVelocity!, velocity.read.attach(0))
+    gl!.uniform1i(advectionProgram.uniforms.uSource!, dye.read.attach(1))
+    gl!.uniform1f(advectionProgram.uniforms.dt!, dt)
+    gl!.uniform1f(advectionProgram.uniforms.dissipation!, cfg.densityDissipation)
     blit(dye.write)
     dye.swap()
 
     // 7. Display
     displayProgram.bind()
-    gl!.uniform1i(displayProgram.uniforms.uTexture, dye.read.attach(0))
+    gl!.uniform1i(displayProgram.uniforms.uTexture!, dye.read.attach(0))
     blit(null)
   }
 
@@ -544,8 +544,8 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
     if (now - lastSoftClear > 5000) {
       lastSoftClear = now
       clearProgram.bind()
-      gl!.uniform1i(clearProgram.uniforms.uTexture, dye.read.attach(0))
-      gl!.uniform1f(clearProgram.uniforms.value, 0.92)
+      gl!.uniform1i(clearProgram.uniforms.uTexture!, dye.read.attach(0))
+      gl!.uniform1f(clearProgram.uniforms.value!, 0.92)
       blit(dye.write)
       dye.swap()
     }

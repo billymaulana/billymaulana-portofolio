@@ -58,7 +58,7 @@ export default defineConfig({
       provider: 'fontshare',
       fonts: {
         satoshi: [
-          { name: 'Satoshi', weights: ['500', '700', '900'], italic: true },
+          { name: 'Satoshi', weights: ['500', '700', '900'] },
         ],
       },
     }),

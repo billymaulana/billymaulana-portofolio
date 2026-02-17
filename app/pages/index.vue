@@ -1,3 +1,12 @@
+<script setup lang="ts">
+useHead({
+  title: 'Billy Maulana | Frontend Architect',
+  titleTemplate: '',
+})
+</script>
+
 <template>
-  <h1>Boilerplate</h1>
+  <main>
+    <SectionHero />
+  </main>
 </template>

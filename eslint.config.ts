@@ -4,4 +4,5 @@ export default antfu({
   unocss: true,
   vue: true,
   typescript: true,
+  ignores: ['docs/**'],
 })

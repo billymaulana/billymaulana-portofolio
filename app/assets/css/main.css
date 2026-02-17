@@ -1,31 +1,98 @@
-/* Base Styles */
+/* ═══════════════════════════════════════════
+   BILLY MAULANA — Design Tokens
+   "Liquid Prism" — Deep Black + Electric Blue
+   ═══════════════════════════════════════════ */
+
+/* ---------- Reset ---------- */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
+/* ---------- Custom Properties ---------- */
+:root {
+  /* — Colors — */
+  --color-bg:            #000000;
+  --color-bg-elevated:   #0a0a0a;
+  --color-surface:       #111111;
+
+  --color-text-primary:  #ffffff;
+  --color-text-secondary:#888888;
+  --color-text-tertiary: #555555;
+
+  --color-accent:        #0047FF;
+  --color-accent-light:  #00A3FF;
+  --color-accent-cyan:   #00F5FF;
+  --color-accent-purple: #4400FF;
+  --color-accent-glow:   rgba(0, 71, 255, 0.15);
+
+  /* — Typography Scale (fluid) — */
+  --text-display:  clamp(4rem, 14vw, 16rem);
+  --text-h1:       clamp(2.5rem, 6vw, 6rem);
+  --text-h2:       clamp(2rem, 4vw, 4rem);
+  --text-h3:       clamp(1.5rem, 2.5vw, 2.5rem);
+  --text-body:     clamp(1rem, 1.2vw, 1.25rem);
+  --text-label:    clamp(0.75rem, 0.9vw, 0.875rem);
+  --text-caption:  clamp(0.625rem, 0.7vw, 0.75rem);
+
+  /* — Spacing — */
+  --page-margin:   clamp(1.5rem, 4vw, 4rem);
+  --section-gap:   clamp(6rem, 12vh, 12rem);
+
+  /* — Animation — */
+  --duration-fast:    0.2s;
+  --duration-normal:  0.4s;
+  --duration-slow:    0.8s;
+  --duration-slower:  1.2s;
+  --ease-out-expo:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart:   cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out:      cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* — Z-index layers — */
+  --z-fluid:       1;
+  --z-content:     10;
+  --z-nav:         100;
+  --z-cursor:      200;
+  --z-preloader:   300;
+}
+
+/* ---------- Base ---------- */
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  scroll-behavior: smooth;
 }
 
 body {
-  @apply font-satoshi;
+  font-family: 'Satoshi', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
   line-height: 1.5;
-  margin: 0;
+  overflow-x: hidden;
 }
 
-/* Selection */
+/* ---------- Selection ---------- */
 ::selection {
-  background-color: #00f5ff;
-  color: #000;
+  background-color: var(--color-accent-cyan);
+  color: var(--color-bg);
 }
 
-/* Focus visible for accessibility */
+/* ---------- Focus ---------- */
 :focus-visible {
-  outline: 2px solid #00f5ff;
+  outline: 2px solid var(--color-accent-cyan);
   outline-offset: 2px;
+}
+
+/* ---------- Reduced Motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

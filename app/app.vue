@@ -6,17 +6,16 @@ useHead({
 
 <template>
   <div class="app">
-    <div class="main-content">
-      <NuxtLayout>
-        <NuxtPage />
-      </NuxtLayout>
-    </div>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
   </div>
 </template>
 
 <style>
 .app {
   min-height: 100vh;
-  overflow: hidden;
+  min-height: 100dvh;
+  background-color: var(--color-bg);
 }
 </style>
