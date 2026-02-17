@@ -56,18 +56,18 @@ interface Program {
 
 const defaultConfig: FluidConfig = {
   simResolution: 128,
-  dyeResolution: 1024,
-  densityDissipation: 2.5,
-  velocityDissipation: 0.4,
-  pressureIterations: 20,
-  splatRadius: 6.0,
-  splatForce: 4000,
+  dyeResolution: 512,
+  densityDissipation: 1.2,
+  velocityDissipation: 0.2,
+  pressureIterations: 12,
+  splatRadius: 1.5,
+  splatForce: 1500,
   colorPalette: [
-    [0, 0.15, 0.6], // Deep Blue
-    [0, 0.25, 0.8], // Dark Electric Blue
-    [0.05, 0.1, 0.5], // Navy
-    [0.1, 0, 0.6], // Dark Indigo
-    [0, 0.2, 0.7], // Midnight Blue
+    [0, 0.28, 1.0], // Electric Blue (dominant)
+    [0, 0.45, 1.0], // Bright Blue
+    [0, 0.6, 1.0], // Azure
+    [0, 0.8, 1.0], // Cyan accent
+    [0.05, 0.2, 0.9], // Deep Electric
   ],
 }
 
@@ -110,21 +110,27 @@ const displayShader = `
   precision highp sampler2D;
   varying vec2 vUv;
   uniform sampler2D uTexture;
+  uniform vec2 texelSize;
 
   void main () {
-    vec3 c = texture2D(uTexture, vUv).rgb;
+    // Chromatic offset — sample R/G/B at slightly different UVs for oil-ink iridescence
+    float spread = 0.003;
+    float r = texture2D(uTexture, vUv + vec2(spread, spread * 0.5)).r;
+    float g = texture2D(uTexture, vUv).g;
+    float b = texture2D(uTexture, vUv - vec2(spread, spread * 0.5)).b;
+    vec3 c = vec3(r, g, b);
 
-    // Filmic tone-mapping: prevents channels from saturating to white/grey
-    float exposure = 1.8;
+    // Filmic tone-mapping with higher exposure for vivid blues
+    float exposure = 2.4;
     c = 1.0 - exp(-c * exposure);
 
-    // Blend with very subtle dark blue ambient so saturation shows palette, not grey
-    vec3 ambient = mix(
-      vec3(0.0, 0.08, 0.3),
-      vec3(0.0, 0.15, 0.35),
-      vUv.y
-    );
-    c = mix(ambient * 0.1, c, 0.9 + 0.1 * smoothstep(0.0, 0.2, length(c)));
+    // Push saturation — makes blues richer instead of washing to grey
+    float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    c = mix(vec3(lum), c, 1.4);
+
+    // Subtle dark blue ambient base
+    vec3 ambient = vec3(0.0, 0.04, 0.15);
+    c = mix(ambient, c, smoothstep(0.0, 0.08, length(c)));
 
     float a = max(c.r, max(c.g, c.b));
     gl_FragColor = vec4(c, a);
@@ -272,7 +278,7 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
   function getNextColor(): [number, number, number] {
     const c = cfg.colorPalette[colorIndex % cfg.colorPalette.length]
     colorIndex++
-    return [c![0] * 0.6, c![1] * 0.6, c![2] * 0.6]
+    return [c![0] * 0.85, c![1] * 0.85, c![2] * 0.85]
   }
 
   function compileShader(type: number, source: string): WebGLShader {
@@ -515,8 +521,8 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
       const color = getNextColor()
       const x = Math.random()
       const y = Math.random()
-      const dx = 200 * (Math.random() - 0.5)
-      const dy = 200 * (Math.random() - 0.5)
+      const dx = 150 * (Math.random() - 0.5)
+      const dy = 150 * (Math.random() - 0.5)
       splatAtPoint(x, y, dx, dy, color)
     }
   }
@@ -534,18 +540,18 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
       multipleSplats(splatStack.pop()!)
     }
 
-    // Auto-splat every 5 seconds for subtle ambient life
-    if (now - lastAutoSplat > 5000) {
+    // Auto-splat every 3 seconds for ambient life
+    if (now - lastAutoSplat > 3000) {
       lastAutoSplat = now
-      multipleSplats(1)
+      multipleSplats(2)
     }
 
-    // Periodic soft-clear every 3 seconds — aggressively fades accumulated dye
-    if (now - lastSoftClear > 3000) {
+    // Gentle soft-clear every 4 seconds — keeps fluid dense but prevents full saturation
+    if (now - lastSoftClear > 4000) {
       lastSoftClear = now
       clearProgram.bind()
       gl!.uniform1i(clearProgram.uniforms.uTexture!, dye.read.attach(0))
-      gl!.uniform1f(clearProgram.uniforms.value!, 0.85)
+      gl!.uniform1f(clearProgram.uniforms.value!, 0.92)
       blit(dye.write)
       dye.swap()
     }
@@ -606,8 +612,8 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
     pointer.prevTexcoordY = pointer.texcoordY
     pointer.texcoordX = x
     pointer.texcoordY = y
-    pointer.deltaX = correctDelta(x - pointer.prevTexcoordX) * 2500
-    pointer.deltaY = correctDelta(y - pointer.prevTexcoordY) * 2500
+    pointer.deltaX = correctDelta(x - pointer.prevTexcoordX) * 1000
+    pointer.deltaY = correctDelta(y - pointer.prevTexcoordY) * 1000
     pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0
     pointer.color = getNextColor()
   }

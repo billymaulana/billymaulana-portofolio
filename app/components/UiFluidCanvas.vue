@@ -75,7 +75,7 @@ defineExpose({ splat })
 }
 
 .fluid-canvas--ready {
-  opacity: 0.3;
+  opacity: 0.45;
 }
 
 @media (prefers-reduced-motion: reduce) {

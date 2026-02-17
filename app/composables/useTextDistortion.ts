@@ -18,9 +18,9 @@ const defaultDistortionConfig: DistortionConfig = {
   fontSize: 200,
   fontWeight: 900,
   fontFamily: 'Satoshi, system-ui, sans-serif',
-  radius: 0.25,
-  intensity: 0.08,
-  chromaticSpread: 0.012,
+  radius: 0.4,
+  intensity: 0.18,
+  chromaticSpread: 0.025,
   lines: [
     { text: 'BILLY', indent: 0 },
     { text: 'MAULANA', indent: 60 },
@@ -51,6 +51,7 @@ const distortionFragmentShader = `
   uniform float uTime;
   uniform float uSettle;
   uniform float uHover;
+  uniform float uVelocity;
   uniform vec2 uResolution;
 
   vec2 hash22(vec2 p) {
@@ -73,7 +74,10 @@ const distortionFragmentShader = `
     vec2 uv = vUv;
     float aspect = uResolution.x / uResolution.y;
 
-    float entranceNoise = (1.0 - uSettle) * 0.06;
+    // Velocity boost — fast mouse = stronger warp (liquid viscosity feel)
+    float velBoost = 1.0 + uVelocity * 3.0;
+
+    float entranceNoise = (1.0 - uSettle) * 0.08;
     vec2 entranceOffset = vec2(
       noise(uv * 8.0 + uTime * 0.5) * entranceNoise,
       noise(uv * 8.0 + uTime * 0.5 + 100.0) * entranceNoise
@@ -86,12 +90,14 @@ const distortionFragmentShader = `
     float influence = smoothstep(uRadius, 0.0, dist) * uHover;
 
     vec2 flowDir = normalize(diff + 0.001);
-    float swirl = noise(uv * 12.0 + uTime * 0.3) * 0.5;
-    vec2 displacement = (flowDir * influence + vec2(-flowDir.y, flowDir.x) * swirl * influence) * uIntensity;
+    float swirl = noise(uv * 10.0 + uTime * 0.4) * 0.6;
+    float turbulence = noise(uv * 20.0 + uTime * 0.2) * 0.15 * influence;
+    vec2 displacement = (flowDir * influence + vec2(-flowDir.y, flowDir.x) * swirl * influence) * uIntensity * velBoost;
+    displacement += vec2(turbulence, -turbulence);
 
     vec2 totalOffset = displacement + entranceOffset;
 
-    float chromaticAmount = uChromatic * (influence * 2.0 + (1.0 - uSettle) * 1.5);
+    float chromaticAmount = uChromatic * (influence * 2.5 * velBoost + (1.0 - uSettle) * 2.0);
     vec2 rOffset = totalOffset + vec2(chromaticAmount, chromaticAmount * 0.5);
     vec2 gOffset = totalOffset;
     vec2 bOffset = totalOffset - vec2(chromaticAmount, chromaticAmount * 0.5);
@@ -103,7 +109,7 @@ const distortionFragmentShader = `
     float a = texture2D(uText, uv + gOffset).a;
     a = max(a, max(texture2D(uText, uv + rOffset).a, texture2D(uText, uv + bOffset).a));
 
-    gl_FragColor = vec4(r, g, b, a);
+    gl_FragColor = vec4(r * a, g * a, b * a, a);
   }
 `
 
@@ -119,10 +125,13 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
 
   let mouseX = 0.5
   let mouseY = 0.5
+  let prevMouseX = 0.5
+  let prevMouseY = 0.5
   let smoothMouseX = 0.5
   let smoothMouseY = 0.5
   let isHovering = false
   let smoothHover = 0
+  let smoothVelocity = 0
   let settleProgress = 0
 
   function compileShader(type: number, source: string): WebGLShader | null {
@@ -144,12 +153,11 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
 
     ctx.font = `${cfg.fontWeight} ${cfg.fontSize}px ${cfg.fontFamily}`
 
+    const indentScale = cfg.fontSize / 200
     let maxWidth = 0
-    const lineMetrics: { width: number, indent: number }[] = []
     for (const line of cfg.lines) {
       const metrics = ctx.measureText(line.text)
-      const totalWidth = metrics.width + line.indent
-      lineMetrics.push({ width: totalWidth, indent: line.indent })
+      const totalWidth = metrics.width + line.indent * indentScale
       maxWidth = Math.max(maxWidth, totalWidth)
     }
 
@@ -168,7 +176,7 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
 
     for (let i = 0; i < cfg.lines.length; i++) {
       const line = cfg.lines[i]!
-      const x = padding + line.indent
+      const x = padding + line.indent * indentScale
       const y = padding + i * lineHeight
       ctx.fillText(line.text, x, y)
     }
@@ -197,9 +205,17 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
 
     const now = (Date.now() - startTime) / 1000
 
-    smoothMouseX += (mouseX - smoothMouseX) * 0.08
-    smoothMouseY += (mouseY - smoothMouseY) * 0.08
-    smoothHover += ((isHovering ? 1 : 0) - smoothHover) * 0.06
+    smoothMouseX += (mouseX - smoothMouseX) * 0.12
+    smoothMouseY += (mouseY - smoothMouseY) * 0.12
+    smoothHover += ((isHovering ? 1 : 0) - smoothHover) * 0.1
+
+    // Track mouse velocity for dynamic intensity
+    const dx = smoothMouseX - prevMouseX
+    const dy = smoothMouseY - prevMouseY
+    const rawVelocity = Math.sqrt(dx * dx + dy * dy)
+    smoothVelocity += (Math.min(rawVelocity * 8, 1.0) - smoothVelocity) * 0.15
+    prevMouseX = smoothMouseX
+    prevMouseY = smoothMouseY
 
     settleProgress = Math.min(1.0, now / 0.8)
     const settleEased = 1.0 - (1.0 - settleProgress) ** 3
@@ -218,6 +234,7 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     gl.uniform1f(uniforms.uTime!, now)
     gl.uniform1f(uniforms.uSettle!, settleEased)
     gl.uniform1f(uniforms.uHover!, smoothHover)
+    gl.uniform1f(uniforms.uVelocity!, smoothVelocity)
     gl.uniform2f(uniforms.uResolution!, canvas.width, canvas.height)
 
     gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
@@ -236,14 +253,17 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
   function handleResize() {
     if (!canvas || !gl)
       return
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    const width = Math.floor(canvas.clientWidth * dpr)
-    const height = Math.floor(canvas.clientHeight * dpr)
+
+    // Render text first so we can set correct aspect-ratio before reading dimensions
+    const textCanvas = renderTextToCanvas()
+    canvas.style.aspectRatio = `${textCanvas.width} / ${textCanvas.height}`
+
+    const width = Math.floor(canvas.clientWidth)
+    const height = Math.floor(canvas.clientHeight)
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width
       canvas.height = height
 
-      const textCanvas = renderTextToCanvas()
       if (textTexture) {
         gl.bindTexture(gl.TEXTURE_2D, textTexture)
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
@@ -261,7 +281,7 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
       depth: false,
       stencil: false,
       antialias: false,
-      premultipliedAlpha: false,
+      premultipliedAlpha: true,
       preserveDrawingBuffer: false,
     }) as WebGL2RenderingContext
 
@@ -271,7 +291,7 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
         depth: false,
         stencil: false,
         antialias: false,
-        premultipliedAlpha: false,
+        premultipliedAlpha: true,
         preserveDrawingBuffer: false,
       })
     }
@@ -282,7 +302,7 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     }
 
     gl.enable(gl.BLEND)
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
     gl.clearColor(0.0, 0.0, 0.0, 0.0)
 
     const vs = compileShader(gl.VERTEX_SHADER, distortionVertexShader)
@@ -349,14 +369,19 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
   }
 
   function updateFontSize(newSize: number) {
+    if (cfg.fontSize === newSize)
+      return
     cfg.fontSize = newSize
-    if (gl && textTexture) {
-      const textCanvas = renderTextToCanvas()
-      gl.bindTexture(gl.TEXTURE_2D, textTexture)
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas)
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
-    }
+    if (!canvas || !gl || !textTexture)
+      return
+    const textCanvas = renderTextToCanvas()
+    canvas.style.aspectRatio = `${textCanvas.width} / ${textCanvas.height}`
+    canvas.width = Math.floor(canvas.clientWidth)
+    canvas.height = Math.floor(canvas.clientHeight)
+    gl.bindTexture(gl.TEXTURE_2D, textTexture)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
   }
 
   return {

@@ -13,6 +13,20 @@ onMounted(async () => {
     ease: 'power3.out',
   })
 
+  tl.from('.hero__logo', {
+    opacity: 0,
+    scale: 0.9,
+    duration: 1,
+    ease: 'power3.out',
+  }, '-=0.4')
+
+  tl.from('.hero__subtitle', {
+    y: 20,
+    opacity: 0,
+    duration: 0.8,
+    ease: 'power3.out',
+  }, '-=0.5')
+
   tl.from('.hero__scroll', {
     opacity: 0,
     y: -10,
@@ -35,7 +49,7 @@ const distortionLines = [
   >
     <UiFluidCanvas
       :start-delay="200"
-      :initial-splats="3"
+      :initial-splats="5"
     />
 
     <div class="hero__ambient" />
@@ -45,16 +59,33 @@ const distortionLines = [
       <span class="hero__meta-years">({{ String(profile.yearsExperience).padStart(2, '0') }})</span>
     </div>
 
-    <div class="hero__content">
-      <h1 class="sr-only">
-        Billy Maulana
-      </h1>
+    <div class="hero__grid">
+      <div class="hero__logo-col">
+        <img
+          src="/assets/images/logo/logo-bm-white.png"
+          alt=""
+          class="hero__logo"
+          aria-hidden="true"
+          width="80"
+          height="80"
+        >
+      </div>
 
-      <UiTextDistortion
-        :lines="distortionLines"
-        :start-delay="600"
-        class="hero__distortion"
-      />
+      <div class="hero__content">
+        <h1 class="sr-only">
+          Billy Maulana
+        </h1>
+
+        <UiTextDistortion
+          :lines="distortionLines"
+          :start-delay="600"
+          class="hero__distortion"
+        />
+
+        <p class="hero__subtitle">
+          {{ profile.title }}
+        </p>
+      </div>
     </div>
 
     <div class="hero__scroll">
@@ -67,9 +98,8 @@ const distortionLines = [
 <style scoped>
 .hero {
   position: relative;
-  height: 85vh;
-  height: 85dvh;
-  max-height: 900px;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   overflow: hidden;
@@ -113,17 +143,48 @@ const distortionLines = [
   font-variant-numeric: tabular-nums;
 }
 
-.hero__content {
+/* Swiss Grid: logo column + content column */
+.hero__grid {
   position: relative;
   z-index: var(--z-content, 10);
   width: 100%;
   padding-left: var(--page-margin);
   padding-right: var(--page-margin);
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(1.5rem, 3vw, 3rem);
+}
+
+.hero__logo-col {
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding-top: 0.5em;
+}
+
+.hero__logo {
+  width: clamp(48px, 6vw, 80px);
+  height: auto;
+  opacity: 0.9;
+  filter: brightness(1.1);
+}
+
+.hero__content {
+  flex: 1;
+  min-width: 0;
 }
 
 .hero__distortion {
   position: relative;
   z-index: 2;
+}
+
+.hero__subtitle {
+  margin-top: clamp(0.5rem, 1.5vw, 1.25rem);
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
 }
 
 .sr-only {
@@ -173,6 +234,20 @@ const distortionLines = [
   50% {
     opacity: 0.2;
     transform: scaleY(0.5);
+  }
+}
+
+@media (max-width: 480px) {
+  .hero__meta-years {
+    display: none;
+  }
+
+  .hero__logo-col {
+    display: none;
+  }
+
+  .hero__scroll-line {
+    height: 32px;
   }
 }
 
