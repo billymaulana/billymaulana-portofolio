@@ -58,7 +58,9 @@ const distortionLines = [
 
       <div class="hero__scroll">
         <span class="hero__scroll-label">Scroll</span>
-        <div class="hero__scroll-line" />
+        <div class="hero__scroll-track">
+          <div class="hero__scroll-dot" />
+        </div>
       </div>
     </div>
   </section>
@@ -74,9 +76,9 @@ const distortionLines = [
   justify-content: center;
   overflow: hidden;
   background-color: #000000;
-  /* Offset center to account for nav height (~68px top) + bottom bar (~80px) */
-  padding-top: clamp(4rem, 8vh, 7rem);
-  padding-bottom: clamp(5rem, 10vh, 8rem);
+  /* Push center down: nav is ~96px tall, so top exclusion needs to be generous */
+  padding-top: clamp(7rem, 15vh, 12rem);
+  padding-bottom: clamp(4rem, 8vh, 6rem);
 }
 
 /* ─ Main content ─ */
@@ -140,22 +142,37 @@ const distortionLines = [
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.875rem;
 }
 
 .hero__scroll-label {
   font-size: var(--text-caption);
   font-weight: 500;
   color: var(--color-text-tertiary);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
 }
 
-.hero__scroll-line {
+.hero__scroll-track {
+  position: relative;
   width: 1px;
   height: 48px;
-  background: linear-gradient(to bottom, var(--color-text-tertiary), transparent);
-  animation: scrollPulse 2.5s ease-in-out infinite;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.hero__scroll-dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 3px;
+  height: 10px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--color-accent);
+  box-shadow: 0 0 6px rgba(0, 71, 255, 0.5);
+  animation: scrollDotDrop 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .sr-only {
@@ -170,14 +187,20 @@ const distortionLines = [
   border-width: 0;
 }
 
-@keyframes scrollPulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scaleY(1);
+@keyframes scrollDotDrop {
+  0% {
+    top: -10px;
+    opacity: 0;
   }
-  50% {
-    opacity: 0.2;
-    transform: scaleY(0.5);
+  10% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    top: 48px;
+    opacity: 0;
   }
 }
 
@@ -189,7 +212,7 @@ const distortionLines = [
 }
 
 @media (max-width: 480px) {
-  .hero__scroll-line {
+  .hero__scroll-track {
     height: 32px;
   }
 
@@ -209,8 +232,9 @@ const distortionLines = [
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero__scroll-line {
+  .hero__scroll-dot {
     animation: none;
+    top: 0;
     opacity: 0.5;
   }
 }

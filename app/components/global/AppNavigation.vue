@@ -267,7 +267,7 @@ watch(isMenuOpen, (open) => {
   justify-content: center;
   gap: clamp(3rem, 6vh, 5rem);
   padding-top: clamp(5rem, 10vh, 8rem);
-  padding-bottom: clamp(3rem, 6vh, 5rem);
+  padding-bottom: clamp(4rem, 8vh, 6rem);
   min-height: 100vh;
 }
 
@@ -288,13 +288,19 @@ watch(isMenuOpen, (open) => {
   padding: clamp(1rem, 2vh, 1.5rem) 0;
   color: var(--color-text-secondary);
   text-decoration: none;
-  transition: color 0.4s, transform 0.5s var(--ease-out-expo), letter-spacing 0.4s;
+  transition: color 0.4s, transform 0.5s var(--ease-out-expo), letter-spacing 0.4s, text-shadow 0.3s;
 }
 
 .nav__menu-link:hover {
   color: var(--color-text-primary);
   transform: translateX(1.5rem);
   letter-spacing: 0.02em;
+}
+
+.nav__menu-link:hover .nav__menu-text {
+  text-shadow:
+    -2px 0 rgba(255, 20, 60, 0.35),
+    2px 0 rgba(0, 71, 255, 0.45);
 }
 
 .nav__menu-index {
@@ -315,6 +321,7 @@ watch(isMenuOpen, (open) => {
   font-weight: 900;
   letter-spacing: -0.02em;
   line-height: 1.1;
+  transition: text-shadow 0.3s;
 }
 
 .nav__menu-divider {
@@ -356,11 +363,12 @@ watch(isMenuOpen, (open) => {
   font-size: var(--text-label);
   color: var(--color-text-secondary);
   text-decoration: none;
-  transition: color 0.3s;
+  transition: color 0.3s, text-shadow 0.3s;
 }
 
 .nav__footer-link:hover {
   color: var(--color-text-primary);
+  text-shadow: -1px 0 rgba(255, 20, 60, 0.25), 1px 0 rgba(0, 71, 255, 0.3);
 }
 
 .nav__footer-socials {
@@ -392,31 +400,35 @@ watch(isMenuOpen, (open) => {
 }
 
 .menu-enter-active {
-  transition: clip-path 0.8s var(--ease-out-expo), opacity 0.5s;
+  transition: clip-path 0.9s var(--ease-out-expo), opacity 0.4s, filter 0.6s;
 }
 
 .menu-leave-active {
-  transition: clip-path 0.7s var(--ease-in-out), opacity 0.3s 0.15s;
+  transition: clip-path 0.7s var(--ease-in-out), opacity 0.25s 0.2s, filter 0.5s;
 }
 
 .menu-enter-from {
   clip-path: circle(0% at calc(100% - 3rem) 2rem);
   opacity: 0;
+  filter: brightness(1.5) saturate(2);
 }
 
 .menu-enter-to {
   clip-path: circle(150% at calc(100% - 3rem) 2rem);
   opacity: 1;
+  filter: brightness(1) saturate(1);
 }
 
 .menu-leave-from {
   clip-path: circle(150% at calc(100% - 3rem) 2rem);
   opacity: 1;
+  filter: brightness(1) saturate(1);
 }
 
 .menu-leave-to {
   clip-path: circle(0% at calc(100% - 3rem) 2rem);
   opacity: 0;
+  filter: brightness(1.5) saturate(2);
 }
 
 /* ─── Responsive ─── */
