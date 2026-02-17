@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { profile } from '~/constants/profile'
+
 const { scrollTo } = useSmoothScroll()
 
 const isScrolled = ref(false)
 const isHidden = ref(false)
-const isMobileOpen = ref(false)
+const isMenuOpen = ref(false)
 let lastScrollY = 0
 
 const navItems = [
@@ -13,8 +15,12 @@ const navItems = [
 ]
 
 function handleNavClick(href: string) {
-  isMobileOpen.value = false
-  scrollTo(href, { offset: -80 })
+  isMenuOpen.value = false
+  setTimeout(() => scrollTo(href, { offset: -80 }), 400)
+}
+
+function toggleMenu() {
+  isMenuOpen.value = !isMenuOpen.value
 }
 
 onMounted(() => {
@@ -28,58 +34,98 @@ onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
   onUnmounted(() => window.removeEventListener('scroll', onScroll))
 })
+
+watch(isMenuOpen, (open) => {
+  document.body.style.overflow = open ? 'hidden' : ''
+})
 </script>
 
 <template>
   <header
     class="nav"
     :class="{
-      'nav--scrolled': isScrolled,
-      'nav--hidden': isHidden && !isMobileOpen,
+      'nav--scrolled': isScrolled && !isMenuOpen,
+      'nav--hidden': isHidden && !isMenuOpen,
+      'nav--open': isMenuOpen,
     }"
   >
-    <nav class="nav__inner page-max page-margin flex-between" aria-label="Main navigation">
-      <UiMagneticButton tag="a" href="#" :strength="0.2" class="nav__logo" aria-label="Billy Maulana — Home" @click.prevent="scrollTo(0)">
-        <span class="text-[1.25rem] tracking-[-0.02em] font-900">BM</span>
+    <nav class="nav__bar page-margin" aria-label="Main navigation">
+      <UiMagneticButton
+        tag="a"
+        href="#"
+        :strength="0.2"
+        class="nav__logo"
+        aria-label="Billy Maulana — Home"
+        @click.prevent="() => { isMenuOpen = false; scrollTo(0) }"
+      >
+        <img
+          src="/assets/images/logo/logo-bm-white.png"
+          alt="BM"
+          class="nav__logo-img"
+        >
         <span class="nav__logo-dot" />
       </UiMagneticButton>
 
-      <ul class="nav__links" role="list">
-        <li v-for="item in navItems" :key="item.href">
-          <UiMagneticButton tag="a" :href="item.href" :strength="0.15" class="nav__link link-underline" @click.prevent="handleNavClick(item.href)">
-            {{ item.label }}
-          </UiMagneticButton>
-        </li>
-      </ul>
-
       <button
-        class="nav__hamburger"
-        :class="{ open: isMobileOpen }"
+        class="nav__trigger"
+        :class="{ 'nav__trigger--open': isMenuOpen }"
+        :aria-expanded="isMenuOpen"
         aria-label="Toggle menu"
-        :aria-expanded="isMobileOpen"
-        @click="isMobileOpen = !isMobileOpen"
+        @click="toggleMenu"
       >
-        <span />
-        <span />
+        <span class="nav__trigger-label">{{ isMenuOpen ? 'Close' : 'Menu' }}</span>
+        <span class="nav__trigger-icon">
+          <span class="nav__trigger-line" />
+          <span class="nav__trigger-line" />
+        </span>
       </button>
     </nav>
 
-    <!-- Mobile Menu -->
-    <Transition name="mobile-menu">
-      <div v-if="isMobileOpen" class="nav__mobile">
-        <ul role="list">
-          <li v-for="(item, i) in navItems" :key="item.href" :style="{ transitionDelay: `${i * 80}ms` }">
-            <a :href="item.href" class="nav__mobile-link" @click.prevent="handleNavClick(item.href)">
-              {{ item.label }}
-            </a>
-          </li>
-        </ul>
+    <!-- Full-screen overlay -->
+    <Transition name="menu">
+      <div v-if="isMenuOpen" class="nav__overlay">
+        <div class="nav__overlay-inner page-margin">
+          <ul class="nav__menu" role="list">
+            <li
+              v-for="(item, i) in navItems"
+              :key="item.href"
+              class="nav__menu-item"
+              :style="{ '--delay': `${0.15 + i * 0.08}s` }"
+            >
+              <a
+                :href="item.href"
+                class="nav__menu-link"
+                @click.prevent="handleNavClick(item.href)"
+              >
+                <span class="nav__menu-index">{{ String(i + 1).padStart(2, '0') }}</span>
+                <span class="nav__menu-text">{{ item.label }}</span>
+              </a>
+              <span class="nav__menu-divider" />
+            </li>
+          </ul>
+
+          <div class="nav__overlay-footer">
+            <div class="nav__footer-col">
+              <span class="nav__footer-label">Get in touch</span>
+              <a :href="`mailto:${profile.email}`" class="nav__footer-link">{{ profile.email }}</a>
+            </div>
+            <div class="nav__footer-col">
+              <span class="nav__footer-label">Social</span>
+              <div class="nav__footer-socials">
+                <a :href="profile.github" target="_blank" rel="noopener" class="nav__footer-link">GitHub</a>
+                <a :href="profile.linkedin" target="_blank" rel="noopener" class="nav__footer-link">LinkedIn</a>
+                <a :href="profile.instagram" target="_blank" rel="noopener" class="nav__footer-link">Instagram</a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Transition>
   </header>
 </template>
 
 <style scoped>
+/* ─── Nav bar ─── */
 .nav {
   position: fixed;
   top: 0;
@@ -87,7 +133,7 @@ onMounted(() => {
   right: 0;
   z-index: var(--z-nav);
   padding: 1.5rem 0;
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: padding 0.5s var(--ease-out-expo), background 0.5s var(--ease-out-expo), transform 0.5s var(--ease-out-expo);
 }
 
 .nav--scrolled {
@@ -101,16 +147,34 @@ onMounted(() => {
   transform: translateY(-100%);
 }
 
-.nav__inner {
-  height: 40px;
+.nav--open {
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom: none;
 }
 
+.nav__bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 40px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ─── Logo ─── */
 .nav__logo {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   color: var(--color-text-primary);
   cursor: pointer;
+}
+
+.nav__logo-img {
+  height: 28px;
+  width: auto;
+  filter: brightness(1.1);
 }
 
 .nav__logo-dot {
@@ -120,111 +184,246 @@ onMounted(() => {
   background: var(--color-accent);
 }
 
-.nav__links {
+/* ─── Trigger button ─── */
+.nav__trigger {
   display: flex;
-  gap: 2.5rem;
-  list-style: none;
-}
-
-.nav__link {
-  font-size: var(--text-small);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  transition: color 0.3s;
-  cursor: pointer;
-}
-
-.nav__link:hover {
-  color: var(--color-text-primary);
-}
-
-.nav__hamburger {
-  display: none;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 0.75rem;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
-}
-
-.nav__hamburger span {
-  display: block;
-  width: 24px;
-  height: 2px;
-  background: var(--color-text-primary);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.nav__hamburger.open span:first-child {
-  transform: rotate(45deg) translate(3px, 3px);
-}
-
-.nav__hamburger.open span:last-child {
-  transform: rotate(-45deg) translate(3px, -3px);
-}
-
-.nav__mobile {
-  position: fixed;
-  inset: 0;
-  background: var(--color-bg-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: -1;
-}
-
-.nav__mobile ul {
-  list-style: none;
-  text-align: center;
-}
-
-.nav__mobile li {
-  opacity: 0;
-  transform: translateY(20px);
-  animation: mobileItemIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.nav__mobile-link {
-  font-size: var(--text-h1);
-  font-weight: 900;
+  padding: 0;
   color: var(--color-text-primary);
-  display: block;
-  padding: 0.5rem 0;
+}
+
+.nav__trigger-label {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
   transition: color 0.3s;
 }
 
-.nav__mobile-link:hover {
+.nav__trigger:hover .nav__trigger-label {
+  color: var(--color-text-primary);
+}
+
+.nav__trigger-icon {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.nav__trigger-line {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--color-text-primary);
+  transform-origin: center;
+  transition: transform 0.5s var(--ease-out-expo), opacity 0.3s;
+}
+
+.nav__trigger--open .nav__trigger-line:first-child {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.nav__trigger--open .nav__trigger-line:last-child {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ─── Overlay ─── */
+.nav__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.97);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  backdrop-filter: blur(40px);
+}
+
+.nav__overlay-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(3rem, 6vh, 5rem);
+  padding-top: 5rem;
+  padding-bottom: 3rem;
+  min-height: 100vh;
+}
+
+/* ─── Menu links ─── */
+.nav__menu {
+  list-style: none;
+}
+
+.nav__menu-item {
+  animation: menuItemIn 0.7s var(--ease-out-expo) both;
+  animation-delay: var(--delay);
+}
+
+.nav__menu-link {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(1rem, 2vw, 2rem);
+  padding: clamp(1rem, 2vh, 1.5rem) 0;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: color 0.3s, transform 0.4s var(--ease-out-expo);
+}
+
+.nav__menu-link:hover {
+  color: var(--color-accent-cyan);
+  transform: translateX(1rem);
+}
+
+.nav__menu-index {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s;
+}
+
+.nav__menu-link:hover .nav__menu-index {
   color: var(--color-accent);
 }
 
-@keyframes mobileItemIn {
+.nav__menu-text {
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.nav__menu-divider {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Footer section in overlay ─── */
+.nav__overlay-footer {
+  display: flex;
+  gap: clamp(2rem, 6vw, 6rem);
+  margin-top: auto;
+  animation: menuItemIn 0.7s var(--ease-out-expo) both;
+  animation-delay: 0.45s;
+}
+
+.nav__footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nav__footer-label {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.nav__footer-link {
+  font-size: var(--text-label);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.nav__footer-link:hover {
+  color: var(--color-text-primary);
+}
+
+.nav__footer-socials {
+  display: flex;
+  gap: 1.25rem;
+}
+
+/* ─── Animations ─── */
+@keyframes menuItemIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-.mobile-menu-enter-active {
-  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+.menu-enter-active {
+  transition: clip-path 0.6s var(--ease-out-expo), opacity 0.4s;
 }
 
-.mobile-menu-leave-active {
-  transition: opacity 0.3s ease;
+.menu-leave-active {
+  transition: clip-path 0.5s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.3s 0.2s;
 }
 
-.mobile-menu-enter-from,
-.mobile-menu-leave-to {
+.menu-enter-from {
+  clip-path: circle(0% at calc(100% - 3rem) 2rem);
   opacity: 0;
 }
 
-@media (max-width: 768px) {
-  .nav__links {
+.menu-enter-to {
+  clip-path: circle(150% at calc(100% - 3rem) 2rem);
+  opacity: 1;
+}
+
+.menu-leave-from {
+  clip-path: circle(150% at calc(100% - 3rem) 2rem);
+  opacity: 1;
+}
+
+.menu-leave-to {
+  clip-path: circle(0% at calc(100% - 3rem) 2rem);
+  opacity: 0;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 480px) {
+  .nav__trigger-label {
     display: none;
   }
 
-  .nav__hamburger {
-    display: flex;
+  .nav__menu-text {
+    font-size: clamp(2rem, 10vw, 3.5rem);
+  }
+
+  .nav__overlay-footer {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav__menu-item {
+    animation: none;
+    opacity: 1;
+  }
+
+  .nav__overlay-footer {
+    animation: none;
+    opacity: 1;
+  }
+
+  .menu-enter-active,
+  .menu-leave-active {
+    transition: opacity 0.3s;
+  }
+
+  .menu-enter-from,
+  .menu-leave-to {
+    clip-path: none;
+    opacity: 0;
   }
 }
 </style>

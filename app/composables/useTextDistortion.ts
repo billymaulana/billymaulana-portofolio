@@ -125,14 +125,16 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
 
   let mouseX = 0.5
   let mouseY = 0.5
-  let prevMouseX = 0.5
-  let prevMouseY = 0.5
   let smoothMouseX = 0.5
   let smoothMouseY = 0.5
   let isHovering = false
   let smoothHover = 0
   let smoothVelocity = 0
   let settleProgress = 0
+  let rawDeltaX = 0
+  let rawDeltaY = 0
+  let lastRawX = 0.5
+  let lastRawY = 0.5
 
   function compileShader(type: number, source: string): WebGLShader | null {
     const shader = gl!.createShader(type)
@@ -209,13 +211,14 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     smoothMouseY += (mouseY - smoothMouseY) * 0.12
     smoothHover += ((isHovering ? 1 : 0) - smoothHover) * 0.1
 
-    // Track mouse velocity for dynamic intensity
-    const dx = smoothMouseX - prevMouseX
-    const dy = smoothMouseY - prevMouseY
-    const rawVelocity = Math.sqrt(dx * dx + dy * dy)
-    smoothVelocity += (Math.min(rawVelocity * 8, 1.0) - smoothVelocity) * 0.15
-    prevMouseX = smoothMouseX
-    prevMouseY = smoothMouseY
+    // Track mouse velocity from raw deltas for dynamic intensity
+    const rawVelocity = Math.sqrt(rawDeltaX * rawDeltaX + rawDeltaY * rawDeltaY)
+    const targetVel = Math.min(rawVelocity * 6, 1.0)
+    // Asymmetric smoothing: fast attack, slow decay for buttery feel
+    const velLerp = targetVel > smoothVelocity ? 0.2 : 0.06
+    smoothVelocity += (targetVel - smoothVelocity) * velLerp
+    rawDeltaX *= 0.5
+    rawDeltaY *= 0.5
 
     settleProgress = Math.min(1.0, now / 0.8)
     const settleEased = 1.0 - (1.0 - settleProgress) ** 3
@@ -245,9 +248,18 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     if (!canvas)
       return
     const rect = canvas.getBoundingClientRect()
-    mouseX = (e.clientX - rect.left) / rect.width
-    mouseY = (e.clientY - rect.top) / rect.height
-    isHovering = mouseX >= 0 && mouseX <= 1 && mouseY >= 0 && mouseY <= 1
+    const newX = (e.clientX - rect.left) / rect.width
+    // Flip Y to match WebGL UV space (0 = bottom, 1 = top)
+    const newY = 1.0 - (e.clientY - rect.top) / rect.height
+
+    rawDeltaX = newX - lastRawX
+    rawDeltaY = newY - lastRawY
+    lastRawX = newX
+    lastRawY = newY
+
+    mouseX = newX
+    mouseY = newY
+    isHovering = newX >= 0 && newX <= 1 && newY >= 0 && newY <= 1
   }
 
   function handleResize() {
