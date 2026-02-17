@@ -39,7 +39,7 @@
   --text-caption:  clamp(0.625rem, 0.7vw, 0.75rem);
 
   /* — Spacing — */
-  --page-margin:   clamp(1.5rem, 4vw, 4rem);
+  --page-margin:   clamp(2rem, 5vw, 6rem);
   --section-gap:   clamp(6rem, 12vh, 12rem);
 
   /* — Animation — */
@@ -57,6 +57,18 @@
   --z-nav:         100;
   --z-cursor:      200;
   --z-preloader:   300;
+}
+
+/* ---------- Design System Utilities ---------- */
+.page-margin {
+  padding-left: var(--page-margin);
+  padding-right: var(--page-margin);
+}
+
+.page-max {
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ---------- Base ---------- */

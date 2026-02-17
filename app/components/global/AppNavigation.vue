@@ -50,20 +50,18 @@ watch(isMenuOpen, (open) => {
     }"
   >
     <nav class="nav__bar page-margin" aria-label="Main navigation">
-      <UiMagneticButton
-        tag="a"
+      <a
         href="#"
-        :strength="0.2"
         class="nav__logo"
         aria-label="Billy Maulana — Home"
         @click.prevent="() => { isMenuOpen = false; scrollTo(0) }"
       >
         <img
-          src="/assets/images/logo/logo-bm-white.png"
+          src="/assets/images/logo/billy-maulana-logo-white.svg"
           alt="BM"
           class="nav__logo-img"
         >
-      </UiMagneticButton>
+      </a>
 
       <button
         class="nav__trigger"
@@ -131,7 +129,7 @@ watch(isMenuOpen, (open) => {
   left: 0;
   right: 0;
   z-index: var(--z-nav);
-  padding: 1.5rem 0;
+  padding: 1.75rem 0;
   transition: padding 0.5s var(--ease-out-expo), background 0.5s var(--ease-out-expo), transform 0.5s var(--ease-out-expo);
 }
 
@@ -165,13 +163,19 @@ watch(isMenuOpen, (open) => {
 .nav__logo {
   display: flex;
   align-items: center;
-  gap: 6px;
   color: var(--color-text-primary);
   cursor: pointer;
+  padding: 0.25rem;
+  transition: opacity 0.4s var(--ease-out-expo);
+}
+
+.nav--open .nav__logo {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .nav__logo-img {
-  height: 44px;
+  height: 56px;
   width: auto;
   filter: brightness(1.1);
 }
@@ -184,9 +188,9 @@ watch(isMenuOpen, (open) => {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.5rem;
-  margin-right: -0.5rem;
+  padding: 0.625rem 1rem;
   color: var(--color-text-primary);
+  transition: color 0.3s;
 }
 
 .nav__trigger-label {
@@ -194,12 +198,12 @@ watch(isMenuOpen, (open) => {
   font-weight: 500;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--color-text-primary);
-  transition: opacity 0.3s;
+  color: var(--color-text-secondary);
+  transition: color 0.4s;
 }
 
 .nav__trigger:hover .nav__trigger-label {
-  opacity: 0.7;
+  color: var(--color-text-primary);
 }
 
 .nav__trigger-icon {
@@ -215,9 +219,13 @@ watch(isMenuOpen, (open) => {
   display: block;
   width: 100%;
   height: 2px;
-  background: var(--color-text-primary);
+  background: var(--color-text-secondary);
   transform-origin: center;
-  transition: transform 0.5s var(--ease-out-expo), opacity 0.3s;
+  transition: transform 0.5s var(--ease-out-expo), background 0.4s;
+}
+
+.nav__trigger:hover .nav__trigger-line {
+  background: var(--color-text-primary);
 }
 
 .nav__trigger--open .nav__trigger-line:first-child {
@@ -226,6 +234,15 @@ watch(isMenuOpen, (open) => {
 
 .nav__trigger--open .nav__trigger-line:last-child {
   transform: translateY(-7px) rotate(-45deg);
+}
+
+/* When menu is open — hover brightens to white */
+.nav__trigger--open .nav__trigger-label {
+  color: var(--color-text-secondary);
+}
+
+.nav__trigger--open:hover .nav__trigger-label {
+  color: var(--color-text-primary);
 }
 
 /* ─── Overlay ─── */
@@ -245,8 +262,8 @@ watch(isMenuOpen, (open) => {
   flex-direction: column;
   justify-content: center;
   gap: clamp(3rem, 6vh, 5rem);
-  padding-top: 5rem;
-  padding-bottom: 3rem;
+  padding-top: 6rem;
+  padding-bottom: clamp(2rem, 4vh, 4rem);
   min-height: 100vh;
 }
 
@@ -265,14 +282,15 @@ watch(isMenuOpen, (open) => {
   align-items: baseline;
   gap: clamp(1rem, 2vw, 2rem);
   padding: clamp(1rem, 2vh, 1.5rem) 0;
-  color: var(--color-text-primary);
+  color: var(--color-text-secondary);
   text-decoration: none;
-  transition: color 0.3s, transform 0.4s var(--ease-out-expo);
+  transition: color 0.4s, transform 0.5s var(--ease-out-expo), letter-spacing 0.4s;
 }
 
 .nav__menu-link:hover {
-  color: var(--color-accent-cyan);
-  transform: translateX(1rem);
+  color: var(--color-text-primary);
+  transform: translateX(1.5rem);
+  letter-spacing: 0.02em;
 }
 
 .nav__menu-index {
@@ -281,7 +299,7 @@ watch(isMenuOpen, (open) => {
   color: var(--color-text-tertiary);
   letter-spacing: 0.1em;
   font-variant-numeric: tabular-nums;
-  transition: color 0.3s;
+  transition: color 0.4s;
 }
 
 .nav__menu-link:hover .nav__menu-index {
@@ -300,6 +318,11 @@ watch(isMenuOpen, (open) => {
   width: 100%;
   height: 1px;
   background: rgba(255, 255, 255, 0.06);
+  transition: background 0.4s;
+}
+
+.nav__menu-item:hover .nav__menu-divider {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* ─── Footer section in overlay ─── */
@@ -354,11 +377,11 @@ watch(isMenuOpen, (open) => {
 }
 
 .menu-enter-active {
-  transition: clip-path 0.6s var(--ease-out-expo), opacity 0.4s;
+  transition: clip-path 0.7s var(--ease-out-expo), opacity 0.4s;
 }
 
 .menu-leave-active {
-  transition: clip-path 0.5s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.3s 0.2s;
+  transition: clip-path 0.6s var(--ease-in-out), opacity 0.3s 0.2s;
 }
 
 .menu-enter-from {

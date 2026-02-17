@@ -2,6 +2,12 @@
  * WebGL Text Distortion Effect
  * Renders text to offscreen canvas, applies GPU liquid displacement
  * with flowmap-based ink ripple and chromatic aberration.
+ *
+ * Inspired by: daspritam.in (ink chroma), supersolid.agency (glitch liquid),
+ * crz.digital (liquid splash proximity).
+ *
+ * Key principle: small displacement + strong chromatic = liquid ink look.
+ * Text must WARP visibly, never disappear.
  */
 
 interface DistortionConfig {
@@ -18,12 +24,12 @@ const defaultDistortionConfig: DistortionConfig = {
   fontSize: 200,
   fontWeight: 900,
   fontFamily: 'Satoshi, system-ui, sans-serif',
-  radius: 0.12,
-  intensity: 0.18,
-  chromaticSpread: 0.018,
+  radius: 0.25,
+  intensity: 0.08,
+  chromaticSpread: 0.035,
   lines: [
     { text: 'BILLY', indent: 0 },
-    { text: 'MAULANA', indent: 60 },
+    { text: 'MAULANA', indent: 0 },
   ],
 }
 
@@ -54,6 +60,7 @@ const distortionFragmentShader = `
   uniform float uVelocity;
   uniform vec2 uResolution;
 
+  // Gradient noise
   vec2 hash22(vec2 p) {
     p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
     return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
@@ -70,53 +77,110 @@ const distortionFragmentShader = `
     );
   }
 
+  // Fractal Brownian Motion — organic ink flow
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    vec2 shift = vec2(100.0);
+    for (int i = 0; i < 3; i++) {
+      v += a * noise(p);
+      p = p * 2.0 + shift;
+      a *= 0.5;
+    }
+    return v;
+  }
+
   void main() {
     vec2 uv = vUv;
     float aspect = uResolution.x / uResolution.y;
 
-    // Velocity boost — fast mouse = stronger warp (liquid viscosity feel)
-    float velBoost = 1.0 + uVelocity * 4.0;
+    // Velocity boost — reactive but controlled
+    float velBoost = 1.0 + uVelocity * 3.0;
 
-    // Subtle entrance noise (smaller initial effect)
-    float entranceNoise = (1.0 - uSettle) * 0.03;
+    // Dynamic radius expands with velocity
+    float dynamicRadius = uRadius * (1.0 + uVelocity * 0.4);
+
+    // ── Idle organic undulation — text breathes when still ──
+    float idleWave = uSettle * (1.0 - uHover * 0.5);
+    float slowTime = uTime * 0.4;
+    vec2 idleUndulation = vec2(
+      sin(uv.y * 5.0 + slowTime) * 0.004 * idleWave + sin(uv.y * 12.0 + slowTime * 1.7) * 0.001 * idleWave,
+      cos(uv.x * 4.0 + slowTime * 0.8) * 0.003 * idleWave
+    );
+
+    // Idle chromatic drift — subtle rainbow shimmer at rest
+    float idleFactor = (1.0 - uHover) * 0.0012 * uSettle;
+
+    // Entrance noise — organic reveal
+    float entranceNoise = (1.0 - uSettle) * 0.02;
     vec2 entranceOffset = vec2(
       noise(uv * 8.0 + uTime * 0.5) * entranceNoise,
       noise(uv * 8.0 + uTime * 0.5 + 100.0) * entranceNoise
     );
 
-    // Idle ambient chromatic drift — barely perceptible shimmer when mouse not on text
-    float idleFactor = (1.0 - uHover) * 0.0006 * uSettle;
-    vec2 idleOffset = vec2(
-      noise(uv * 3.0 + uTime * 0.1) * idleFactor,
-      noise(uv * 3.0 + uTime * 0.1 + 50.0) * idleFactor
-    );
-
+    // ── Cursor interaction ──
     vec2 mouseUv = uMouse;
     vec2 diff = uv - mouseUv;
     diff.x *= aspect;
     float dist = length(diff);
-    // Sharper falloff for liquid blob feel (not soft Gaussian)
-    float influence = pow(smoothstep(uRadius, 0.0, dist), 0.6) * uHover;
 
+    // Liquid blob falloff — soft outer halo + sharp inner core
+    float outerInfluence = smoothstep(dynamicRadius * 1.5, dynamicRadius * 0.3, dist) * uHover;
+    float innerInfluence = pow(smoothstep(dynamicRadius, 0.0, dist), 0.6) * uHover;
+    float influence = mix(outerInfluence, innerInfluence, 0.6);
+
+    // Flow direction from cursor
     vec2 flowDir = normalize(diff + 0.001);
-    float swirl = noise(uv * 12.0 + uTime * 0.5) * 0.9;
-    float turbulence = noise(uv * 25.0 + uTime * 0.3) * 0.2 * influence;
-    vec2 displacement = (flowDir * influence + vec2(-flowDir.y, flowDir.x) * swirl * influence) * uIntensity * velBoost;
-    displacement += vec2(turbulence, -turbulence);
 
-    vec2 totalOffset = displacement + entranceOffset + idleOffset;
+    // Perpendicular swirl direction — liquid rotates around cursor
+    vec2 perpDir = vec2(-flowDir.y, flowDir.x);
 
-    // Chromatic: includes idle drift for subtle shimmer when still
-    float idleChromatic = idleFactor * 1.5;
-    float chromaticAmount = uChromatic * (influence * 3.0 * velBoost + (1.0 - uSettle) * 1.5) + idleChromatic;
-    vec2 rOffset = totalOffset + vec2(chromaticAmount, chromaticAmount * 0.5);
+    // Organic vortex via FBM — layered turbulence
+    float swirlAngle = fbm(uv * 6.0 + uTime * 0.25) * 3.14159;
+    vec2 swirlDir = vec2(cos(swirlAngle), sin(swirlAngle));
+
+    // Concentric ripple waves — surface tension
+    float ripple = sin(dist * 18.0 - uTime * 4.0) * 0.12 * influence;
+
+    // Secondary ripple — creates interference pattern
+    float ripple2 = sin(dist * 30.0 - uTime * 2.5) * 0.04 * influence;
+
+    // Turbulent micro-displacement via fbm
+    float turbX = fbm(uv * 12.0 + uTime * 0.35) * 0.18 * influence;
+    float turbY = fbm(uv * 12.0 + uTime * 0.35 + 50.0) * 0.18 * influence;
+
+    // Combine: swirl + perpendicular rotation + push
+    vec2 displacement = vec2(0.0);
+    displacement += flowDir * influence * 0.15;        // gentle push away
+    displacement += perpDir * influence * 0.4;         // strong perpendicular rotation
+    displacement += swirlDir * influence * 0.6;        // organic turbulent swirl
+    displacement += flowDir * (ripple + ripple2);      // ripple waves
+    displacement += vec2(turbX, turbY);                // micro-turbulence
+    displacement *= uIntensity * velBoost;
+
+    vec2 totalOffset = displacement + entranceOffset + idleUndulation;
+
+    // ── Chromatic aberration — ink iridescence ──
+    // Angle follows cursor for directional rainbow
+    float chromAngle = atan(diff.y, diff.x) + uTime * 0.15;
+    vec2 chromDir = vec2(cos(chromAngle), sin(chromAngle));
+
+    // Secondary chromatic axis — perpendicular for richer split
+    vec2 chromDir2 = vec2(-chromDir.y, chromDir.x);
+
+    float idleChromatic = idleFactor * 2.0;
+    float chromaticAmount = uChromatic * (influence * 3.0 * velBoost + (1.0 - uSettle) * 1.0) + idleChromatic;
+
+    // RGB split with two-axis offset for richer color separation
+    vec2 rOffset = totalOffset + chromDir * chromaticAmount + chromDir2 * chromaticAmount * 0.3;
     vec2 gOffset = totalOffset;
-    vec2 bOffset = totalOffset - vec2(chromaticAmount, chromaticAmount * 0.5);
+    vec2 bOffset = totalOffset - chromDir * chromaticAmount - chromDir2 * chromaticAmount * 0.3;
 
     float r = texture2D(uText, uv + rOffset).r;
     float g = texture2D(uText, uv + gOffset).g;
     float b = texture2D(uText, uv + bOffset).b;
 
+    // Alpha combines all three channels for full coverage
     float a = texture2D(uText, uv + gOffset).a;
     a = max(a, max(texture2D(uText, uv + rOffset).a, texture2D(uText, uv + bOffset).a));
 
@@ -218,18 +282,19 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
 
     const now = (Date.now() - startTime) / 1000
 
-    smoothMouseX += (mouseX - smoothMouseX) * 0.12
-    smoothMouseY += (mouseY - smoothMouseY) * 0.12
-    smoothHover += ((isHovering ? 1 : 0) - smoothHover) * 0.1
+    // Liquid mouse tracking — responsive but with viscous drag
+    smoothMouseX += (mouseX - smoothMouseX) * 0.14
+    smoothMouseY += (mouseY - smoothMouseY) * 0.14
+    smoothHover += ((isHovering ? 1 : 0) - smoothHover) * 0.15
 
     // Track mouse velocity from raw deltas for dynamic intensity
     const rawVelocity = Math.sqrt(rawDeltaX * rawDeltaX + rawDeltaY * rawDeltaY)
-    const targetVel = Math.min(rawVelocity * 6, 1.0)
-    // Asymmetric smoothing: fast attack, slow decay for buttery feel
-    const velLerp = targetVel > smoothVelocity ? 0.2 : 0.06
+    const targetVel = Math.min(rawVelocity * 8, 1.0)
+    // Asymmetric smoothing: fast attack, slow decay for viscous persistence
+    const velLerp = targetVel > smoothVelocity ? 0.3 : 0.05
     smoothVelocity += (targetVel - smoothVelocity) * velLerp
-    rawDeltaX *= 0.5
-    rawDeltaY *= 0.5
+    rawDeltaX *= 0.45
+    rawDeltaY *= 0.45
 
     settleProgress = Math.min(1.0, now / 0.8)
     const settleEased = 1.0 - (1.0 - settleProgress) ** 3

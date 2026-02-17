@@ -63,11 +63,11 @@ const defaultConfig: FluidConfig = {
   splatRadius: 1.5,
   splatForce: 1500,
   colorPalette: [
-    [0, 0.28, 1.0], // Electric Blue (dominant)
-    [0, 0.45, 1.0], // Bright Blue
-    [0, 0.6, 1.0], // Azure
-    [0, 0.8, 1.0], // Cyan accent
-    [0.05, 0.2, 0.9], // Deep Electric
+    [0.0, 0.18, 1.0], // Electric Blue (dominant)
+    [0.0, 0.28, 1.0], // Bright Blue
+    [0.1, 0.15, 0.95], // Royal Blue
+    [0.05, 0.35, 1.0], // Azure Blue
+    [0.15, 0.1, 1.0], // Indigo Blue
   ],
 }
 
@@ -113,20 +113,24 @@ const displayShader = `
   uniform vec2 texelSize;
 
   void main () {
-    // Chromatic offset — sample R/G/B at slightly different UVs for oil-ink iridescence
-    float spread = 0.003;
-    float r = texture2D(uTexture, vUv + vec2(spread, spread * 0.5)).r;
+    // Chromatic offset — subtle channel split for depth
+    float spread = 0.002;
+    float r = texture2D(uTexture, vUv + vec2(spread, 0.0)).r;
     float g = texture2D(uTexture, vUv).g;
-    float b = texture2D(uTexture, vUv - vec2(spread, spread * 0.5)).b;
+    float b = texture2D(uTexture, vUv - vec2(spread, 0.0)).b;
     vec3 c = vec3(r, g, b);
 
-    // Filmic tone-mapping with higher exposure for vivid blues
-    float exposure = 2.4;
+    // Filmic tone-mapping — vivid blues
+    float exposure = 2.2;
     c = 1.0 - exp(-c * exposure);
 
-    // Push saturation — makes blues richer instead of washing to grey
+    // Push blue channel, suppress green drift
+    c.b = min(c.b * 1.15, 1.0);
+    c.g = c.g * 0.85;
+
+    // Saturation boost
     float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));
-    c = mix(vec3(lum), c, 1.4);
+    c = mix(vec3(lum), c, 1.5);
 
     float a = max(c.r, max(c.g, c.b));
     gl_FragColor = vec4(c, a);
@@ -523,25 +527,7 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
     }
   }
 
-  function injectAmbientVelocity() {
-    if (!gl || !canvas)
-      return
-    const x = 0.25 + Math.random() * 0.5
-    const y = 0.25 + Math.random() * 0.5
-    const angle = Math.random() * Math.PI * 2
-    const strength = 10
-    splatProgram.bind()
-    gl.uniform1i(splatProgram.uniforms.uTarget!, velocity.read.attach(0))
-    gl.uniform1f(splatProgram.uniforms.aspectRatio!, canvas.width / canvas.height)
-    gl.uniform2f(splatProgram.uniforms.point!, x, y)
-    gl.uniform3f(splatProgram.uniforms.color!, Math.cos(angle) * strength, Math.sin(angle) * strength, 0.0)
-    gl.uniform1f(splatProgram.uniforms.radius!, correctRadius(cfg.splatRadius / 100.0))
-    blit(velocity.write)
-    velocity.swap()
-  }
-
   let lastSoftClear = 0
-  let lastAmbientPulse = 0
 
   function update() {
     const now = Date.now()
@@ -561,12 +547,6 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
       gl!.uniform1f(clearProgram.uniforms.value!, 0.92)
       blit(dye.write)
       dye.swap()
-    }
-
-    // Ambient velocity injection — keeps chromatic fluid drifting without visible splashes
-    if (now - lastAmbientPulse > 3000) {
-      lastAmbientPulse = now
-      injectAmbientVelocity()
     }
 
     updatePointers()

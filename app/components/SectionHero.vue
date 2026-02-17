@@ -2,47 +2,26 @@
 onMounted(async () => {
   const gsap = (await import('gsap')).default
 
-  const tl = gsap.timeline({ delay: 0.6 })
+  const tl = gsap.timeline({ delay: 0.5 })
 
   tl.from('.hero__name', {
-    y: 60,
+    y: 80,
     opacity: 0,
-    duration: 1.4,
-    ease: 'power4.out',
+    duration: 1.8,
+    ease: 'expo.out',
   })
 
-  tl.from('.hero__meta', {
+  tl.from('.hero__bottom', {
     opacity: 0,
-    y: -15,
-    duration: 0.8,
-    ease: 'power3.out',
-  }, '-=0.9')
-
-  tl.from('.hero__tagline', {
-    y: 20,
-    opacity: 0,
-    duration: 0.8,
-    ease: 'power3.out',
-  }, '-=0.5')
-
-  tl.from('.hero__bottom-left', {
-    opacity: 0,
-    y: 10,
-    duration: 0.6,
-    ease: 'power2.out',
-  }, '-=0.3')
-
-  tl.from('.hero__scroll', {
-    opacity: 0,
-    y: -10,
-    duration: 0.6,
-    ease: 'power2.out',
-  }, '-=0.3')
+    y: 15,
+    duration: 1.2,
+    ease: 'expo.out',
+  }, '-=1.2')
 })
 
 const distortionLines = [
   { text: 'BILLY', indent: 0 },
-  { text: 'MAULANA', indent: 60 },
+  { text: 'MAULANA', indent: 0 },
 ]
 </script>
 
@@ -54,16 +33,9 @@ const distortionLines = [
   >
     <UiFluidCanvas
       :start-delay="200"
-      :initial-splats="2"
     />
 
-    <div class="hero__meta">
-      <span class="hero__meta-label">
-        Frontend Engineer<br>from Indonesia
-      </span>
-    </div>
-
-    <div class="hero__center">
+    <div class="hero__content page-margin">
       <h1 class="sr-only">
         Billy Maulana
       </h1>
@@ -75,16 +47,13 @@ const distortionLines = [
           class="hero__distortion"
         />
       </div>
-
-      <p class="hero__tagline">
-        Crafting digital experiences with<br>precision and intention
-      </p>
     </div>
 
-    <div class="hero__bottom">
-      <div class="hero__bottom-left">
-        <span class="hero__avail-dot" />
-        <span class="hero__avail-text">Available for work</span>
+    <div class="hero__bottom page-margin">
+      <div class="hero__subtitle">
+        <span class="hero__role">Frontend Developer</span>
+        <span class="hero__separator">/</span>
+        <span class="hero__location">Indonesia</span>
       </div>
 
       <div class="hero__scroll">
@@ -107,36 +76,17 @@ const distortionLines = [
   background-color: #000000;
 }
 
-/* ─ Role meta — positioned top-right for diagonal flow ─ */
-.hero__meta {
-  position: absolute;
-  top: clamp(7rem, 14vh, 10rem);
-  right: var(--page-margin);
-  z-index: var(--z-content, 10);
-  text-align: right;
-}
-
-.hero__meta-label {
-  font-size: var(--text-caption);
-  font-weight: 500;
-  color: var(--color-text-tertiary);
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  line-height: 1.8;
-}
-
-/* ─ Main content — left-aligned editorial ─ */
-.hero__center {
+/* ─ Main content ─ */
+.hero__content {
   position: relative;
   z-index: var(--z-content, 10);
-  width: 100%;
-  padding-left: var(--page-margin);
-  padding-right: var(--page-margin);
+  display: flex;
+  flex-direction: column;
 }
 
 .hero__name {
-  width: 85%;
-  max-width: 85%;
+  width: 90%;
+  max-width: 90%;
 }
 
 .hero__distortion {
@@ -144,45 +94,40 @@ const distortionLines = [
   z-index: 2;
 }
 
-.hero__tagline {
-  margin-top: clamp(1.5rem, 3vw, 2.5rem);
-  font-size: var(--text-label);
-  font-weight: 400;
-  color: var(--color-text-tertiary);
-  letter-spacing: 0.08em;
-  line-height: 1.7;
-}
-
-/* ─ Bottom bar ─ */
+/* ─ Bottom bar — subtitle + scroll ─ */
 .hero__bottom {
   position: absolute;
   bottom: clamp(1.5rem, 3vh, 2.5rem);
-  left: var(--page-margin);
-  right: var(--page-margin);
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   z-index: var(--z-content, 10);
 }
 
-.hero__bottom-left {
+.hero__subtitle {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
-.hero__avail-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #00ff88;
-  box-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
-  animation: pulse 2.5s ease-in-out infinite;
-}
-
-.hero__avail-text {
-  font-size: var(--text-caption);
+.hero__role {
+  font-size: var(--text-label);
   font-weight: 500;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.hero__separator {
+  font-size: var(--text-label);
+  color: var(--color-text-tertiary);
+}
+
+.hero__location {
+  font-size: var(--text-label);
+  font-weight: 400;
   color: var(--color-text-tertiary);
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -222,11 +167,6 @@ const distortionLines = [
   border-width: 0;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
 @keyframes scrollPulse {
   0%, 100% {
     opacity: 1;
@@ -243,36 +183,29 @@ const distortionLines = [
     width: 100%;
     max-width: 100%;
   }
-
-  .hero__meta {
-    top: clamp(5.5rem, 10vh, 7rem);
-  }
 }
 
 @media (max-width: 480px) {
-  .hero__bottom-left {
-    display: none;
-  }
-
   .hero__scroll-line {
     height: 32px;
   }
 
-  .hero__meta {
-    position: relative;
-    top: auto;
-    right: auto;
-    text-align: left;
-    margin-bottom: 1.5rem;
+  .hero__subtitle {
+    gap: 0.5rem;
+  }
+
+  .hero__bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .hero__scroll {
+    align-self: flex-end;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero__avail-dot {
-    animation: none;
-    opacity: 0.7;
-  }
-
   .hero__scroll-line {
     animation: none;
     opacity: 0.5;
