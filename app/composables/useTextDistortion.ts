@@ -18,9 +18,9 @@ const defaultDistortionConfig: DistortionConfig = {
   fontSize: 200,
   fontWeight: 900,
   fontFamily: 'Satoshi, system-ui, sans-serif',
-  radius: 0.22,
-  intensity: 0.15,
-  chromaticSpread: 0.02,
+  radius: 0.12,
+  intensity: 0.18,
+  chromaticSpread: 0.018,
   lines: [
     { text: 'BILLY', indent: 0 },
     { text: 'MAULANA', indent: 60 },
@@ -75,29 +75,40 @@ const distortionFragmentShader = `
     float aspect = uResolution.x / uResolution.y;
 
     // Velocity boost — fast mouse = stronger warp (liquid viscosity feel)
-    float velBoost = 1.0 + uVelocity * 3.0;
+    float velBoost = 1.0 + uVelocity * 4.0;
 
-    float entranceNoise = (1.0 - uSettle) * 0.08;
+    // Subtle entrance noise (smaller initial effect)
+    float entranceNoise = (1.0 - uSettle) * 0.03;
     vec2 entranceOffset = vec2(
       noise(uv * 8.0 + uTime * 0.5) * entranceNoise,
       noise(uv * 8.0 + uTime * 0.5 + 100.0) * entranceNoise
+    );
+
+    // Idle ambient chromatic drift — barely perceptible shimmer when mouse not on text
+    float idleFactor = (1.0 - uHover) * 0.0006 * uSettle;
+    vec2 idleOffset = vec2(
+      noise(uv * 3.0 + uTime * 0.1) * idleFactor,
+      noise(uv * 3.0 + uTime * 0.1 + 50.0) * idleFactor
     );
 
     vec2 mouseUv = uMouse;
     vec2 diff = uv - mouseUv;
     diff.x *= aspect;
     float dist = length(diff);
-    float influence = smoothstep(uRadius, 0.0, dist) * uHover;
+    // Sharper falloff for liquid blob feel (not soft Gaussian)
+    float influence = pow(smoothstep(uRadius, 0.0, dist), 0.6) * uHover;
 
     vec2 flowDir = normalize(diff + 0.001);
-    float swirl = noise(uv * 10.0 + uTime * 0.4) * 0.6;
-    float turbulence = noise(uv * 20.0 + uTime * 0.2) * 0.15 * influence;
+    float swirl = noise(uv * 12.0 + uTime * 0.5) * 0.9;
+    float turbulence = noise(uv * 25.0 + uTime * 0.3) * 0.2 * influence;
     vec2 displacement = (flowDir * influence + vec2(-flowDir.y, flowDir.x) * swirl * influence) * uIntensity * velBoost;
     displacement += vec2(turbulence, -turbulence);
 
-    vec2 totalOffset = displacement + entranceOffset;
+    vec2 totalOffset = displacement + entranceOffset + idleOffset;
 
-    float chromaticAmount = uChromatic * (influence * 2.5 * velBoost + (1.0 - uSettle) * 2.0);
+    // Chromatic: includes idle drift for subtle shimmer when still
+    float idleChromatic = idleFactor * 1.5;
+    float chromaticAmount = uChromatic * (influence * 3.0 * velBoost + (1.0 - uSettle) * 1.5) + idleChromatic;
     vec2 rOffset = totalOffset + vec2(chromaticAmount, chromaticAmount * 0.5);
     vec2 gOffset = totalOffset;
     vec2 bOffset = totalOffset - vec2(chromaticAmount, chromaticAmount * 0.5);
@@ -178,8 +189,7 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
 
     for (let i = 0; i < cfg.lines.length; i++) {
       const line = cfg.lines[i]!
-      const lineWidth = ctx.measureText(line.text).width
-      const x = (offscreen.width - lineWidth) / 2 + line.indent * indentScale
+      const x = padding + line.indent * indentScale
       const y = padding + i * lineHeight
       ctx.fillText(line.text, x, y)
     }

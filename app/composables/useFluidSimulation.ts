@@ -128,10 +128,6 @@ const displayShader = `
     float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));
     c = mix(vec3(lum), c, 1.4);
 
-    // Subtle dark blue ambient base
-    vec3 ambient = vec3(0.0, 0.04, 0.15);
-    c = mix(ambient, c, smoothstep(0.0, 0.08, length(c)));
-
     float a = max(c.r, max(c.g, c.b));
     gl_FragColor = vec4(c, a);
   }
@@ -521,13 +517,31 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
       const color = getNextColor()
       const x = Math.random()
       const y = Math.random()
-      const dx = 150 * (Math.random() - 0.5)
-      const dy = 150 * (Math.random() - 0.5)
+      const dx = 80 * (Math.random() - 0.5)
+      const dy = 80 * (Math.random() - 0.5)
       splatAtPoint(x, y, dx, dy, color)
     }
   }
 
+  function injectAmbientVelocity() {
+    if (!gl || !canvas)
+      return
+    const x = 0.25 + Math.random() * 0.5
+    const y = 0.25 + Math.random() * 0.5
+    const angle = Math.random() * Math.PI * 2
+    const strength = 10
+    splatProgram.bind()
+    gl.uniform1i(splatProgram.uniforms.uTarget!, velocity.read.attach(0))
+    gl.uniform1f(splatProgram.uniforms.aspectRatio!, canvas.width / canvas.height)
+    gl.uniform2f(splatProgram.uniforms.point!, x, y)
+    gl.uniform3f(splatProgram.uniforms.color!, Math.cos(angle) * strength, Math.sin(angle) * strength, 0.0)
+    gl.uniform1f(splatProgram.uniforms.radius!, correctRadius(cfg.splatRadius / 100.0))
+    blit(velocity.write)
+    velocity.swap()
+  }
+
   let lastSoftClear = 0
+  let lastAmbientPulse = 0
 
   function update() {
     const now = Date.now()
@@ -547,6 +561,12 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
       gl!.uniform1f(clearProgram.uniforms.value!, 0.92)
       blit(dye.write)
       dye.swap()
+    }
+
+    // Ambient velocity injection — keeps chromatic fluid drifting without visible splashes
+    if (now - lastAmbientPulse > 3000) {
+      lastAmbientPulse = now
+      injectAmbientVelocity()
     }
 
     updatePointers()

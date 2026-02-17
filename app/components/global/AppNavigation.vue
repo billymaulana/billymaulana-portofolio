@@ -63,7 +63,6 @@ watch(isMenuOpen, (open) => {
           alt="BM"
           class="nav__logo-img"
         >
-        <span class="nav__logo-dot" />
       </UiMagneticButton>
 
       <button
@@ -172,16 +171,9 @@ watch(isMenuOpen, (open) => {
 }
 
 .nav__logo-img {
-  height: 36px;
+  height: 44px;
   width: auto;
   filter: brightness(1.1);
-}
-
-.nav__logo-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-accent);
 }
 
 /* ─── Trigger button ─── */
@@ -192,7 +184,8 @@ watch(isMenuOpen, (open) => {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
+  padding: 0.5rem;
+  margin-right: -0.5rem;
   color: var(--color-text-primary);
 }
 
@@ -201,12 +194,12 @@ watch(isMenuOpen, (open) => {
   font-weight: 500;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--color-text-secondary);
-  transition: color 0.3s;
+  color: var(--color-text-primary);
+  transition: opacity 0.3s;
 }
 
 .nav__trigger:hover .nav__trigger-label {
-  color: var(--color-text-primary);
+  opacity: 0.7;
 }
 
 .nav__trigger-icon {

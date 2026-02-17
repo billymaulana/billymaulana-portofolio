@@ -5,37 +5,44 @@ onMounted(async () => {
   const tl = gsap.timeline({ delay: 0.6 })
 
   tl.from('.hero__name', {
-    y: 80,
+    y: 60,
     opacity: 0,
     duration: 1.4,
     ease: 'power4.out',
   })
 
-  tl.from('.hero__tagline', {
-    y: 30,
+  tl.from('.hero__meta', {
     opacity: 0,
-    duration: 0.9,
+    y: -15,
+    duration: 0.8,
     ease: 'power3.out',
-  }, '-=0.7')
+  }, '-=0.9')
+
+  tl.from('.hero__tagline', {
+    y: 20,
+    opacity: 0,
+    duration: 0.8,
+    ease: 'power3.out',
+  }, '-=0.5')
 
   tl.from('.hero__bottom-left', {
     opacity: 0,
     y: 10,
     duration: 0.6,
     ease: 'power2.out',
-  }, '-=0.4')
+  }, '-=0.3')
 
   tl.from('.hero__scroll', {
     opacity: 0,
     y: -10,
     duration: 0.6,
     ease: 'power2.out',
-  }, '-=0.4')
+  }, '-=0.3')
 })
 
 const distortionLines = [
   { text: 'BILLY', indent: 0 },
-  { text: 'MAULANA', indent: 0 },
+  { text: 'MAULANA', indent: 60 },
 ]
 </script>
 
@@ -47,10 +54,14 @@ const distortionLines = [
   >
     <UiFluidCanvas
       :start-delay="200"
-      :initial-splats="5"
+      :initial-splats="2"
     />
 
-    <div class="hero__ambient" />
+    <div class="hero__meta">
+      <span class="hero__meta-label">
+        Frontend Engineer<br>from Indonesia
+      </span>
+    </div>
 
     <div class="hero__center">
       <h1 class="sr-only">
@@ -66,7 +77,7 @@ const distortionLines = [
       </div>
 
       <p class="hero__tagline">
-        Frontend Engineer from Indonesia
+        Crafting digital experiences with<br>precision and intention
       </p>
     </div>
 
@@ -92,52 +103,54 @@ const distortionLines = [
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
   overflow: hidden;
-  background-color: var(--color-bg);
+  background-color: #000000;
 }
 
-.hero__ambient {
+/* ─ Role meta — positioned top-right for diagonal flow ─ */
+.hero__meta {
   position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0, 71, 255, 0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 70% at 30% 50%, rgba(0, 245, 255, 0.03) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: 2;
+  top: clamp(7rem, 14vh, 10rem);
+  right: var(--page-margin);
+  z-index: var(--z-content, 10);
+  text-align: right;
 }
 
-/* ─ Centered typography block ─ */
+.hero__meta-label {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  line-height: 1.8;
+}
+
+/* ─ Main content — left-aligned editorial ─ */
 .hero__center {
   position: relative;
   z-index: var(--z-content, 10);
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+  padding-left: var(--page-margin);
+  padding-right: var(--page-margin);
 }
 
 .hero__name {
-  width: 100%;
-  max-width: 100%;
-  padding-left: var(--page-margin);
-  padding-right: var(--page-margin);
+  width: 85%;
+  max-width: 85%;
 }
 
 .hero__distortion {
   position: relative;
   z-index: 2;
-  margin: 0 auto;
 }
 
 .hero__tagline {
-  margin-top: clamp(1rem, 2.5vw, 2rem);
+  margin-top: clamp(1.5rem, 3vw, 2.5rem);
   font-size: var(--text-label);
   font-weight: 400;
   color: var(--color-text-tertiary);
-  letter-spacing: 0.35em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1.7;
 }
 
 /* ─ Bottom bar ─ */
@@ -225,6 +238,17 @@ const distortionLines = [
   }
 }
 
+@media (max-width: 768px) {
+  .hero__name {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero__meta {
+    top: clamp(5.5rem, 10vh, 7rem);
+  }
+}
+
 @media (max-width: 480px) {
   .hero__bottom-left {
     display: none;
@@ -232,6 +256,14 @@ const distortionLines = [
 
   .hero__scroll-line {
     height: 32px;
+  }
+
+  .hero__meta {
+    position: relative;
+    top: auto;
+    right: auto;
+    text-align: left;
+    margin-bottom: 1.5rem;
   }
 }
 

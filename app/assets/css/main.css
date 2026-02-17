@@ -30,7 +30,7 @@
   --color-accent-glow:   rgba(0, 71, 255, 0.15);
 
   /* — Typography Scale (fluid) — */
-  --text-display:  clamp(4rem, 14vw, 16rem);
+  --text-display:  clamp(3.5rem, 12vw, 13rem);
   --text-h1:       clamp(2.5rem, 6vw, 6rem);
   --text-h2:       clamp(2rem, 4vw, 4rem);
   --text-h3:       clamp(1.5rem, 2.5vw, 2.5rem);
