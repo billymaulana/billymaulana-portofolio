@@ -18,9 +18,9 @@ const defaultDistortionConfig: DistortionConfig = {
   fontSize: 200,
   fontWeight: 900,
   fontFamily: 'Satoshi, system-ui, sans-serif',
-  radius: 0.15,
-  intensity: 0.04,
-  chromaticSpread: 0.006,
+  radius: 0.25,
+  intensity: 0.08,
+  chromaticSpread: 0.012,
   lines: [
     { text: 'BILLY', indent: 0 },
     { text: 'MAULANA', indent: 60 },
@@ -185,7 +185,9 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MAG_FILTER, gl!.LINEAR)
     gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_S, gl!.CLAMP_TO_EDGE)
     gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_T, gl!.CLAMP_TO_EDGE)
+    gl!.pixelStorei(gl!.UNPACK_FLIP_Y_WEBGL, true)
     gl!.texImage2D(gl!.TEXTURE_2D, 0, gl!.RGBA, gl!.RGBA, gl!.UNSIGNED_BYTE, source)
+    gl!.pixelStorei(gl!.UNPACK_FLIP_Y_WEBGL, false)
     return tex
   }
 
@@ -209,7 +211,7 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, textTexture)
     gl.uniform1i(uniforms.uText!, 0)
-    gl.uniform2f(uniforms.uMouse!, smoothMouseX, 1.0 - smoothMouseY)
+    gl.uniform2f(uniforms.uMouse!, smoothMouseX, smoothMouseY)
     gl.uniform1f(uniforms.uRadius!, cfg.radius)
     gl.uniform1f(uniforms.uIntensity!, cfg.intensity)
     gl.uniform1f(uniforms.uChromatic!, cfg.chromaticSpread)
@@ -244,7 +246,9 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
       const textCanvas = renderTextToCanvas()
       if (textTexture) {
         gl.bindTexture(gl.TEXTURE_2D, textTexture)
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas)
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
       }
     }
   }
@@ -349,7 +353,9 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     if (gl && textTexture) {
       const textCanvas = renderTextToCanvas()
       gl.bindTexture(gl.TEXTURE_2D, textTexture)
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas)
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
     }
   }
 

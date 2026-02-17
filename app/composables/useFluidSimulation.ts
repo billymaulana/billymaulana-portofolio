@@ -57,17 +57,17 @@ interface Program {
 const defaultConfig: FluidConfig = {
   simResolution: 128,
   dyeResolution: 1024,
-  densityDissipation: 1.5,
-  velocityDissipation: 0.3,
+  densityDissipation: 2.5,
+  velocityDissipation: 0.4,
   pressureIterations: 20,
-  splatRadius: 8.0,
-  splatForce: 6000,
+  splatRadius: 6.0,
+  splatForce: 4000,
   colorPalette: [
-    [0, 0.28, 1], // Electric Blue
-    [0, 0.64, 1], // Light Blue
-    [0, 0.96, 1], // Cyan
-    [0.27, 0, 1], // Deep Purple
-    [0, 0.5, 1], // Mid Blue
+    [0, 0.15, 0.6], // Deep Blue
+    [0, 0.25, 0.8], // Dark Electric Blue
+    [0.05, 0.1, 0.5], // Navy
+    [0.1, 0, 0.6], // Dark Indigo
+    [0, 0.2, 0.7], // Midnight Blue
   ],
 }
 
@@ -118,13 +118,13 @@ const displayShader = `
     float exposure = 1.8;
     c = 1.0 - exp(-c * exposure);
 
-    // Blend with subtle ambient blue gradient so saturation shows palette, not grey
+    // Blend with very subtle dark blue ambient so saturation shows palette, not grey
     vec3 ambient = mix(
-      vec3(0.0, 0.18, 0.65),
-      vec3(0.0, 0.5, 0.65),
+      vec3(0.0, 0.08, 0.3),
+      vec3(0.0, 0.15, 0.35),
       vUv.y
     );
-    c = mix(ambient * 0.15, c, 0.85 + 0.15 * smoothstep(0.0, 0.3, length(c)));
+    c = mix(ambient * 0.1, c, 0.9 + 0.1 * smoothstep(0.0, 0.2, length(c)));
 
     float a = max(c.r, max(c.g, c.b));
     gl_FragColor = vec4(c, a);
@@ -534,18 +534,18 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
       multipleSplats(splatStack.pop()!)
     }
 
-    // Auto-splat every 3 seconds for ambient life
-    if (now - lastAutoSplat > 3000) {
+    // Auto-splat every 5 seconds for subtle ambient life
+    if (now - lastAutoSplat > 5000) {
       lastAutoSplat = now
-      multipleSplats(Math.floor(Math.random() * 2) + 1)
+      multipleSplats(1)
     }
 
-    // Periodic soft-clear every 5 seconds — gently fades accumulated dye
-    if (now - lastSoftClear > 5000) {
+    // Periodic soft-clear every 3 seconds — aggressively fades accumulated dye
+    if (now - lastSoftClear > 3000) {
       lastSoftClear = now
       clearProgram.bind()
       gl!.uniform1i(clearProgram.uniforms.uTexture!, dye.read.attach(0))
-      gl!.uniform1f(clearProgram.uniforms.value!, 0.92)
+      gl!.uniform1f(clearProgram.uniforms.value!, 0.85)
       blit(dye.write)
       dye.swap()
     }
