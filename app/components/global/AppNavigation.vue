@@ -144,12 +144,12 @@ watch(isMenuOpen, (open) => {
   left: 0;
   right: 0;
   z-index: var(--z-nav);
-  padding: 1.75rem 0;
+  padding: clamp(1.3125rem, 2.8vh, 2.125rem) 0;
   transition: padding 0.5s var(--ease-out-expo), background 0.5s var(--ease-out-expo), transform 0.5s var(--ease-out-expo);
 }
 
 .nav--scrolled {
-  padding: 1rem 0;
+  padding: 0.8125rem 0;
   background: rgba(10, 10, 10, 0.8);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -169,7 +169,7 @@ watch(isMenuOpen, (open) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 40px;
+  height: 34px;
   position: relative;
   z-index: 2;
 }
@@ -189,7 +189,7 @@ watch(isMenuOpen, (open) => {
 }
 
 .nav__logo-img {
-  height: 36px;
+  height: 28px;
   width: auto;
   filter: brightness(1.1);
 }
@@ -200,8 +200,8 @@ watch(isMenuOpen, (open) => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   background: none;
   border: none;
   cursor: pointer;
@@ -347,7 +347,7 @@ watch(isMenuOpen, (open) => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: clamp(6rem, 12vh, 9rem) clamp(2rem, 5vw, 3rem) clamp(2rem, 4vh, 3rem);
+  padding: clamp(5.5rem, 11vh, 8rem) clamp(2.125rem, 5vw, 3.4375rem) clamp(2.125rem, 4vh, 3.4375rem);
 }
 
 /* ─── Menu links ─── */
@@ -363,8 +363,8 @@ watch(isMenuOpen, (open) => {
 .nav__menu-link {
   display: flex;
   align-items: baseline;
-  gap: clamp(0.75rem, 1.5vw, 1.5rem);
-  padding: clamp(0.75rem, 1.5vh, 1.25rem) 0;
+  gap: clamp(0.8125rem, 1.5vw, 1.3125rem);
+  padding: clamp(0.8125rem, 1.5vh, 1.3125rem) 0;
   color: var(--color-text-secondary);
   text-decoration: none;
   transition: color 0.4s var(--ease-out-expo);
@@ -378,7 +378,8 @@ watch(isMenuOpen, (open) => {
   font-size: var(--text-caption);
   font-weight: 500;
   color: var(--color-text-tertiary);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
   transition: color 0.4s var(--ease-out-expo);
 }
@@ -390,9 +391,11 @@ watch(isMenuOpen, (open) => {
 /* ─── Per-character 3D cube (crz.studio style) ─── */
 .nav__menu-word {
   display: inline-flex;
-  font-size: clamp(3rem, 10vw, 7rem);
-  font-weight: 900;
-  line-height: 1.1;
+  font-family: 'Clash Display', 'Satoshi', system-ui, sans-serif;
+  font-size: clamp(2.5rem, 8vw, 5.5rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .nav__menu-char {
@@ -452,9 +455,9 @@ watch(isMenuOpen, (open) => {
 .nav__panel-footer {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.3125rem;
   margin-top: auto;
-  padding-top: clamp(2rem, 4vh, 3rem);
+  padding-top: clamp(2.125rem, 4vh, 3.4375rem);
   animation: menuItemIn 0.9s var(--ease-out-expo) both;
   animation-delay: 0.55s;
 }
@@ -469,7 +472,8 @@ watch(isMenuOpen, (open) => {
   font-size: var(--text-caption);
   font-weight: 500;
   color: var(--color-text-tertiary);
-  letter-spacing: 0.15em;
+  letter-spacing: 0.2em;
+  line-height: 1.618;
   text-transform: uppercase;
 }
 
@@ -477,6 +481,8 @@ watch(isMenuOpen, (open) => {
   font-size: var(--text-label);
   color: var(--color-text-secondary);
   text-decoration: none;
+  letter-spacing: 0.01em;
+  line-height: 1.618;
   transition: color 0.3s var(--ease-out-expo);
 }
 
@@ -486,7 +492,7 @@ watch(isMenuOpen, (open) => {
 
 .nav__footer-socials {
   display: flex;
-  gap: 1.25rem;
+  gap: 1.3125rem;
 }
 
 /* ─── Animations ─── */
@@ -570,7 +576,7 @@ watch(isMenuOpen, (open) => {
   }
 
   .nav__menu-word {
-    font-size: clamp(2.5rem, 4vw, 4.5rem);
+    font-size: clamp(2.125rem, 3.5vw, 3.5rem);
   }
 
   /* Override mobile clip-path — use panel slide instead */
@@ -626,7 +632,7 @@ watch(isMenuOpen, (open) => {
 /* ─── Mobile ─── */
 @media (max-width: 480px) {
   .nav__menu-word {
-    font-size: clamp(2rem, 10vw, 3.5rem);
+    font-size: clamp(1.75rem, 9vw, 3rem);
   }
 }
 

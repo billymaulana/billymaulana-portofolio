@@ -29,18 +29,18 @@
   --color-accent-purple: #4400FF;
   --color-accent-glow:   rgba(0, 71, 255, 0.15);
 
-  /* — Typography Scale (fluid) — */
+  /* — Typography Scale (fluid, φ-informed ratios) — */
   --text-display:  clamp(3.5rem, 12vw, 13rem);
   --text-h1:       clamp(2.5rem, 6vw, 6rem);
-  --text-h2:       clamp(2rem, 4vw, 4rem);
-  --text-h3:       clamp(1.5rem, 2.5vw, 2.5rem);
-  --text-body:     clamp(1rem, 1.2vw, 1.25rem);
-  --text-label:    clamp(0.75rem, 0.9vw, 0.875rem);
-  --text-caption:  clamp(0.625rem, 0.7vw, 0.75rem);
+  --text-h2:       clamp(1.75rem, 3.5vw, 3.5rem);
+  --text-h3:       clamp(1.25rem, 2vw, 2rem);
+  --text-body:     clamp(0.9375rem, 1.1vw, 1.125rem);
+  --text-label:    clamp(0.6875rem, 0.85vw, 0.8125rem);
+  --text-caption:  clamp(0.5625rem, 0.65vw, 0.6875rem);
 
-  /* — Spacing — */
-  --page-margin:   clamp(2rem, 5vw, 6rem);
-  --section-gap:   clamp(6rem, 12vh, 12rem);
+  /* — Spacing (Fibonacci / Golden Ratio, base 8px) — */
+  --page-margin:   clamp(1.5rem, 4.5vw, 5.5rem);
+  --section-gap:   clamp(5.5rem, 11vh, 9rem);
 
   /* — Animation — */
   --duration-fast:    0.2s;
@@ -82,7 +82,9 @@ body {
   font-family: 'Satoshi', system-ui, -apple-system, sans-serif;
   background-color: var(--color-bg);
   color: var(--color-text-primary);
-  line-height: 1.5;
+  line-height: 1.618;
+  font-kerning: normal;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
   overflow-x: hidden;
 }
 

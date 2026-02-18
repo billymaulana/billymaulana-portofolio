@@ -34,9 +34,10 @@ export default defineConfig({
       mono: {},
     },
 
-    // Typography structure
+    // Typography structure — Swiss pairing
     fontFamily: {
       sans: ['Satoshi', 'system-ui', '-apple-system', 'sans-serif'],
+      display: ['Clash Display', 'Satoshi', 'system-ui', 'sans-serif'],
     },
 
     // Spacing extends Tailwind defaults
@@ -59,6 +60,9 @@ export default defineConfig({
       fonts: {
         satoshi: [
           { name: 'Satoshi', weights: ['500', '700', '900'] },
+        ],
+        clash: [
+          { name: 'Clash Display', weights: ['500', '600', '700'] },
         ],
       },
     }),

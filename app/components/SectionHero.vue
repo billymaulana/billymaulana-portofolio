@@ -96,6 +96,11 @@ const distortionLines = [
 </template>
 
 <style scoped>
+/* ═══════════════════════════════════════════
+   HERO — Golden Ratio Grid (φ = 1.618)
+   Fibonacci spacing: 8 · 13 · 21 · 34 · 55 · 89
+   ═══════════════════════════════════════════ */
+
 .hero {
   position: relative;
   height: 100vh;
@@ -106,18 +111,22 @@ const distortionLines = [
   background-color: #000000;
 }
 
+/* ─── Content — Golden section vertical position ─── */
 .hero__content {
   position: relative;
   z-index: var(--z-content, 10);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-top: clamp(4rem, 8vh, 6rem);
+  /* Push optical center above dead-center → golden section (~38.2% from top) */
+  padding-top: clamp(5.5rem, 10vh, 8rem);
+  padding-bottom: clamp(3.4375rem, 8vh, 5.5rem);
 }
 
+/* ─── Name — φ width (61.8% of content area) ─── */
 .hero__name {
   width: 100%;
-  max-width: 55%;
+  max-width: 61.8%;
 }
 
 .hero__distortion {
@@ -125,48 +134,52 @@ const distortionLines = [
   z-index: 2;
 }
 
+/* ─── Subtitle — refined uppercase label ─── */
 .hero__subtitle {
   font-size: var(--text-label);
   font-weight: 500;
   color: var(--color-text-secondary);
-  letter-spacing: 0.15em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  margin-top: clamp(0.75rem, 1.5vh, 1.25rem);
+  line-height: 1.618;
+  margin-top: clamp(1.3125rem, 2.5vh, 2.125rem);
 }
 
 .hero__subtitle-sep {
   color: var(--color-text-tertiary);
-  margin: 0 0.15em;
+  margin: 0 0.4em;
 }
 
+/* ─── Bottom — anchored footer bar ─── */
 .hero__bottom {
   position: relative;
   z-index: var(--z-content, 10);
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding-bottom: clamp(2rem, 4vh, 3rem);
+  padding-bottom: clamp(2.125rem, 4.5vh, 3.4375rem);
 }
 
 .hero__meta-group {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 
 .hero__meta {
   font-size: var(--text-caption);
   font-weight: 500;
   color: var(--color-text-tertiary);
-  letter-spacing: 0.15em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
+  line-height: 1.618;
 }
 
-/* ─── Rotating circle scroll ─── */
+/* ─── Scroll indicator — φ-based sizing ─── */
 .hero__scroll-ring {
   position: relative;
-  width: clamp(64px, 6vw, 80px);
-  height: clamp(64px, 6vw, 80px);
+  width: clamp(55px, 5vw, 72px);
+  height: clamp(55px, 5vw, 72px);
 }
 
 .hero__scroll-svg {
@@ -176,9 +189,9 @@ const distortionLines = [
 }
 
 .hero__scroll-text {
-  font-size: 8px;
-  fill: rgba(255, 255, 255, 0.35);
-  letter-spacing: 0.18em;
+  font-size: 7px;
+  fill: rgba(255, 255, 255, 0.28);
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   font-family: 'Satoshi', system-ui, sans-serif;
   font-weight: 500;
@@ -190,7 +203,7 @@ const distortionLines = [
   left: 50%;
   width: 10px;
   height: 22px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.35);
   transform: translate(-50%, -50%);
   animation: scrollArrowFloat 2.4s ease-in-out infinite;
 }
@@ -201,8 +214,8 @@ const distortionLines = [
 }
 
 @keyframes scrollArrowFloat {
-  0%, 100% { opacity: 0.3; transform: translate(-50%, -55%); }
-  50% { opacity: 0.7; transform: translate(-50%, -45%); }
+  0%, 100% { opacity: 0.25; transform: translate(-50%, -55%); }
+  50% { opacity: 0.6; transform: translate(-50%, -45%); }
 }
 
 /* ─── Utilities ─── */
@@ -218,19 +231,45 @@ const distortionLines = [
   border-width: 0;
 }
 
+/* ─── Responsive: Tablet landscape ─── */
+@media (max-width: 1024px) {
+  .hero__name {
+    max-width: 70%;
+  }
+
+  .hero__content {
+    padding-top: clamp(5rem, 9vh, 7rem);
+    padding-bottom: clamp(2.125rem, 6vh, 3.4375rem);
+  }
+}
+
+/* ─── Responsive: Tablet portrait ─── */
 @media (max-width: 768px) {
   .hero__name {
-    max-width: 75%;
+    max-width: 76.4%;
   }
 
   .hero__subtitle {
     font-size: var(--text-caption);
+    letter-spacing: 0.18em;
+    margin-top: clamp(0.8125rem, 2vh, 1.3125rem);
+  }
+
+  .hero__bottom {
+    padding-bottom: clamp(1.3125rem, 3vh, 2.125rem);
   }
 }
 
+/* ─── Responsive: Mobile ─── */
 @media (max-width: 480px) {
   .hero__name {
-    max-width: 90%;
+    max-width: 92%;
+  }
+
+  .hero__content {
+    justify-content: flex-start;
+    padding-top: clamp(7.5rem, 28vh, 15rem);
+    padding-bottom: clamp(1.3125rem, 4vh, 2.125rem);
   }
 
   .hero__subtitle-sep,
@@ -238,12 +277,21 @@ const distortionLines = [
     display: none;
   }
 
+  .hero__subtitle {
+    margin-top: clamp(0.5rem, 1.5vh, 0.8125rem);
+  }
+
+  .hero__meta-group {
+    gap: 0.3125rem;
+  }
+
   .hero__scroll-ring {
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
   }
 }
 
+/* ─── Reduced motion ─── */
 @media (prefers-reduced-motion: reduce) {
   .hero__scroll-svg {
     animation: none;
@@ -251,7 +299,7 @@ const distortionLines = [
 
   .hero__scroll-arrow {
     animation: none;
-    opacity: 0.4;
+    opacity: 0.35;
   }
 }
 </style>

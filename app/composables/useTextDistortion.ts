@@ -22,8 +22,8 @@ interface DistortionConfig {
 
 const defaultDistortionConfig: DistortionConfig = {
   fontSize: 200,
-  fontWeight: 900,
-  fontFamily: 'Satoshi, system-ui, sans-serif',
+  fontWeight: 700,
+  fontFamily: '\'Clash Display\', Satoshi, system-ui, sans-serif',
   radius: 0.25,
   intensity: 0.08,
   chromaticSpread: 0.02,
