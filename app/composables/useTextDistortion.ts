@@ -26,7 +26,7 @@ const defaultDistortionConfig: DistortionConfig = {
   fontFamily: 'Satoshi, system-ui, sans-serif',
   radius: 0.25,
   intensity: 0.08,
-  chromaticSpread: 0.035,
+  chromaticSpread: 0.02,
   lines: [
     { text: 'BILLY', indent: 0 },
     { text: 'MAULANA', indent: 0 },
@@ -108,8 +108,8 @@ const distortionFragmentShader = `
       cos(uv.x * 4.0 + slowTime * 0.8) * 0.003 * idleWave
     );
 
-    // Idle chromatic drift — subtle rainbow shimmer at rest
-    float idleFactor = (1.0 - uHover) * 0.0012 * uSettle;
+    // Idle chromatic drift — subtle cool shimmer at rest
+    float idleFactor = (1.0 - uHover) * 0.0006 * uSettle;
 
     // Entrance noise — organic reveal
     float entranceNoise = (1.0 - uSettle) * 0.02;
@@ -171,8 +171,8 @@ const distortionFragmentShader = `
     float idleChromatic = idleFactor * 2.0;
     float chromaticAmount = uChromatic * (influence * 3.0 * velBoost + (1.0 - uSettle) * 1.0) + idleChromatic;
 
-    // RGB split with two-axis offset for richer color separation
-    vec2 rOffset = totalOffset + chromDir * chromaticAmount + chromDir2 * chromaticAmount * 0.3;
+    // Cool-toned chromatic — blue/cyan dominant, minimal red fringing
+    vec2 rOffset = totalOffset + chromDir * chromaticAmount * 0.25 + chromDir2 * chromaticAmount * 0.08;
     vec2 gOffset = totalOffset;
     vec2 bOffset = totalOffset - chromDir * chromaticAmount - chromDir2 * chromaticAmount * 0.3;
 
@@ -231,6 +231,19 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     ctx.font = `${cfg.fontWeight} ${cfg.fontSize}px ${cfg.fontFamily}`
 
     const indentScale = cfg.fontSize / 200
+
+    // Measure left-side bearing to compensate font whitespace.
+    // actualBoundingBoxLeft < 0 means the visual edge is to the RIGHT of origin (LSB gap).
+    let leftBearing = 0
+    for (const line of cfg.lines) {
+      if (line.indent === 0) {
+        const metrics = ctx.measureText(line.text)
+        if (metrics.actualBoundingBoxLeft < 0) {
+          leftBearing = Math.max(leftBearing, -metrics.actualBoundingBoxLeft)
+        }
+      }
+    }
+
     let maxWidth = 0
     for (const line of cfg.lines) {
       const metrics = ctx.measureText(line.text)
@@ -241,9 +254,9 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     const lineHeight = cfg.fontSize * 0.84
     const totalHeight = lineHeight * cfg.lines.length + cfg.fontSize * 0.2
 
-    const padding = cfg.fontSize * 0.15
-    offscreen.width = Math.ceil(maxWidth + padding * 2)
-    offscreen.height = Math.ceil(totalHeight + padding * 2)
+    const bleed = cfg.fontSize * 0.02
+    offscreen.width = Math.ceil(maxWidth - leftBearing + bleed)
+    offscreen.height = Math.ceil(totalHeight + bleed)
 
     ctx.clearRect(0, 0, offscreen.width, offscreen.height)
 
@@ -253,8 +266,8 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
 
     for (let i = 0; i < cfg.lines.length; i++) {
       const line = cfg.lines[i]!
-      const x = padding + line.indent * indentScale
-      const y = padding + i * lineHeight
+      const x = line.indent * indentScale - leftBearing
+      const y = i * lineHeight
       ctx.fillText(line.text, x, y)
     }
 

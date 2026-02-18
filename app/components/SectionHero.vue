@@ -2,21 +2,36 @@
 onMounted(async () => {
   const gsap = (await import('gsap')).default
 
-  const tl = gsap.timeline({ delay: 0.5 })
+  const tl = gsap.timeline({ delay: 0.3 })
 
   tl.from('.hero__name', {
-    y: 80,
+    y: 60,
     opacity: 0,
-    duration: 1.8,
+    duration: 1.4,
     ease: 'expo.out',
   })
 
-  tl.from('.hero__bottom', {
+  tl.from('.hero__subtitle', {
     opacity: 0,
-    y: 15,
-    duration: 1.2,
+    y: 12,
+    duration: 0.8,
     ease: 'expo.out',
-  }, '-=1.2')
+  }, '-=0.6')
+
+  tl.from('.hero__meta', {
+    opacity: 0,
+    y: 10,
+    duration: 0.8,
+    ease: 'expo.out',
+    stagger: 0.1,
+  }, '-=0.4')
+
+  tl.from('.hero__scroll', {
+    opacity: 0,
+    scale: 0.8,
+    duration: 1,
+    ease: 'expo.out',
+  }, '-=0.4')
 })
 
 const distortionLines = [
@@ -31,10 +46,9 @@ const distortionLines = [
     class="hero"
     aria-label="Billy Maulana — Frontend Developer"
   >
-    <UiFluidCanvas
-      :start-delay="200"
-    />
+    <UiFluidCanvas :start-delay="200" />
 
+    <!-- ─── Name + Subtitle ─── -->
     <div class="hero__content page-margin">
       <h1 class="sr-only">
         Billy Maulana
@@ -47,19 +61,34 @@ const distortionLines = [
           class="hero__distortion"
         />
       </div>
+
+      <p class="hero__subtitle">
+        Frontend Engineer <span class="hero__subtitle-sep">&mdash;</span> Shaping Meaningful Digital Experiences
+      </p>
     </div>
 
+    <!-- ─── Bottom anchors ─── -->
     <div class="hero__bottom page-margin">
-      <div class="hero__subtitle">
-        <span class="hero__role">Frontend Developer</span>
-        <span class="hero__separator">/</span>
-        <span class="hero__location">Indonesia</span>
+      <div class="hero__meta-group">
+        <span class="hero__meta">Open to Purposeful Collaborations</span>
+        <span class="hero__meta">Curated Works &middot; &copy;2026</span>
       </div>
 
+      <!-- Rotating circle scroll indicator -->
       <div class="hero__scroll">
-        <span class="hero__scroll-label">Scroll</span>
-        <div class="hero__scroll-track">
-          <div class="hero__scroll-dot" />
+        <div class="hero__scroll-ring">
+          <svg class="hero__scroll-svg" viewBox="0 0 100 100" aria-hidden="true">
+            <defs>
+              <path id="scrollCircle" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" fill="none" />
+            </defs>
+            <text class="hero__scroll-text">
+              <textPath href="#scrollCircle">SCROLL · DISCOVER · SCROLL · DISCOVER ·&nbsp;</textPath>
+            </text>
+          </svg>
+          <svg class="hero__scroll-arrow" viewBox="0 0 10 26" fill="none" aria-hidden="true">
+            <line x1="5" y1="0" x2="5" y2="21" stroke="currentColor" stroke-width="1" stroke-linecap="round" />
+            <path d="M1.5 18L5 23.5 8.5 18" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
         </div>
       </div>
     </div>
@@ -71,27 +100,24 @@ const distortionLines = [
   position: relative;
   height: 100vh;
   height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  display: grid;
+  grid-template-rows: 1fr auto;
   overflow: hidden;
   background-color: #000000;
-  /* Push center down: nav is ~96px tall, so top exclusion needs to be generous */
-  padding-top: clamp(7rem, 15vh, 12rem);
-  padding-bottom: clamp(4rem, 8vh, 6rem);
 }
 
-/* ─ Main content ─ */
 .hero__content {
   position: relative;
   z-index: var(--z-content, 10);
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  padding-top: clamp(4rem, 8vh, 6rem);
 }
 
 .hero__name {
-  width: 88%;
-  max-width: 88%;
+  width: 100%;
+  max-width: 55%;
 }
 
 .hero__distortion {
@@ -99,82 +125,87 @@ const distortionLines = [
   z-index: 2;
 }
 
-/* ─ Bottom bar — subtitle + scroll ─ */
-.hero__bottom {
-  position: absolute;
-  bottom: clamp(2rem, 4vh, 3.5rem);
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  z-index: var(--z-content, 10);
-}
-
 .hero__subtitle {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.hero__role {
   font-size: var(--text-label);
   font-weight: 500;
   color: var(--color-text-secondary);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
+  margin-top: clamp(0.75rem, 1.5vh, 1.25rem);
 }
 
-.hero__separator {
-  font-size: var(--text-label);
+.hero__subtitle-sep {
   color: var(--color-text-tertiary);
+  margin: 0 0.15em;
 }
 
-.hero__location {
-  font-size: var(--text-label);
-  font-weight: 400;
+.hero__bottom {
+  position: relative;
+  z-index: var(--z-content, 10);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: clamp(2rem, 4vh, 3rem);
+}
+
+.hero__meta-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.hero__meta {
+  font-size: var(--text-caption);
+  font-weight: 500;
   color: var(--color-text-tertiary);
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
-.hero__scroll {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.875rem;
-}
-
-.hero__scroll-label {
-  font-size: var(--text-caption);
-  font-weight: 500;
-  color: var(--color-text-tertiary);
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-}
-
-.hero__scroll-track {
+/* ─── Rotating circle scroll ─── */
+.hero__scroll-ring {
   position: relative;
-  width: 1px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 1px;
-  overflow: hidden;
+  width: clamp(64px, 6vw, 80px);
+  height: clamp(64px, 6vw, 80px);
 }
 
-.hero__scroll-dot {
+.hero__scroll-svg {
+  width: 100%;
+  height: 100%;
+  animation: scrollRotate 15s linear infinite;
+}
+
+.hero__scroll-text {
+  font-size: 8px;
+  fill: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-family: 'Satoshi', system-ui, sans-serif;
+  font-weight: 500;
+}
+
+.hero__scroll-arrow {
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 50%;
-  width: 3px;
-  height: 10px;
-  margin-left: -1.5px;
-  border-radius: 2px;
-  background: var(--color-accent);
-  box-shadow: 0 0 6px rgba(0, 71, 255, 0.5);
-  animation: scrollDotDrop 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  width: 10px;
+  height: 22px;
+  color: rgba(255, 255, 255, 0.4);
+  transform: translate(-50%, -50%);
+  animation: scrollArrowFloat 2.4s ease-in-out infinite;
 }
 
+@keyframes scrollRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes scrollArrowFloat {
+  0%, 100% { opacity: 0.3; transform: translate(-50%, -55%); }
+  50% { opacity: 0.7; transform: translate(-50%, -45%); }
+}
+
+/* ─── Utilities ─── */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -187,55 +218,40 @@ const distortionLines = [
   border-width: 0;
 }
 
-@keyframes scrollDotDrop {
-  0% {
-    top: -10px;
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    top: 48px;
-    opacity: 0;
-  }
-}
-
 @media (max-width: 768px) {
   .hero__name {
-    width: 100%;
-    max-width: 100%;
+    max-width: 75%;
+  }
+
+  .hero__subtitle {
+    font-size: var(--text-caption);
   }
 }
 
 @media (max-width: 480px) {
-  .hero__scroll-track {
-    height: 32px;
+  .hero__name {
+    max-width: 90%;
   }
 
-  .hero__subtitle {
-    gap: 0.5rem;
+  .hero__subtitle-sep,
+  .hero__subtitle-sep ~ * {
+    display: none;
   }
 
-  .hero__bottom {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .hero__scroll {
-    align-self: flex-end;
+  .hero__scroll-ring {
+    width: 56px;
+    height: 56px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero__scroll-dot {
+  .hero__scroll-svg {
     animation: none;
-    top: 0;
-    opacity: 0.5;
+  }
+
+  .hero__scroll-arrow {
+    animation: none;
+    opacity: 0.4;
   }
 }
 </style>
