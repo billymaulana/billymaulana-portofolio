@@ -54,7 +54,7 @@ const distortionLines = [
         Billy Maulana
       </h1>
 
-      <div class="hero__name">
+      <div class="hero__name font-display">
         <UiTextDistortion
           :lines="distortionLines"
           :start-delay="600"
@@ -190,7 +190,7 @@ const distortionLines = [
 
 .hero__scroll-text {
   font-size: 7px;
-  fill: rgba(255, 255, 255, 0.28);
+  fill: rgba(255, 255, 255, 0.55);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   font-family: 'Satoshi', system-ui, sans-serif;
@@ -203,7 +203,7 @@ const distortionLines = [
   left: 50%;
   width: 10px;
   height: 22px;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.6);
   transform: translate(-50%, -50%);
   animation: scrollArrowFloat 2.4s ease-in-out infinite;
 }

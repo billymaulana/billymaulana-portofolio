@@ -100,16 +100,9 @@ const distortionFragmentShader = `
     // Dynamic radius expands with velocity
     float dynamicRadius = uRadius * (1.0 + uVelocity * 0.4);
 
-    // ── Idle organic undulation — text breathes when still ──
-    float idleWave = uSettle * (1.0 - uHover * 0.5);
-    float slowTime = uTime * 0.4;
-    vec2 idleUndulation = vec2(
-      sin(uv.y * 5.0 + slowTime) * 0.004 * idleWave + sin(uv.y * 12.0 + slowTime * 1.7) * 0.001 * idleWave,
-      cos(uv.x * 4.0 + slowTime * 0.8) * 0.003 * idleWave
-    );
-
-    // Idle chromatic drift — subtle cool shimmer at rest
-    float idleFactor = (1.0 - uHover) * 0.0006 * uSettle;
+    // No idle effect — text is static until mouse interacts
+    vec2 idleUndulation = vec2(0.0);
+    float idleFactor = 0.0;
 
     // Entrance noise — organic reveal
     float entranceNoise = (1.0 - uSettle) * 0.02;

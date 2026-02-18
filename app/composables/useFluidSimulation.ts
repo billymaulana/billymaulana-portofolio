@@ -529,22 +529,6 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
   }
 
   let lastSoftClear = 0
-  let lastAmbientSplat = 0
-
-  function injectAmbientSplat() {
-    // Very gentle ambient splat — subtle accent that drifts slowly
-    const color = getNextColor()
-    // Reduce color intensity for ambient (much dimmer than mouse splats)
-    const dimColor: [number, number, number] = [color[0] * 0.3, color[1] * 0.3, color[2] * 0.3]
-    const x = 0.2 + Math.random() * 0.6
-    const y = 0.2 + Math.random() * 0.6
-    // Slow, gentle velocity — like a breathing motion
-    const angle = Math.random() * Math.PI * 2
-    const speed = 15 + Math.random() * 25
-    const dx = Math.cos(angle) * speed
-    const dy = Math.sin(angle) * speed
-    splatAtPoint(x, y, dx, dy, dimColor)
-  }
 
   function update() {
     const now = Date.now()
@@ -556,11 +540,7 @@ export function useFluidSimulation(config: Partial<FluidConfig> = {}) {
       multipleSplats(splatStack.pop()!)
     }
 
-    // Ambient splats every 4 seconds — keeps background alive with subtle blue glow
-    if (now - lastAmbientSplat > 4000) {
-      lastAmbientSplat = now
-      injectAmbientSplat()
-    }
+    // Ambient splats disabled — fluid only reacts to mouse interaction
 
     // Gentle soft-clear every 6 seconds — prevents saturation
     if (now - lastSoftClear > 6000) {

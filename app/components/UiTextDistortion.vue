@@ -79,6 +79,9 @@ onMounted(async () => {
 
   const { useTextDistortion } = await import('~/composables/useTextDistortion')
 
+  // Wait for Clash Display to load before rendering text to canvas
+  await document.fonts.ready
+
   const sim = useTextDistortion({
     fontSize: computeFontSize(),
     lines: props.lines,

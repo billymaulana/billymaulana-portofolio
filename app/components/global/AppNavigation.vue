@@ -14,6 +14,33 @@ const navItems = [
   { label: 'Contact', href: '#contact' },
 ]
 
+/* ─── Mouse-reactive liquid glass ─── */
+const panelRef = ref<HTMLElement>()
+const mousePos = reactive({ x: 50, y: 50 })
+const targetPos = reactive({ x: 50, y: 50 })
+let rafId = 0
+
+/* Mouse gently shifts the noise pattern — NOT the mask */
+const liquidStyle = computed(() => ({
+  '--lx': `${(mousePos.x - 50) * 0.14}px`,
+  '--ly': `${(mousePos.y - 50) * 0.14}px`,
+}))
+
+function handlePanelMove(e: PointerEvent) {
+  const el = panelRef.value
+  if (!el)
+    return
+  const rect = el.getBoundingClientRect()
+  targetPos.x = ((e.clientX - rect.left) / rect.width) * 100
+  targetPos.y = ((e.clientY - rect.top) / rect.height) * 100
+}
+
+function animateLiquid() {
+  mousePos.x += (targetPos.x - mousePos.x) * 0.035
+  mousePos.y += (targetPos.y - mousePos.y) * 0.035
+  rafId = requestAnimationFrame(animateLiquid)
+}
+
 function handleNavClick(href: string) {
   isMenuOpen.value = false
   setTimeout(() => scrollTo(href, { offset: -80 }), 400)
@@ -32,12 +59,25 @@ onMounted(() => {
   }
 
   window.addEventListener('scroll', onScroll, { passive: true })
-  onUnmounted(() => window.removeEventListener('scroll', onScroll))
+  onUnmounted(() => {
+    window.removeEventListener('scroll', onScroll)
+    cancelAnimationFrame(rafId)
+  })
 })
 
 watch(isMenuOpen, (open) => {
   document.documentElement.style.overflow = open ? 'hidden' : ''
   document.body.style.overflow = open ? 'hidden' : ''
+  if (open) {
+    mousePos.x = 50
+    mousePos.y = 50
+    targetPos.x = 50
+    targetPos.y = 50
+    rafId = requestAnimationFrame(animateLiquid)
+  }
+  else {
+    cancelAnimationFrame(rafId)
+  }
 })
 </script>
 
@@ -79,11 +119,38 @@ watch(isMenuOpen, (open) => {
       </button>
     </nav>
 
+    <!-- Liquid Glass SVG filter — teleported to body to avoid scoped attribute issues -->
+    <Teleport to="body">
+      <svg style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none" aria-hidden="true">
+        <defs>
+          <!-- Liquid glass: smooth fluid refraction — large slow waves, not noisy -->
+          <filter id="liquid-glass-distort" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+            <feTurbulence type="turbulence" baseFrequency="0.0025 0.004" numOctaves="2" seed="31" result="waves" />
+            <feGaussianBlur in="waves" stdDeviation="4" result="smooth" />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="smooth"
+              scale="38"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </defs>
+      </svg>
+    </Teleport>
+
     <!-- Overlay: backdrop + side panel -->
     <Transition name="menu" :duration="{ enter: 850, leave: 600 }">
       <div v-if="isMenuOpen" class="nav__overlay">
         <div class="nav__backdrop" @click="toggleMenu" />
-        <div class="nav__panel">
+        <div ref="panelRef" class="nav__panel" @pointermove="handlePanelMove">
+          <!-- Layer 0: SVG displacement — edge-only, follows mouse -->
+          <div class="nav__glass-refract" :style="liquidStyle" />
+          <!-- Layer 1: Frosted blur + tinted overlay -->
+          <div class="nav__glass-frost" />
+          <!-- Layer 2: Specular highlights — glass depth -->
+          <div class="nav__glass-specular" />
+          <!-- Layer 3: Content -->
           <div class="nav__panel-inner">
             <ul class="nav__menu" role="list">
               <li
@@ -172,6 +239,7 @@ watch(isMenuOpen, (open) => {
   height: 34px;
   position: relative;
   z-index: 2;
+  isolation: isolate;
 }
 
 /* ─── Logo ─── */
@@ -183,10 +251,7 @@ watch(isMenuOpen, (open) => {
   transition: opacity 0.4s var(--ease-out-expo);
 }
 
-.nav--open .nav__logo {
-  opacity: 0;
-  pointer-events: none;
-}
+/* Logo stays visible when menu is open */
 
 .nav__logo-img {
   height: 28px;
@@ -194,35 +259,94 @@ watch(isMenuOpen, (open) => {
   filter: brightness(1.1);
 }
 
-/* ─── Trigger: Fluid morphing lines ─── */
+/* ─── Trigger: clean button (no glass when closed) ─── */
 .nav__trigger {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   width: 44px;
   height: 44px;
-  background: none;
-  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  box-shadow: none;
   cursor: pointer;
   padding: 0;
+  isolation: isolate;
   -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.5s var(--ease-out-expo),
+    box-shadow 0.5s var(--ease-out-expo),
+    border-color 0.5s var(--ease-out-expo),
+    backdrop-filter 0.5s var(--ease-out-expo);
 }
 
-/* Soft circle backdrop — breathes in on hover */
+/* Specular highlight — only visible when menu open */
 .nav__trigger::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0);
-  transform: scale(0.8);
-  transition: background 0.5s var(--ease-out-expo), transform 0.5s var(--ease-out-expo);
+  border-radius: inherit;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.06) 30%,
+    transparent 55%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s var(--ease-out-expo);
 }
 
-.nav__trigger:hover::before {
+/* Refraction ring — light catching on circular glass edge */
+.nav__trigger::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 135deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.14) 10%,
+    transparent 25%,
+    rgba(255, 255, 255, 0.06) 45%,
+    transparent 60%,
+    rgba(255, 255, 255, 0.10) 78%,
+    transparent 90%
+  );
+  mask: radial-gradient(circle, transparent 56%, black 62%, black 100%);
+  -webkit-mask: radial-gradient(circle, transparent 56%, black 62%, black 100%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s var(--ease-out-expo);
+}
+
+.nav__trigger:hover {
   background: rgba(255, 255, 255, 0.04);
-  transform: scale(1);
+}
+
+/* Liquid glass close button — magnifying lens refraction */
+.nav__trigger--open {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(24px) saturate(200%) brightness(1.08);
+  -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.08);
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.12),
+    0 4px 20px rgba(0, 0, 0, 0.20),
+    0 0 0 0.5px rgba(255, 255, 255, 0.04);
+}
+
+.nav__trigger--open::before {
+  opacity: 1;
+}
+
+.nav__trigger--open::after {
+  opacity: 1;
 }
 
 .nav__trigger-box {
@@ -244,11 +368,12 @@ watch(isMenuOpen, (open) => {
 }
 
 /* ─ Asymmetric widths — visual rhythm ─ */
+/* Base transitions → these play during CLOSE animation */
 .nav__trigger-bar:nth-child(1) {
   width: 26px;
   transition:
-    width 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.06s,
-    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.08s,
     opacity 0.3s,
     background 0.3s;
 }
@@ -256,17 +381,17 @@ watch(isMenuOpen, (open) => {
 .nav__trigger-bar:nth-child(2) {
   width: 16px;
   transition:
-    width 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.03s,
-    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.25s,
+    opacity 0.25s ease 0.15s,
+    transform 0.25s ease 0.15s,
+    width 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.04s,
     background 0.3s;
 }
 
 .nav__trigger-bar:nth-child(3) {
   width: 21px;
   transition:
-    width 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.3s,
     background 0.3s;
 }
@@ -277,45 +402,49 @@ watch(isMenuOpen, (open) => {
   background: rgba(255, 255, 255, 1);
 }
 
-/* ─── Open: bars morph to fluid × ─── */
-
-/* Bar 1 → rotates 45° with elastic overshoot */
+/* ─── Open: smooth CSS transition to × ─── */
+/* Open transitions → these play during OPEN animation */
 .nav__trigger--open .nav__trigger-bar:nth-child(1) {
   width: 26px;
+  background: rgba(255, 255, 255, 0.9);
   transform: translateY(9px) rotate(45deg);
-  background: rgba(255, 255, 255, 0.85);
   transition:
-    width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.05s,
-    opacity 0.3s,
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.08s,
+    width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
     background 0.3s;
 }
 
-/* Bar 2 → collapses to zero width + fades */
 .nav__trigger--open .nav__trigger-bar:nth-child(2) {
-  width: 0;
   opacity: 0;
   transform: scaleX(0);
   transition:
-    width 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.15s,
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    width 0.2s ease,
     background 0.3s;
 }
 
-/* Bar 3 → rotates -45° with elastic overshoot */
 .nav__trigger--open .nav__trigger-bar:nth-child(3) {
   width: 26px;
+  background: rgba(255, 255, 255, 0.9);
   transform: translateY(-9px) rotate(-45deg);
-  background: rgba(255, 255, 255, 0.85);
   transition:
-    width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.05s,
-    opacity 0.3s,
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.08s,
+    width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
     background 0.3s;
 }
 
-/* Hover (open): brighten × + playful micro-tilt */
+/* Hover (open): enhance glass + brighten × */
+.nav__trigger--open:hover {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.14),
+    0 6px 24px rgba(0, 0, 0, 0.25),
+    0 0 0 0.5px rgba(255, 255, 255, 0.06);
+}
+
 .nav__trigger--open:hover .nav__trigger-bar {
   background: rgba(255, 255, 255, 1);
 }
@@ -334,16 +463,80 @@ watch(isMenuOpen, (open) => {
   display: none;
 }
 
-/* Panel — fullscreen on mobile */
+/* Panel — liquid glass container */
 .nav__panel {
+  position: relative;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.97);
-  backdrop-filter: blur(40px);
   overflow: hidden;
 }
 
+/* Layer 0: Liquid at edges only — mouse gently shifts the noise pattern */
+.nav__glass-refract {
+  position: absolute;
+  inset: -8px;
+  z-index: 0;
+  backdrop-filter: url(#liquid-glass-distort) blur(0.5px);
+  -webkit-backdrop-filter: blur(0.5px);
+  /* Mouse shifts the displacement noise, not the mask */
+  transform: translate(var(--lx, 0px), var(--ly, 0px));
+  will-change: transform;
+  /* Fixed edge mask: ~85% transparent center, thin liquid rim at very outer edges */
+  mask-image:
+    radial-gradient(
+      ellipse 80% 75% at 50% 50%,
+      transparent 0%,
+      transparent 65%,
+      rgba(0, 0, 0, 0.04) 74%,
+      rgba(0, 0, 0, 0.12) 82%,
+      rgba(0, 0, 0, 0.3) 90%,
+      rgba(0, 0, 0, 0.55) 96%,
+      rgba(0, 0, 0, 0.7) 100%
+    );
+  -webkit-mask-image:
+    radial-gradient(
+      ellipse 80% 75% at 50% 50%,
+      transparent 0%,
+      transparent 65%,
+      rgba(0, 0, 0, 0.04) 74%,
+      rgba(0, 0, 0, 0.12) 82%,
+      rgba(0, 0, 0, 0.3) 90%,
+      rgba(0, 0, 0, 0.55) 96%,
+      rgba(0, 0, 0, 0.7) 100%
+    );
+}
+
+/* Layer 1: Transparent tint — liquid edges visible through */
+.nav__glass-frost {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(8, 8, 10, 0.35);
+  backdrop-filter: blur(1px) saturate(180%);
+  -webkit-backdrop-filter: blur(1px) saturate(180%);
+}
+
+/* Layer 2: Bevel + specular — deep glass refraction highlights */
+.nav__glass-specular {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 12%, transparent 32%),
+    radial-gradient(ellipse 60% 40% at 15% 8%, rgba(255, 255, 255, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 25% at 80% 90%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 2px 8px rgba(255, 255, 255, 0.10),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.20),
+    inset 2px 0 4px rgba(255, 255, 255, 0.06),
+    inset -2px 0 4px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
 .nav__panel-inner {
+  position: relative;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -409,7 +602,8 @@ watch(isMenuOpen, (open) => {
   display: block;
   height: 1.15em;
   transform-style: preserve-3d;
-  transition: transform 0.5s var(--ease-out-expo);
+  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
 }
 
 .nav__menu-char-face {
@@ -552,11 +746,6 @@ watch(isMenuOpen, (open) => {
 
 /* ─── Desktop: Side panel (40vw) + slide transition ─── */
 @media (min-width: 1024px) {
-  .nav--open .nav__logo {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
   .nav__backdrop {
     display: block;
     flex: 1;
@@ -570,9 +759,46 @@ watch(isMenuOpen, (open) => {
     min-width: 420px;
     max-width: 640px;
     flex-shrink: 0;
-    background: rgba(8, 8, 8, 0.98);
-    border-left: 1px solid rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(60px);
+  }
+
+  /* Desktop side panel: thin liquid rim only at panel edges */
+  .nav__glass-refract {
+    mask-image:
+      radial-gradient(
+        ellipse 72% 68% at 50% 50%,
+        transparent 0%,
+        transparent 62%,
+        rgba(0, 0, 0, 0.04) 72%,
+        rgba(0, 0, 0, 0.14) 80%,
+        rgba(0, 0, 0, 0.35) 88%,
+        rgba(0, 0, 0, 0.55) 95%,
+        rgba(0, 0, 0, 0.7) 100%
+      );
+    -webkit-mask-image:
+      radial-gradient(
+        ellipse 72% 68% at 50% 50%,
+        transparent 0%,
+        transparent 62%,
+        rgba(0, 0, 0, 0.04) 72%,
+        rgba(0, 0, 0, 0.14) 80%,
+        rgba(0, 0, 0, 0.35) 88%,
+        rgba(0, 0, 0, 0.55) 95%,
+        rgba(0, 0, 0, 0.7) 100%
+      );
+  }
+
+  .nav__glass-frost {
+    background: rgba(8, 8, 10, 0.30);
+  }
+
+  .nav__glass-specular {
+    border-left: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow:
+      inset 0 2px 8px rgba(255, 255, 255, 0.10),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.20),
+      inset 3px 0 6px rgba(255, 255, 255, 0.06),
+      inset -2px 0 4px rgba(0, 0, 0, 0.12),
+      -20px 0 60px rgba(0, 0, 0, 0.30);
   }
 
   .nav__menu-word {
@@ -673,7 +899,8 @@ watch(isMenuOpen, (open) => {
     display: none;
   }
 
-  .nav__trigger::before {
+  .nav__trigger::before,
+  .nav__trigger::after {
     display: none;
   }
 
