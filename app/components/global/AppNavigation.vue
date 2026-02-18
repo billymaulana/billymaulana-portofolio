@@ -20,10 +20,12 @@ const mousePos = reactive({ x: 50, y: 50 })
 const targetPos = reactive({ x: 50, y: 50 })
 let rafId = 0
 
-/* Mouse gently shifts the noise pattern — NOT the mask */
+/* Mouse drives noise shift + water lens position */
 const liquidStyle = computed(() => ({
-  '--lx': `${(mousePos.x - 50) * 0.14}px`,
-  '--ly': `${(mousePos.y - 50) * 0.14}px`,
+  '--lx': `${(mousePos.x - 50) * 0.18}px`,
+  '--ly': `${(mousePos.y - 50) * 0.18}px`,
+  '--mx': `${mousePos.x}%`,
+  '--my': `${mousePos.y}%`,
 }))
 
 function handlePanelMove(e: PointerEvent) {
@@ -125,12 +127,12 @@ watch(isMenuOpen, (open) => {
         <defs>
           <!-- Liquid glass: smooth fluid refraction — large slow waves, not noisy -->
           <filter id="liquid-glass-distort" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
-            <feTurbulence type="turbulence" baseFrequency="0.0025 0.004" numOctaves="2" seed="31" result="waves" />
-            <feGaussianBlur in="waves" stdDeviation="4" result="smooth" />
+            <feTurbulence type="turbulence" baseFrequency="0.003 0.005" numOctaves="3" seed="31" result="waves" />
+            <feGaussianBlur in="waves" stdDeviation="3" result="smooth" />
             <feDisplacementMap
               in="SourceGraphic"
               in2="smooth"
-              scale="38"
+              scale="55"
               xChannelSelector="R"
               yChannelSelector="G"
             />
@@ -140,12 +142,14 @@ watch(isMenuOpen, (open) => {
     </Teleport>
 
     <!-- Overlay: backdrop + side panel -->
-    <Transition name="menu" :duration="{ enter: 850, leave: 600 }">
+    <Transition name="menu" :duration="{ enter: 1100, leave: 850 }">
       <div v-if="isMenuOpen" class="nav__overlay">
         <div class="nav__backdrop" @click="toggleMenu" />
-        <div ref="panelRef" class="nav__panel" @pointermove="handlePanelMove">
-          <!-- Layer 0: SVG displacement — edge-only, follows mouse -->
-          <div class="nav__glass-refract" :style="liquidStyle" />
+        <div ref="panelRef" class="nav__panel" :style="liquidStyle" @pointermove="handlePanelMove">
+          <!-- Layer 0: SVG displacement — organic edge blobs, follows mouse -->
+          <div class="nav__glass-refract" />
+          <!-- Layer 0.5: Mouse-following water lens — localized refraction hotspot -->
+          <div class="nav__glass-lens" />
           <!-- Layer 1: Frosted blur + tinted overlay -->
           <div class="nav__glass-frost" />
           <!-- Layer 2: Specular highlights — glass depth -->
@@ -170,6 +174,7 @@ watch(isMenuOpen, (open) => {
                       v-for="(char, ci) in item.label.split('')"
                       :key="ci"
                       class="nav__menu-char"
+                      :style="{ '--ci': ci }"
                     >
                       <span class="nav__menu-char-inner">
                         <span class="nav__menu-char-face">{{ char }}</span>
@@ -251,7 +256,10 @@ watch(isMenuOpen, (open) => {
   transition: opacity 0.4s var(--ease-out-expo);
 }
 
-/* Logo stays visible when menu is open */
+/* Logo dims when menu is open — visible but subdued */
+.nav--open .nav__logo {
+  opacity: 0.3;
+}
 
 .nav__logo-img {
   height: 28px;
@@ -259,7 +267,7 @@ watch(isMenuOpen, (open) => {
   filter: brightness(1.1);
 }
 
-/* ─── Trigger: clean button (no glass when closed) ─── */
+/* ─── Trigger: minimal button ─── */
 .nav__trigger {
   position: relative;
   display: flex;
@@ -268,85 +276,11 @@ watch(isMenuOpen, (open) => {
   width: 44px;
   height: 44px;
   background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border: 1px solid transparent;
-  border-radius: 50%;
-  box-shadow: none;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
   padding: 0;
-  isolation: isolate;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    background 0.5s var(--ease-out-expo),
-    box-shadow 0.5s var(--ease-out-expo),
-    border-color 0.5s var(--ease-out-expo),
-    backdrop-filter 0.5s var(--ease-out-expo);
-}
-
-/* Specular highlight — only visible when menu open */
-.nav__trigger::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    155deg,
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(255, 255, 255, 0.06) 30%,
-    transparent 55%
-  );
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.5s var(--ease-out-expo);
-}
-
-/* Refraction ring — light catching on circular glass edge */
-.nav__trigger::after {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: conic-gradient(
-    from 135deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.14) 10%,
-    transparent 25%,
-    rgba(255, 255, 255, 0.06) 45%,
-    transparent 60%,
-    rgba(255, 255, 255, 0.10) 78%,
-    transparent 90%
-  );
-  mask: radial-gradient(circle, transparent 56%, black 62%, black 100%);
-  -webkit-mask: radial-gradient(circle, transparent 56%, black 62%, black 100%);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.5s var(--ease-out-expo);
-}
-
-.nav__trigger:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-/* Liquid glass close button — magnifying lens refraction */
-.nav__trigger--open {
-  background: rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(24px) saturate(200%) brightness(1.08);
-  -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.08);
-  border-color: rgba(255, 255, 255, 0.10);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -0.5px 0 rgba(0, 0, 0, 0.12),
-    0 4px 20px rgba(0, 0, 0, 0.20),
-    0 0 0 0.5px rgba(255, 255, 255, 0.04);
-}
-
-.nav__trigger--open::before {
-  opacity: 1;
-}
-
-.nav__trigger--open::after {
-  opacity: 1;
 }
 
 .nav__trigger-box {
@@ -362,18 +296,17 @@ watch(isMenuOpen, (open) => {
 .nav__trigger-bar {
   display: block;
   height: 2px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.85);
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.8);
   transform-origin: center;
 }
 
 /* ─ Asymmetric widths — visual rhythm ─ */
-/* Base transitions → these play during CLOSE animation */
 .nav__trigger-bar:nth-child(1) {
   width: 26px;
   transition:
-    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.08s,
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.06s,
     opacity 0.3s,
     background 0.3s;
 }
@@ -381,17 +314,17 @@ watch(isMenuOpen, (open) => {
 .nav__trigger-bar:nth-child(2) {
   width: 16px;
   transition:
-    opacity 0.25s ease 0.15s,
-    transform 0.25s ease 0.15s,
-    width 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.04s,
+    opacity 0.25s ease 0.12s,
+    transform 0.25s ease 0.12s,
+    width 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.04s,
     background 0.3s;
 }
 
 .nav__trigger-bar:nth-child(3) {
   width: 21px;
   transition:
-    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.4s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.3s,
     background 0.3s;
 }
@@ -399,19 +332,18 @@ watch(isMenuOpen, (open) => {
 /* Hover (closed): bars equalize + brighten */
 .nav__trigger:hover .nav__trigger-bar {
   width: 26px;
-  background: rgba(255, 255, 255, 1);
+  background: #fff;
 }
 
-/* ─── Open: smooth CSS transition to × ─── */
-/* Open transitions → these play during OPEN animation */
+/* ─── Open: clean × — no glass, just bars ─── */
 .nav__trigger--open .nav__trigger-bar:nth-child(1) {
-  width: 26px;
-  background: rgba(255, 255, 255, 0.9);
+  width: 24px;
+  background: rgba(255, 255, 255, 0.85);
   transform: translateY(9px) rotate(45deg);
   transition:
-    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.08s,
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.06s,
     width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    background 0.3s;
+    background 0.4s;
 }
 
 .nav__trigger--open .nav__trigger-bar:nth-child(2) {
@@ -419,34 +351,22 @@ watch(isMenuOpen, (open) => {
   transform: scaleX(0);
   transition:
     opacity 0.2s ease,
-    transform 0.2s ease,
-    width 0.2s ease,
-    background 0.3s;
+    transform 0.2s ease;
 }
 
 .nav__trigger--open .nav__trigger-bar:nth-child(3) {
-  width: 26px;
-  background: rgba(255, 255, 255, 0.9);
+  width: 24px;
+  background: rgba(255, 255, 255, 0.85);
   transform: translateY(-9px) rotate(-45deg);
   transition:
-    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.08s,
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.06s,
     width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    background 0.3s;
+    background 0.4s;
 }
 
-/* Hover (open): enhance glass + brighten × */
-.nav__trigger--open:hover {
-  background: rgba(255, 255, 255, 0.11);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -0.5px 0 rgba(0, 0, 0, 0.14),
-    0 6px 24px rgba(0, 0, 0, 0.25),
-    0 0 0 0.5px rgba(255, 255, 255, 0.06);
-}
-
+/* Hover (open): just brighten the × */
 .nav__trigger--open:hover .nav__trigger-bar {
-  background: rgba(255, 255, 255, 1);
+  background: #fff;
 }
 
 /* ─── Overlay ─── */
@@ -471,66 +391,124 @@ watch(isMenuOpen, (open) => {
   overflow: hidden;
 }
 
-/* Layer 0: Liquid at edges only — mouse gently shifts the noise pattern */
+/* Layer 0: Water-like refraction — organic blobs at edges, not a uniform ring */
 .nav__glass-refract {
   position: absolute;
   inset: -8px;
   z-index: 0;
-  backdrop-filter: url(#liquid-glass-distort) blur(0.5px);
-  -webkit-backdrop-filter: blur(0.5px);
-  /* Mouse shifts the displacement noise, not the mask */
-  transform: translate(var(--lx, 0px), var(--ly, 0px));
+  backdrop-filter: url(#liquid-glass-distort) blur(6px) saturate(160%) brightness(0.7);
+  -webkit-backdrop-filter: blur(6px) saturate(160%) brightness(0.7);
+  /* Scale from cursor origin creates parallax-like water bending */
+  transform-origin: var(--mx, 50%) var(--my, 50%);
+  transform: translate(var(--lx, 0px), var(--ly, 0px)) scale(1.04);
   will-change: transform;
-  /* Fixed edge mask: ~85% transparent center, thin liquid rim at very outer edges */
+  animation: refractBreathe 12s ease-in-out infinite;
+  /* Organic blobs at corners & edges — asymmetric, fluid shapes */
   mask-image:
-    radial-gradient(
-      ellipse 80% 75% at 50% 50%,
-      transparent 0%,
-      transparent 65%,
-      rgba(0, 0, 0, 0.04) 74%,
-      rgba(0, 0, 0, 0.12) 82%,
-      rgba(0, 0, 0, 0.3) 90%,
-      rgba(0, 0, 0, 0.55) 96%,
-      rgba(0, 0, 0, 0.7) 100%
-    );
+    radial-gradient(ellipse 40% 34% at 94% 6%, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 42%, transparent 72%),
+    radial-gradient(ellipse 34% 30% at 4% 92%, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.3) 38%, transparent 68%),
+    radial-gradient(ellipse 22% 40% at 2% 38%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 35%, transparent 65%),
+    radial-gradient(ellipse 32% 26% at 90% 94%, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.25) 36%, transparent 64%),
+    radial-gradient(ellipse 26% 20% at 14% 5%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.15) 32%, transparent 58%),
+    radial-gradient(ellipse 18% 28% at 50% 98%, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.12) 30%, transparent 55%);
+  mask-composite: add;
   -webkit-mask-image:
-    radial-gradient(
-      ellipse 80% 75% at 50% 50%,
-      transparent 0%,
-      transparent 65%,
-      rgba(0, 0, 0, 0.04) 74%,
-      rgba(0, 0, 0, 0.12) 82%,
-      rgba(0, 0, 0, 0.3) 90%,
-      rgba(0, 0, 0, 0.55) 96%,
-      rgba(0, 0, 0, 0.7) 100%
-    );
+    radial-gradient(ellipse 40% 34% at 94% 6%, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 42%, transparent 72%),
+    radial-gradient(ellipse 34% 30% at 4% 92%, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.3) 38%, transparent 68%),
+    radial-gradient(ellipse 22% 40% at 2% 38%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 35%, transparent 65%),
+    radial-gradient(ellipse 32% 26% at 90% 94%, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.25) 36%, transparent 64%),
+    radial-gradient(ellipse 26% 20% at 14% 5%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.15) 32%, transparent 58%),
+    radial-gradient(ellipse 18% 28% at 50% 98%, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.12) 30%, transparent 55%);
+  -webkit-mask-composite: source-over;
 }
 
-/* Layer 1: Transparent tint — liquid edges visible through */
+/* Layer 1: Dark opaque base — organic multi-blob coverage, ~80% dark */
 .nav__glass-frost {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: rgba(8, 8, 10, 0.35);
-  backdrop-filter: blur(1px) saturate(180%);
-  -webkit-backdrop-filter: blur(1px) saturate(180%);
+  background: rgba(6, 6, 8, 0.92);
+  backdrop-filter: blur(2px) saturate(120%);
+  -webkit-backdrop-filter: blur(2px) saturate(120%);
+  /* Organic center mass — multiple overlapping blobs create irregular dark area */
+  mask-image:
+    radial-gradient(ellipse 72% 60% at 52% 46%, black 0%, black 35%, rgba(0, 0, 0, 0.7) 55%, rgba(0, 0, 0, 0.25) 74%, transparent 90%),
+    radial-gradient(ellipse 34% 28% at 80% 20%, black 0%, rgba(0, 0, 0, 0.55) 42%, transparent 78%),
+    radial-gradient(ellipse 30% 32% at 20% 80%, black 0%, rgba(0, 0, 0, 0.45) 38%, transparent 72%),
+    radial-gradient(ellipse 22% 36% at 88% 62%, black 0%, rgba(0, 0, 0, 0.35) 40%, transparent 70%),
+    radial-gradient(ellipse 28% 18% at 35% 12%, black 0%, rgba(0, 0, 0, 0.3) 35%, transparent 65%);
+  mask-composite: add;
+  -webkit-mask-image:
+    radial-gradient(ellipse 72% 60% at 52% 46%, black 0%, black 35%, rgba(0, 0, 0, 0.7) 55%, rgba(0, 0, 0, 0.25) 74%, transparent 90%),
+    radial-gradient(ellipse 34% 28% at 80% 20%, black 0%, rgba(0, 0, 0, 0.55) 42%, transparent 78%),
+    radial-gradient(ellipse 30% 32% at 20% 80%, black 0%, rgba(0, 0, 0, 0.45) 38%, transparent 72%),
+    radial-gradient(ellipse 22% 36% at 88% 62%, black 0%, rgba(0, 0, 0, 0.35) 40%, transparent 70%),
+    radial-gradient(ellipse 28% 18% at 35% 12%, black 0%, rgba(0, 0, 0, 0.3) 35%, transparent 65%);
+  -webkit-mask-composite: source-over;
 }
 
-/* Layer 2: Bevel + specular — deep glass refraction highlights */
+/* Layer 0.5: Mouse-following water lens — localized refraction at cursor */
+.nav__glass-lens {
+  position: absolute;
+  width: clamp(180px, 22vw, 280px);
+  height: clamp(180px, 22vw, 280px);
+  border-radius: 50%;
+  z-index: 0;
+  left: var(--mx, 50%);
+  top: var(--my, 50%);
+  transform: translate(-50%, -50%);
+  will-change: left, top;
+  backdrop-filter: url(#liquid-glass-distort) blur(18px) saturate(200%) brightness(0.68) contrast(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(200%) brightness(0.68) contrast(1.08);
+  /* Soft circular falloff — strong center, feathered edges */
+  mask-image: radial-gradient(
+    circle,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.3) 22%,
+    rgba(0, 0, 0, 0.12) 45%,
+    rgba(0, 0, 0, 0.04) 62%,
+    transparent 78%
+  );
+  -webkit-mask-image: radial-gradient(
+    circle,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.3) 22%,
+    rgba(0, 0, 0, 0.12) 45%,
+    rgba(0, 0, 0, 0.04) 62%,
+    transparent 78%
+  );
+  pointer-events: none;
+}
+
+/* Caustic specular highlight inside lens */
+.nav__glass-lens::after {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 35%,
+    transparent 65%
+  );
+}
+
+/* Layer 2: Bevel + specular — soft glass depth, no hard borders */
 .nav__glass-specular {
   position: absolute;
   inset: 0;
   z-index: 2;
   background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 12%, transparent 32%),
-    radial-gradient(ellipse 60% 40% at 15% 8%, rgba(255, 255, 255, 0.07) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 25% at 80% 90%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+    linear-gradient(150deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.02) 14%, transparent 35%),
+    radial-gradient(ellipse 60% 40% at 15% 8%, rgba(255, 255, 255, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 25% at 80% 90%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+  /* Soft inset glow instead of hard border — fluid glass edge */
   box-shadow:
-    inset 0 2px 8px rgba(255, 255, 255, 0.10),
-    inset 0 -2px 8px rgba(0, 0, 0, 0.20),
-    inset 2px 0 4px rgba(255, 255, 255, 0.06),
-    inset -2px 0 4px rgba(0, 0, 0, 0.12);
+    inset 0 1px 12px rgba(255, 255, 255, 0.06),
+    inset 0 -1px 12px rgba(0, 0, 0, 0.15),
+    inset 1px 0 8px rgba(255, 255, 255, 0.03),
+    inset -1px 0 8px rgba(0, 0, 0, 0.08);
   pointer-events: none;
 }
 
@@ -554,34 +532,63 @@ watch(isMenuOpen, (open) => {
 }
 
 .nav__menu-link {
+  position: relative;
   display: flex;
   align-items: baseline;
   gap: clamp(0.8125rem, 1.5vw, 1.3125rem);
-  padding: clamp(0.8125rem, 1.5vh, 1.3125rem) 0;
-  color: var(--color-text-secondary);
+  padding: clamp(1rem, 1.8vh, 1.5rem) 0;
+  color: rgba(255, 255, 255, 0.35);
   text-decoration: none;
-  transition: color 0.4s var(--ease-out-expo);
+  perspective: 600px;
+  transition: color 0.5s cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+/* Underline sweep — draws from left on hover */
+.nav__menu-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.08));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.5s cubic-bezier(0.45, 0, 0.55, 1);
 }
 
 .nav__menu-link:hover {
-  color: var(--color-text-primary);
+  color: #fff;
+}
+
+.nav__menu-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* Dim siblings when one is hovered */
+.nav__menu:hover .nav__menu-link:not(:hover) {
+  color: rgba(255, 255, 255, 0.15);
 }
 
 .nav__menu-index {
   font-size: var(--text-caption);
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.2);
   letter-spacing: 0.15em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  transition: color 0.4s var(--ease-out-expo);
+  transition: color 0.5s cubic-bezier(0.45, 0, 0.55, 1), opacity 0.5s cubic-bezier(0.45, 0, 0.55, 1);
 }
 
 .nav__menu-link:hover .nav__menu-index {
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.6);
 }
 
-/* ─── Per-character 3D cube (crz.studio style) ─── */
+.nav__menu:hover .nav__menu-link:not(:hover) .nav__menu-index {
+  opacity: 0.3;
+}
+
+/* ─── Cube flip text ─── */
 .nav__menu-word {
   display: inline-flex;
   font-family: 'Clash Display', 'Satoshi', system-ui, sans-serif;
@@ -589,60 +596,62 @@ watch(isMenuOpen, (open) => {
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.02em;
+  transform-origin: center bottom;
+  transition: transform 0.4s cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+/* Subtle 3D tilt — makes the slide feel like a physical cube rotating */
+.nav__menu-link:hover .nav__menu-word {
+  transform: rotateX(4deg);
 }
 
 .nav__menu-char {
   display: inline-block;
   height: 1.15em;
   overflow: hidden;
-  perspective: 1000px;
 }
 
 .nav__menu-char-inner {
-  display: block;
-  height: 1.15em;
-  transform-style: preserve-3d;
-  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  /* Symmetric easing — no "pause" when reversing mid-flip */
+  transition: transform 0.38s cubic-bezier(0.45, 0, 0.55, 1);
   will-change: transform;
 }
 
 .nav__menu-char-face {
   display: block;
-  backface-visibility: hidden;
+  height: 1.15em;
+  line-height: 1.15em;
 }
 
-/* Front face */
-.nav__menu-char-face:first-child {
-  transform: translateZ(0.575em);
-}
-
-/* Bottom face — revealed on hover */
+/* Alt face — second face of the 2D cube, slides up on hover */
 .nav__menu-char-face--alt {
-  position: absolute;
-  top: 0;
-  left: 0;
-  color: var(--color-text-primary);
-  transform: rotateX(-90deg) translateZ(0.575em);
+  color: #fff;
 }
 
-/* Hover: all characters rotate simultaneously — no stagger */
+/* 2D cube: smooth vertical slide to reveal alt face */
 .nav__menu-link:hover .nav__menu-char-inner {
-  transform: rotateX(90deg);
+  transform: translateY(-1.15em);
 }
 
 .nav__menu-divider {
   display: block;
   width: 100%;
   height: 1px;
-  background: rgba(255, 255, 255, 0.10);
-  transition: background 0.5s var(--ease-out-expo);
+  background: rgba(255, 255, 255, 0.06);
+  transition: background 0.5s cubic-bezier(0.45, 0, 0.55, 1), opacity 0.5s cubic-bezier(0.45, 0, 0.55, 1);
   transform-origin: left;
   animation: menuDividerIn 0.6s var(--ease-out-expo) both;
   animation-delay: calc(var(--delay, 0.15s) + 0.1s);
 }
 
 .nav__menu-item:hover .nav__menu-divider {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.nav__menu:hover .nav__menu-item:not(:hover) .nav__menu-divider {
+  opacity: 0.4;
 }
 
 /* ─── Panel footer ─── */
@@ -711,37 +720,51 @@ watch(isMenuOpen, (open) => {
   to { transform: scaleX(1); }
 }
 
-/* ─── Transition: Mobile (clip-path circle) ─── */
+/* Slow organic drift — refraction blobs subtly shift like light on water */
+@keyframes refractBreathe {
+  0% { mask-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
+  33% { mask-position: -4px 3px, 3px -2px, -2px 4px, 4px -3px, -3px 2px, 2px -1px; }
+  66% { mask-position: 3px -2px, -3px 4px, 4px -1px, -2px 3px, 2px -4px, -1px 3px; }
+  100% { mask-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
+}
+
+/* ─── Transition: Mobile (clip-path circle) — soft, no harsh flash ─── */
 .menu-enter-active {
-  transition: clip-path 0.85s var(--ease-out-expo), opacity 0.3s, filter 0.7s var(--ease-out-expo);
+  transition:
+    clip-path 1.05s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.9s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .menu-leave-active {
-  transition: clip-path 0.6s var(--ease-in-out), opacity 0.2s 0.15s, filter 0.5s;
+  transition:
+    clip-path 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.35s 0.25s ease,
+    filter 0.65s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .menu-enter-from {
   clip-path: circle(0% at calc(100% - 3rem) 2rem);
   opacity: 0;
-  filter: brightness(1.6) saturate(2) blur(30px);
+  filter: brightness(1.15) blur(14px);
 }
 
 .menu-enter-to {
   clip-path: circle(150% at calc(100% - 3rem) 2rem);
   opacity: 1;
-  filter: brightness(1) saturate(1) blur(0);
+  filter: brightness(1) blur(0);
 }
 
 .menu-leave-from {
   clip-path: circle(150% at calc(100% - 3rem) 2rem);
   opacity: 1;
-  filter: brightness(1) saturate(1) blur(0);
+  filter: brightness(1) blur(0);
 }
 
 .menu-leave-to {
   clip-path: circle(0% at calc(100% - 3rem) 2rem);
   opacity: 0;
-  filter: brightness(1.6) saturate(2) blur(30px);
+  filter: brightness(1.15) blur(14px);
 }
 
 /* ─── Desktop: Side panel (40vw) + slide transition ─── */
@@ -761,44 +784,52 @@ watch(isMenuOpen, (open) => {
     flex-shrink: 0;
   }
 
-  /* Desktop side panel: thin liquid rim only at panel edges */
+  /* Desktop: organic refraction blobs at left edge + corners */
   .nav__glass-refract {
     mask-image:
-      radial-gradient(
-        ellipse 72% 68% at 50% 50%,
-        transparent 0%,
-        transparent 62%,
-        rgba(0, 0, 0, 0.04) 72%,
-        rgba(0, 0, 0, 0.14) 80%,
-        rgba(0, 0, 0, 0.35) 88%,
-        rgba(0, 0, 0, 0.55) 95%,
-        rgba(0, 0, 0, 0.7) 100%
-      );
+      radial-gradient(ellipse 45% 30% at 0% 25%, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.3) 40%, transparent 70%),
+      radial-gradient(ellipse 35% 25% at 0% 72%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.2) 38%, transparent 65%),
+      radial-gradient(ellipse 30% 28% at 95% 10%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 35%, transparent 62%),
+      radial-gradient(ellipse 25% 22% at 92% 88%, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.18) 32%, transparent 58%),
+      radial-gradient(ellipse 20% 35% at 0% 50%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.15) 30%, transparent 55%);
+    mask-composite: add;
     -webkit-mask-image:
-      radial-gradient(
-        ellipse 72% 68% at 50% 50%,
-        transparent 0%,
-        transparent 62%,
-        rgba(0, 0, 0, 0.04) 72%,
-        rgba(0, 0, 0, 0.14) 80%,
-        rgba(0, 0, 0, 0.35) 88%,
-        rgba(0, 0, 0, 0.55) 95%,
-        rgba(0, 0, 0, 0.7) 100%
-      );
+      radial-gradient(ellipse 45% 30% at 0% 25%, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.3) 40%, transparent 70%),
+      radial-gradient(ellipse 35% 25% at 0% 72%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.2) 38%, transparent 65%),
+      radial-gradient(ellipse 30% 28% at 95% 10%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 35%, transparent 62%),
+      radial-gradient(ellipse 25% 22% at 92% 88%, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.18) 32%, transparent 58%),
+      radial-gradient(ellipse 20% 35% at 0% 50%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.15) 30%, transparent 55%);
+    -webkit-mask-composite: source-over;
   }
 
   .nav__glass-frost {
-    background: rgba(8, 8, 10, 0.30);
+    background: rgba(6, 6, 8, 0.92);
+    /* Desktop: organic dark center with left-edge organic windows */
+    mask-image:
+      radial-gradient(ellipse 85% 65% at 55% 48%, black 0%, black 30%, rgba(0, 0, 0, 0.7) 50%, rgba(0, 0, 0, 0.3) 70%, transparent 88%),
+      radial-gradient(ellipse 30% 25% at 75% 18%, black 0%, rgba(0, 0, 0, 0.5) 40%, transparent 72%),
+      radial-gradient(ellipse 25% 30% at 65% 82%, black 0%, rgba(0, 0, 0, 0.4) 35%, transparent 68%);
+    mask-composite: add;
+    -webkit-mask-image:
+      radial-gradient(ellipse 85% 65% at 55% 48%, black 0%, black 30%, rgba(0, 0, 0, 0.7) 50%, rgba(0, 0, 0, 0.3) 70%, transparent 88%),
+      radial-gradient(ellipse 30% 25% at 75% 18%, black 0%, rgba(0, 0, 0, 0.5) 40%, transparent 72%),
+      radial-gradient(ellipse 25% 30% at 65% 82%, black 0%, rgba(0, 0, 0, 0.4) 35%, transparent 68%);
+    -webkit-mask-composite: source-over;
   }
 
   .nav__glass-specular {
-    border-left: 1px solid rgba(255, 255, 255, 0.10);
+    /* Soft left-edge glow — no hard border line */
     box-shadow:
-      inset 0 2px 8px rgba(255, 255, 255, 0.10),
-      inset 0 -2px 8px rgba(0, 0, 0, 0.20),
-      inset 3px 0 6px rgba(255, 255, 255, 0.06),
-      inset -2px 0 4px rgba(0, 0, 0, 0.12),
-      -20px 0 60px rgba(0, 0, 0, 0.30);
+      inset 0 1px 12px rgba(255, 255, 255, 0.06),
+      inset 0 -1px 12px rgba(0, 0, 0, 0.15),
+      inset 3px 0 16px rgba(255, 255, 255, 0.04),
+      inset -1px 0 8px rgba(0, 0, 0, 0.08),
+      -20px 0 60px rgba(0, 0, 0, 0.25);
+  }
+
+  .nav__glass-lens {
+    width: clamp(150px, 16vw, 220px);
+    height: clamp(150px, 16vw, 220px);
   }
 
   .nav__menu-word {
@@ -820,9 +851,9 @@ watch(isMenuOpen, (open) => {
     filter: none;
   }
 
-  /* Backdrop fade */
+  /* Backdrop fade — soft, gradual */
   .menu-enter-active .nav__backdrop {
-    transition: opacity 0.5s var(--ease-out-expo);
+    transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .menu-enter-from .nav__backdrop {
@@ -830,16 +861,16 @@ watch(isMenuOpen, (open) => {
   }
 
   .menu-leave-active .nav__backdrop {
-    transition: opacity 0.4s var(--ease-in-out);
+    transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .menu-leave-to .nav__backdrop {
     opacity: 0;
   }
 
-  /* Panel slide from right */
+  /* Panel slide from right — smooth glide */
   .menu-enter-active .nav__panel {
-    transition: transform 0.7s var(--ease-out-expo);
+    transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .menu-enter-from .nav__panel {
@@ -847,7 +878,7 @@ watch(isMenuOpen, (open) => {
   }
 
   .menu-leave-active .nav__panel {
-    transition: transform 0.5s var(--ease-in-out);
+    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .menu-leave-to .nav__panel {
@@ -886,26 +917,24 @@ watch(isMenuOpen, (open) => {
     filter: none;
   }
 
-  .nav__menu-char-inner {
+  .nav__menu-link::after {
     transition: none;
-    transform-style: flat;
   }
 
-  .nav__menu-char-face:first-child {
-    transform: none;
+  .nav__menu-char-inner {
+    transition: none;
   }
 
   .nav__menu-char-face--alt {
     display: none;
   }
 
-  .nav__trigger::before,
-  .nav__trigger::after {
-    display: none;
-  }
-
   .nav__trigger-bar {
     transition: none !important;
+  }
+
+  .nav__glass-refract {
+    animation: none;
   }
 }
 </style>

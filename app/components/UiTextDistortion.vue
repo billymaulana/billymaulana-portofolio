@@ -6,9 +6,7 @@ const props = defineProps<{
 
 const canvasRef = ref<HTMLCanvasElement>()
 const isReady = ref(false)
-const glitchClass = ref('')
 let distortionInstance: ReturnType<typeof import('~/composables/useTextDistortion').useTextDistortion> | null = null
-let glitchTimeoutId: ReturnType<typeof setTimeout> | null = null
 let resizeHandler: (() => void) | null = null
 
 function computeFontSize(): number {
@@ -26,47 +24,6 @@ function computeFontSize(): number {
   if (vwMatch)
     return Math.min((Number.parseFloat(vwMatch[1]!) / 100) * window.innerWidth, 300)
   return 200
-}
-
-function startGlitchCycle() {
-  function scheduleGlitch() {
-    const delay = 3000 + Math.random() * 5000
-    glitchTimeoutId = setTimeout(() => {
-      const roll = Math.random()
-
-      if (roll > 0.6) {
-        // Subtle chromatic shift — brief hue + brightness flicker
-        glitchClass.value = 'text-distortion--glitch-chromatic'
-        setTimeout(() => {
-          glitchClass.value = ''
-          scheduleGlitch()
-        }, 60 + Math.random() * 60)
-      }
-      else if (roll > 0.25) {
-        // Micro displacement — single quick horizontal snap
-        glitchClass.value = 'text-distortion--glitch-shift'
-        setTimeout(() => {
-          glitchClass.value = ''
-          scheduleGlitch()
-        }, 50 + Math.random() * 40)
-      }
-      else {
-        // Double flicker — two rapid pulses
-        glitchClass.value = 'text-distortion--glitch-chromatic'
-        setTimeout(() => {
-          glitchClass.value = ''
-          setTimeout(() => {
-            glitchClass.value = 'text-distortion--glitch-shift'
-            setTimeout(() => {
-              glitchClass.value = ''
-              scheduleGlitch()
-            }, 40)
-          }, 30)
-        }, 50)
-      }
-    }, delay)
-  }
-  scheduleGlitch()
 }
 
 onMounted(async () => {
@@ -102,15 +59,12 @@ onMounted(async () => {
   setTimeout(() => {
     sim.start()
     isReady.value = true
-    startGlitchCycle()
   }, delay)
 })
 
 onUnmounted(() => {
   distortionInstance?.destroy()
   distortionInstance = null
-  if (glitchTimeoutId)
-    clearTimeout(glitchTimeoutId)
   if (resizeHandler)
     window.removeEventListener('resize', resizeHandler)
 })
@@ -119,10 +73,7 @@ onUnmounted(() => {
 <template>
   <div
     class="text-distortion"
-    :class="[
-      { 'text-distortion--ready': isReady },
-      glitchClass,
-    ]"
+    :class="{ 'text-distortion--ready': isReady }"
   >
     <canvas
       ref="canvasRef"
@@ -150,23 +101,9 @@ onUnmounted(() => {
   opacity: 1;
 }
 
-/* ─── Glitch variant: chromatic shift ─── */
-.text-distortion--glitch-chromatic .text-distortion__canvas {
-  filter: brightness(1.15) saturate(1.3);
-  text-shadow: none;
-}
-
-/* ─── Glitch variant: horizontal micro-displacement ─── */
-.text-distortion--glitch-shift .text-distortion__canvas {
-  transform: translateX(1.5px);
-  filter: brightness(1.08);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .text-distortion--glitch-chromatic .text-distortion__canvas,
-  .text-distortion--glitch-shift .text-distortion__canvas {
-    filter: none;
-    transform: none;
+  .text-distortion__canvas {
+    transition: none;
   }
 }
 </style>
