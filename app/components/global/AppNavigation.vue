@@ -363,7 +363,7 @@ watch(isMenuOpen, (open) => {
   display: block;
   height: 2px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.85);
   transform-origin: center;
 }
 
@@ -570,7 +570,7 @@ watch(isMenuOpen, (open) => {
 .nav__menu-index {
   font-size: var(--text-caption);
   font-weight: 500;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
   letter-spacing: 0.15em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -634,7 +634,7 @@ watch(isMenuOpen, (open) => {
   display: block;
   width: 100%;
   height: 1px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.10);
   transition: background 0.5s var(--ease-out-expo);
   transform-origin: left;
   animation: menuDividerIn 0.6s var(--ease-out-expo) both;
@@ -665,7 +665,7 @@ watch(isMenuOpen, (open) => {
 .nav__footer-label {
   font-size: var(--text-caption);
   font-weight: 500;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
   letter-spacing: 0.2em;
   line-height: 1.618;
   text-transform: uppercase;

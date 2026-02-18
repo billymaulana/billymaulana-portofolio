@@ -169,7 +169,7 @@ const distortionLines = [
 .hero__meta {
   font-size: var(--text-caption);
   font-weight: 500;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   line-height: 1.618;
@@ -190,7 +190,7 @@ const distortionLines = [
 
 .hero__scroll-text {
   font-size: 7px;
-  fill: rgba(255, 255, 255, 0.55);
+  fill: rgba(255, 255, 255, 0.7);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   font-family: 'Satoshi', system-ui, sans-serif;
@@ -203,7 +203,7 @@ const distortionLines = [
   left: 50%;
   width: 10px;
   height: 22px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.75);
   transform: translate(-50%, -50%);
   animation: scrollArrowFloat 2.4s ease-in-out infinite;
 }
@@ -214,8 +214,8 @@ const distortionLines = [
 }
 
 @keyframes scrollArrowFloat {
-  0%, 100% { opacity: 0.25; transform: translate(-50%, -55%); }
-  50% { opacity: 0.6; transform: translate(-50%, -45%); }
+  0%, 100% { opacity: 0.45; transform: translate(-50%, -55%); }
+  50% { opacity: 0.8; transform: translate(-50%, -45%); }
 }
 
 /* ─── Utilities ─── */
