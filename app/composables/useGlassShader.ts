@@ -55,6 +55,7 @@ uniform float uOpenProgress;
 uniform float uScrollY;
 uniform int uIsDesktop;
 uniform sampler2D uWakeTexture;
+uniform int uDropletCount;
 
 // ─── Hash & Noise helpers ────────────────────────────
 
@@ -147,6 +148,31 @@ vec2 refractUV(vec2 uv, vec2 normal, float ior, float edgeDist) {
   float strength = smoothstep(-40.0, 0.0, edgeDist);
   float offset = (1.0 / ior - 1.0) * strength * 0.03;
   return uv + normal * offset;
+}
+
+// ─── Condensation Droplets ──────────────────────────
+
+const int MAX_DROPLETS = 12;
+
+struct Droplet {
+  vec2 basePos;
+  float radius;
+  float phase;
+};
+
+Droplet getDroplet(int i, float time) {
+  float fi = float(i);
+  Droplet d;
+  float side = step(0.5, hash21(vec2(fi, 0.0)));
+  d.basePos.x = mix(0.02, 0.12, hash21(vec2(fi, 1.0))) * (1.0 - side)
+              + mix(0.2, 0.8, hash21(vec2(fi, 2.0))) * side;
+  d.basePos.y = mix(0.3, 0.7, hash21(vec2(fi, 3.0))) * (1.0 - side)
+              + mix(0.88, 0.98, hash21(vec2(fi, 4.0))) * side;
+  d.basePos.y += time * 0.0003 * (1.0 + hash21(vec2(fi, 5.0)));
+  d.basePos.y = fract(d.basePos.y);
+  d.radius = mix(4.0, 16.0, hash21(vec2(fi, 6.0)));
+  d.phase = hash21(vec2(fi, 7.0)) * 6.28;
+  return d;
 }
 
 // ─── Main ────────────────────────────────────────────
@@ -280,6 +306,38 @@ void main() {
   // Alpha (keep existing meniscus + inside logic)
   float alpha = max(inside, meniscus * 0.5) * uOpenProgress;
 
+  // ─── Condensation Droplets ───
+  float dropletAlpha = 0.0;
+  vec3 dropletColor = vec3(0.0);
+
+  for (int i = 0; i < MAX_DROPLETS; i++) {
+    if (i >= uDropletCount) break;
+    Droplet drop = getDroplet(i, uTime);
+
+    // Mouse scatter
+    vec2 dropPixel = drop.basePos * uResolution;
+    float mouseDistDrop = length(dropPixel - mousePixel);
+    vec2 scatterDir = normalize(dropPixel - mousePixel + 0.001);
+    float scatterAmt = smoothstep(100.0, 0.0, mouseDistDrop) * 30.0;
+    dropPixel += scatterDir * scatterAmt;
+
+    // Droplet SDF
+    float dd = length(pixel - dropPixel) - drop.radius;
+    float dropInside = 1.0 - smoothstep(-1.0, 0.0, dd);
+    float dropMeniscus = exp(-abs(dd) * 1.5) * 0.3;
+
+    // Mini refraction for each droplet
+    vec2 dropUV = (dropPixel / uResolution);
+    vec3 dropBg = synthesizedBackground(dropUV + normalize(pixel - dropPixel) * 0.01, uTime);
+
+    dropletAlpha = max(dropletAlpha, dropInside * 0.6 + dropMeniscus);
+    dropletColor = max(dropletColor, (dropBg * 0.5 + vec3(dropMeniscus)) * dropInside);
+  }
+
+  // Blend droplets with glass
+  color += dropletColor;
+  alpha = max(alpha, dropletAlpha * uOpenProgress);
+
   fragColor = vec4(color, alpha);
 }
 `
@@ -349,6 +407,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
   let uScrollY: WebGLUniformLocation | null = null
   let uIsDesktop: WebGLUniformLocation | null = null
   let uWakeTexture: WebGLUniformLocation | null = null
+  let uDropletCount: WebGLUniformLocation | null = null
 
   // Wake system (displacement ripples via ping-pong FBOs)
   let wakeFBO_A: FBO | null = null
@@ -469,6 +528,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     uScrollY = gl!.getUniformLocation(program, 'uScrollY')
     uIsDesktop = gl!.getUniformLocation(program, 'uIsDesktop')
     uWakeTexture = gl!.getUniformLocation(program, 'uWakeTexture')
+    uDropletCount = gl!.getUniformLocation(program, 'uDropletCount')
 
     return true
   }
@@ -561,6 +621,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     gl.uniform1f(uOpenProgress, openProgress)
     gl.uniform1f(uScrollY, 0)
     gl.uniform1i(uIsDesktop, cachedInnerWidth >= 1024 ? 1 : 0)
+    gl.uniform1i(uDropletCount, cfg.dropletCount)
 
     // Bind wake texture for main shader
     if (wakeFBO_A) {
