@@ -184,6 +184,7 @@ void main() {
   vec2 center = uResolution * 0.5;
   vec2 p = pixel - center;
   vec2 halfSize = center - 20.0;
+  vec2 scaledHalfSize = halfSize * uOpenProgress;
   float cornerRadius = 24.0;
 
   // Reduced motion: freeze time-based animations but keep mouse interaction
@@ -198,14 +199,14 @@ void main() {
   float d;
   if (uIsDesktop == 1) {
     // Desktop: organic wave on left edge only
-    float baseD = sdRoundedBox(p, halfSize, cornerRadius);
+    float baseD = sdRoundedBox(p, scaledHalfSize, cornerRadius);
     float edgeNoise = fbm(noiseUv + t, 3) * 2.0 - 1.0;
-    float leftEdgeDist = p.x + halfSize.x;
+    float leftEdgeDist = p.x + scaledHalfSize.x;
     float edgeMask = smoothstep(40.0, 0.0, leftEdgeDist);
     d = baseD + edgeNoise * waveAmp * edgeMask;
   } else {
     // Mobile: organic edges on all sides
-    d = sdfWithNoise(p, halfSize, cornerRadius, waveAmp, noiseUv, t);
+    d = sdfWithNoise(p, scaledHalfSize, cornerRadius, waveAmp, noiseUv, t);
   }
 
   // Inside/edge masks
@@ -219,20 +220,23 @@ void main() {
   // Simplified caustics on mobile
   float causticMult = uIsDesktop == 1 ? 0.04 : 0.02;
 
+  // Caustic fade-in delay — caustics appear after glass is 40% open
+  float causticFade = smoothstep(0.4, 0.8, uOpenProgress);
+
   // Caustic streaks (diagonal light bands)
   float streak = sin(dot(uv, vec2(1.5, 3.0)) * 20.0 + animatedTime * 0.2) * 0.5 + 0.5;
   streak *= smoothstep(-30.0, -5.0, d); // only inside glass
-  glass += vec3(streak * causticMult);
+  glass += vec3(streak * causticMult * causticFade);
 
   // Caustic light pattern (pool effect)
   float caustic = causticPattern(uv * 4.0, animatedTime);
-  caustic *= smoothstep(-30.0, -5.0, d) * causticMult;
+  caustic *= smoothstep(-30.0, -5.0, d) * causticMult * causticFade;
   glass += vec3(caustic);
 
   // ── Snell's law refraction with chromatic aberration ──
 
   // Compute surface normal from SDF gradient
-  vec2 normalDir = sdfNormal(pixel, halfSize, cornerRadius, waveAmp, noiseUv, t);
+  vec2 normalDir = sdfNormal(pixel, scaledHalfSize, cornerRadius, waveAmp, noiseUv, t);
 
   // Chromatic aberration: 3 refraction passes with different IOR
   vec2 uvR = refractUV(uv, normalDir, 1.42, d); // Red: less refraction
@@ -303,7 +307,7 @@ void main() {
   float specEdge = fresnel * smoothstep(-20.0, -2.0, d) * 0.25;
 
   // Top rim: bright line at very top of SDF
-  float topRim = exp(-(pixel.y - (center.y - halfSize.y)) * 0.1)
+  float topRim = exp(-(pixel.y - (center.y - scaledHalfSize.y)) * 0.1)
                * smoothstep(-2.0, 0.0, d) * 0.2;
 
   // Mouse highlight: subtle hotspot near cursor
@@ -345,6 +349,11 @@ void main() {
     float dd = length(pixel - dropPixel) - drop.radius;
     float dropInside = 1.0 - smoothstep(-1.0, 0.0, dd);
     float dropMeniscus = exp(-abs(dd) * 1.5) * 0.3;
+
+    // Staggered fade-in — each droplet appears at different progress
+    float dropletFade = smoothstep(0.6 + float(i) * 0.02, 0.8 + float(i) * 0.02, uOpenProgress);
+    dropInside *= dropletFade;
+    dropMeniscus *= dropletFade;
 
     // Mini refraction for each droplet
     vec2 dropUV = (dropPixel / uResolution);
@@ -442,6 +451,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
   let mouseVX = 0
   let mouseVY = 0
   let openProgress = 0
+  let openTarget = 0
 
   // Cached window dimensions (avoid reading window.innerWidth every frame)
   let cachedInnerWidth = 0
@@ -636,6 +646,9 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
 
     gl.useProgram(program)
 
+    // Smoothly animate openProgress toward target (~600ms ease open, ~500ms close)
+    openProgress += (openTarget - openProgress) * 0.08
+
     // Set uniforms
     gl.uniform2f(uResolution, gl.drawingBufferWidth, gl.drawingBufferHeight)
     gl.uniform1f(uTime, elapsed)
@@ -765,8 +778,8 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     mouseVY = vy
   }
 
-  function setOpenProgress(p: number) {
-    openProgress = p
+  function setOpenProgress(target: number) {
+    openTarget = target
   }
 
   function destroy() {
