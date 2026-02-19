@@ -189,7 +189,19 @@ void main() {
   float t = uTime * 0.3;
   float waveAmp = 12.0 * uOpenProgress;
   vec2 noiseUv = uv * 8.0;
-  float d = sdfWithNoise(p, halfSize, cornerRadius, waveAmp, noiseUv, t);
+
+  float d;
+  if (uIsDesktop == 1) {
+    // Desktop: organic wave on left edge only
+    float baseD = sdRoundedBox(p, halfSize, cornerRadius);
+    float edgeNoise = fbm(noiseUv + t, 3) * 2.0 - 1.0;
+    float leftEdgeDist = p.x + halfSize.x;
+    float edgeMask = smoothstep(40.0, 0.0, leftEdgeDist);
+    d = baseD + edgeNoise * waveAmp * edgeMask;
+  } else {
+    // Mobile: organic edges on all sides
+    d = sdfWithNoise(p, halfSize, cornerRadius, waveAmp, noiseUv, t);
+  }
 
   // Inside/edge masks
   float inside = 1.0 - smoothstep(-2.0, 0.0, d);
@@ -199,14 +211,17 @@ void main() {
   float baseTint = mix(0.1, 0.06, edgeFade); // thicker in center, thinner at edges
   vec3 glass = vec3(baseTint) * inside;
 
+  // Simplified caustics on mobile
+  float causticMult = uIsDesktop == 1 ? 0.04 : 0.02;
+
   // Caustic streaks (diagonal light bands)
   float streak = sin(dot(uv, vec2(1.5, 3.0)) * 20.0 + uTime * 0.2) * 0.5 + 0.5;
   streak *= smoothstep(-30.0, -5.0, d); // only inside glass
-  glass += vec3(streak * 0.04);
+  glass += vec3(streak * causticMult);
 
   // Caustic light pattern (pool effect)
   float caustic = causticPattern(uv * 4.0, uTime);
-  caustic *= smoothstep(-30.0, -5.0, d) * 0.04;
+  caustic *= smoothstep(-30.0, -5.0, d) * causticMult;
   glass += vec3(caustic);
 
   // ── Snell's law refraction with chromatic aberration ──
@@ -229,8 +244,8 @@ void main() {
   vec2 mousePixel = uMouse * uResolution;
   float mouseDist = length(pixel - mousePixel);
 
-  // Lens parameters
-  float lensRadius = 160.0;
+  // Lens parameters (responsive)
+  float lensRadius = uIsDesktop == 1 ? 160.0 : 120.0;
   float lensFactor = 1.0 - smoothstep(0.0, lensRadius, mouseDist);
 
   // Clear zone — inner 40% of lens = higher transparency
