@@ -73,8 +73,7 @@ float fbm(vec2 p, int octaves) {
   float value = 0.0;
   float amplitude = 0.5;
   float frequency = 1.0;
-  for (int i = 0; i < 3; i++) {
-    if (i >= octaves) break;
+  for (int i = 0; i < octaves; i++) {
     value += amplitude * noise(p * frequency);
     frequency *= 2.0;
     amplitude *= 0.5;
@@ -89,32 +88,78 @@ float sdRoundedBox(vec2 p, vec2 b, float r) {
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
 }
 
+// ─── Synthesized Background ─────────────────────────
+
+vec3 synthesizedBackground(vec2 uv, float time) {
+  vec3 base = vec3(0.04); // Near-black (#0A0A0A)
+  float n = fbm(uv * 3.0 + time * 0.1, 3);
+  vec3 blue = vec3(0.0, 0.28, 1.0);    // #0047FF
+  vec3 cyan = vec3(0.0, 0.96, 1.0);    // #00F5FF
+  vec3 purple = vec3(0.27, 0.0, 1.0);  // #4400FF
+  vec3 accent = mix(blue, mix(cyan, purple, n), n);
+  return base + accent * 0.08;
+}
+
+// ─── Caustic Light Pattern ──────────────────────────
+
+float causticPattern(vec2 uv, float time) {
+  float c = 0.0;
+  c += sin(dot(uv, vec2(3.0, 7.0)) * 12.0 + time * 0.5) * 0.5 + 0.5;
+  c += sin(dot(uv, vec2(-5.0, 3.0)) * 10.0 + time * 0.7) * 0.5 + 0.5;
+  c += sin(dot(uv, vec2(4.0, -6.0)) * 14.0 + time * 0.3) * 0.5 + 0.5;
+  c /= 3.0;
+  return c * c; // Square for sharper caustic lines
+}
+
 // ─── Main ────────────────────────────────────────────
 
 void main() {
-  vec2 pixel = vUv * uResolution;
+  vec2 uv = vUv;
+  vec2 pixel = uv * uResolution;
   vec2 center = uResolution * 0.5;
   vec2 p = pixel - center;
   vec2 halfSize = center - 20.0;
   float cornerRadius = 24.0;
 
-  // Organic edge perturbation via fBm
+  // Organic edge perturbation
   float t = uTime * 0.3;
-  vec2 noiseCoord = vUv * 8.0 + t;
-  float edgeNoise = fbm(noiseCoord, 3) * 2.0 - 1.0;
+  float edgeNoise = fbm(uv * 8.0 + t, 3) * 2.0 - 1.0;
   float waveAmp = 12.0 * uOpenProgress;
-
   float d = sdRoundedBox(p, halfSize, cornerRadius) + edgeNoise * waveAmp;
 
-  // Glass body — white semi-translucent tint inside SDF
+  // Inside/edge masks
   float inside = 1.0 - smoothstep(-2.0, 0.0, d);
-  float baseTint = 0.1 * inside;
+  float edgeFade = smoothstep(-40.0, -4.0, d); // 1 near edge, 0 deep inside
 
-  // Surface tension meniscus — bright line at boundary
+  // Synthesized background (visible in refraction zones at edges)
+  vec3 bg = synthesizedBackground(uv, uTime);
+
+  // Glass body tint
+  float baseTint = mix(0.1, 0.06, edgeFade); // thicker in center, thinner at edges
+  vec3 glass = vec3(baseTint) * inside;
+
+  // Caustic streaks (diagonal light bands)
+  float streak = sin(dot(uv, vec2(1.5, 3.0)) * 20.0 + uTime * 0.2) * 0.5 + 0.5;
+  streak *= smoothstep(-30.0, -5.0, d); // only inside glass
+  glass += vec3(streak * 0.04);
+
+  // Caustic light pattern (pool effect)
+  float caustic = causticPattern(uv * 4.0, uTime);
+  caustic *= smoothstep(-30.0, -5.0, d) * 0.04;
+  glass += vec3(caustic);
+
+  // Background bleeds through at edges (refraction zones)
+  float edgeReveal = edgeFade * 0.3; // 30% of background visible at edges
+  vec3 color = mix(glass, bg, edgeReveal) * inside;
+
+  // Surface tension meniscus
   float meniscus = exp(-abs(d) * 0.8) * 0.2;
+  color += vec3(meniscus);
 
-  // Final output: glass tint + meniscus, alpha masked by SDF
-  fragColor = vec4(vec3(baseTint + meniscus), inside * uOpenProgress);
+  // Alpha
+  float alpha = max(inside, meniscus * 0.5) * uOpenProgress;
+
+  fragColor = vec4(color, alpha);
 }
 `
 
@@ -149,6 +194,9 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
   let mouseVX = 0
   let mouseVY = 0
   let openProgress = 0
+
+  // Cached window dimensions (avoid reading window.innerWidth every frame)
+  let cachedInnerWidth = 0
 
   // ─── Shader compilation ────────────────────────────
 
@@ -262,7 +310,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     gl.uniform2f(uMouseVelocity, mouseVX, mouseVY)
     gl.uniform1f(uOpenProgress, openProgress)
     gl.uniform1f(uScrollY, 0)
-    gl.uniform1i(uIsDesktop, window.innerWidth >= 1024 ? 1 : 0)
+    gl.uniform1i(uIsDesktop, cachedInnerWidth >= 1024 ? 1 : 0)
 
     gl.bindVertexArray(vao)
     gl.drawArrays(gl.TRIANGLES, 0, 6)
@@ -277,6 +325,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
   function handleResize() {
     if (!canvas || !gl)
       return
+    cachedInnerWidth = window.innerWidth
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     const width = Math.floor(canvas.clientWidth * dpr)
     const height = Math.floor(canvas.clientHeight * dpr)
@@ -295,6 +344,9 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
       alpha: true,
       premultipliedAlpha: false,
       antialias: false,
+      depth: false,
+      stencil: false,
+      preserveDrawingBuffer: false,
     }) as WebGL2RenderingContext | null
 
     if (!gl) {
