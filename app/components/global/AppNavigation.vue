@@ -15,7 +15,7 @@ const glassCanvasRef = ref<HTMLCanvasElement | null>(null)
 const hasWebGL = ref(true)
 
 const glassShader = useGlassShader({
-  reducedMotion: false,
+  reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
 })
 
 // Mouse state

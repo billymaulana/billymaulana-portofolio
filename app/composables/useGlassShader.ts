@@ -56,6 +56,7 @@ uniform float uScrollY;
 uniform int uIsDesktop;
 uniform sampler2D uWakeTexture;
 uniform int uDropletCount;
+uniform int uReducedMotion;
 
 // ─── Hash & Noise helpers ────────────────────────────
 
@@ -185,8 +186,12 @@ void main() {
   vec2 halfSize = center - 20.0;
   float cornerRadius = 24.0;
 
+  // Reduced motion: freeze time-based animations but keep mouse interaction
+  float timeScale = uReducedMotion == 1 ? 0.0 : 1.0;
+  float animatedTime = uTime * timeScale;
+
   // Organic edge perturbation via reusable SDF helper
-  float t = uTime * 0.3;
+  float t = animatedTime * 0.3;
   float waveAmp = 12.0 * uOpenProgress;
   vec2 noiseUv = uv * 8.0;
 
@@ -215,12 +220,12 @@ void main() {
   float causticMult = uIsDesktop == 1 ? 0.04 : 0.02;
 
   // Caustic streaks (diagonal light bands)
-  float streak = sin(dot(uv, vec2(1.5, 3.0)) * 20.0 + uTime * 0.2) * 0.5 + 0.5;
+  float streak = sin(dot(uv, vec2(1.5, 3.0)) * 20.0 + animatedTime * 0.2) * 0.5 + 0.5;
   streak *= smoothstep(-30.0, -5.0, d); // only inside glass
   glass += vec3(streak * causticMult);
 
   // Caustic light pattern (pool effect)
-  float caustic = causticPattern(uv * 4.0, uTime);
+  float caustic = causticPattern(uv * 4.0, animatedTime);
   caustic *= smoothstep(-30.0, -5.0, d) * causticMult;
   glass += vec3(caustic);
 
@@ -270,9 +275,9 @@ void main() {
   uvB -= mouseDir * chromaticBoost * 0.008;
 
   // Sample background at each refracted UV
-  float bgR = synthesizedBackground(uvR, uTime).r;
-  float bgG = synthesizedBackground(uvG, uTime).g;
-  float bgB = synthesizedBackground(uvB, uTime).b;
+  float bgR = synthesizedBackground(uvR, animatedTime).r;
+  float bgG = synthesizedBackground(uvG, animatedTime).g;
+  float bgB = synthesizedBackground(uvB, animatedTime).b;
   vec3 refracted = vec3(bgR, bgG, bgB);
 
   // Apply glassTintMod — reduce glass tint in clear zone
@@ -308,11 +313,11 @@ void main() {
   float specular = specEdge + topRim + mouseHighlight;
 
   // ─── Noise Grain ───
-  float grain = hash21(uv * uResolution + uTime * 100.0) * 0.04;
+  float grain = hash21(uv * uResolution + animatedTime * 100.0) * 0.04;
 
   // ─── Shimmer ───
-  float shimmer = sin(uv.x * 4.0 + uv.y * 2.0 + uTime * 0.5) * 0.5 + 0.5;
-  shimmer *= sin(uv.x * 2.0 - uv.y * 3.0 + uTime * 0.3) * 0.5 + 0.5;
+  float shimmer = sin(uv.x * 4.0 + uv.y * 2.0 + animatedTime * 0.5) * 0.5 + 0.5;
+  shimmer *= sin(uv.x * 2.0 - uv.y * 3.0 + animatedTime * 0.3) * 0.5 + 0.5;
   shimmer *= smoothstep(-30.0, -5.0, d) * 0.03;
 
   // Final composition
@@ -327,7 +332,7 @@ void main() {
 
   for (int i = 0; i < MAX_DROPLETS; i++) {
     if (i >= uDropletCount) break;
-    Droplet drop = getDroplet(i, uTime);
+    Droplet drop = getDroplet(i, animatedTime);
 
     // Mouse scatter
     vec2 dropPixel = drop.basePos * uResolution;
@@ -343,7 +348,7 @@ void main() {
 
     // Mini refraction for each droplet
     vec2 dropUV = (dropPixel / uResolution);
-    vec3 dropBg = synthesizedBackground(dropUV + normalize(pixel - dropPixel) * 0.01, uTime);
+    vec3 dropBg = synthesizedBackground(dropUV + normalize(pixel - dropPixel) * 0.01, animatedTime);
 
     dropletAlpha = max(dropletAlpha, dropInside * 0.6 + dropMeniscus);
     dropletColor = max(dropletColor, (dropBg * 0.5 + vec3(dropMeniscus)) * dropInside);
@@ -423,6 +428,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
   let uIsDesktop: WebGLUniformLocation | null = null
   let uWakeTexture: WebGLUniformLocation | null = null
   let uDropletCount: WebGLUniformLocation | null = null
+  let uReducedMotion: WebGLUniformLocation | null = null
 
   // Wake system (displacement ripples via ping-pong FBOs)
   let wakeFBO_A: FBO | null = null
@@ -544,6 +550,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     uIsDesktop = gl!.getUniformLocation(program, 'uIsDesktop')
     uWakeTexture = gl!.getUniformLocation(program, 'uWakeTexture')
     uDropletCount = gl!.getUniformLocation(program, 'uDropletCount')
+    uReducedMotion = gl!.getUniformLocation(program, 'uReducedMotion')
 
     return true
   }
@@ -597,7 +604,8 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     handleResize()
 
     // ── Pass 1: Update wake (write to FBO_B from FBO_A) ──
-    if (wakeProgram && wakeFBO_A && wakeFBO_B) {
+    // Skip wake ripple propagation when reduced motion is active
+    if (wakeProgram && wakeFBO_A && wakeFBO_B && !cfg.reducedMotion) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, wakeFBO_B.framebuffer)
       gl.viewport(0, 0, wakeFBO_B.width, wakeFBO_B.height)
 
@@ -637,6 +645,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     gl.uniform1f(uScrollY, 0)
     gl.uniform1i(uIsDesktop, cachedInnerWidth >= 1024 ? 1 : 0)
     gl.uniform1i(uDropletCount, cfg.dropletCount)
+    gl.uniform1i(uReducedMotion, cfg.reducedMotion ? 1 : 0)
 
     // Bind wake texture for main shader
     if (wakeFBO_A) {
