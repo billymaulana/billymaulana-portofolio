@@ -111,6 +111,36 @@ float causticPattern(vec2 uv, float time) {
   return c * c; // Square for sharper caustic lines
 }
 
+// ─── SDF with noise (reusable for central differences) ──
+
+float sdfWithNoise(vec2 p, vec2 halfSize, float cornerRadius, float waveAmp, vec2 noiseUv, float t) {
+  float d = sdRoundedBox(p, halfSize, cornerRadius);
+  float edgeNoise = fbm(noiseUv + t, 3) * 2.0 - 1.0;
+  d += edgeNoise * waveAmp;
+  return d;
+}
+
+// ─── SDF gradient (surface normal) via central differences ──
+
+vec2 sdfNormal(vec2 pixel, vec2 halfSize, float cornerRadius, float waveAmp, vec2 noiseUv, float t) {
+  float eps = 1.5;
+  vec2 center = uResolution * 0.5;
+  float dx = sdfWithNoise(pixel - center + vec2(eps, 0.0), halfSize, cornerRadius, waveAmp, noiseUv, t)
+           - sdfWithNoise(pixel - center - vec2(eps, 0.0), halfSize, cornerRadius, waveAmp, noiseUv, t);
+  float dy = sdfWithNoise(pixel - center + vec2(0.0, eps), halfSize, cornerRadius, waveAmp, noiseUv, t)
+           - sdfWithNoise(pixel - center - vec2(0.0, eps), halfSize, cornerRadius, waveAmp, noiseUv, t);
+  return normalize(vec2(dx, dy));
+}
+
+// ─── UV refraction (Snell's law approximation) ──────
+
+vec2 refractUV(vec2 uv, vec2 normal, float ior, float edgeDist) {
+  // Strength proportional to proximity to edge (stronger refraction near SDF boundary)
+  float strength = smoothstep(-40.0, 0.0, edgeDist);
+  float offset = (1.0 / ior - 1.0) * strength * 0.03;
+  return uv + normal * offset;
+}
+
 // ─── Main ────────────────────────────────────────────
 
 void main() {
@@ -121,18 +151,15 @@ void main() {
   vec2 halfSize = center - 20.0;
   float cornerRadius = 24.0;
 
-  // Organic edge perturbation
+  // Organic edge perturbation via reusable SDF helper
   float t = uTime * 0.3;
-  float edgeNoise = fbm(uv * 8.0 + t, 3) * 2.0 - 1.0;
   float waveAmp = 12.0 * uOpenProgress;
-  float d = sdRoundedBox(p, halfSize, cornerRadius) + edgeNoise * waveAmp;
+  vec2 noiseUv = uv * 8.0;
+  float d = sdfWithNoise(p, halfSize, cornerRadius, waveAmp, noiseUv, t);
 
   // Inside/edge masks
   float inside = 1.0 - smoothstep(-2.0, 0.0, d);
   float edgeFade = smoothstep(-40.0, -4.0, d); // 1 near edge, 0 deep inside
-
-  // Synthesized background (visible in refraction zones at edges)
-  vec3 bg = synthesizedBackground(uv, uTime);
 
   // Glass body tint
   float baseTint = mix(0.1, 0.06, edgeFade); // thicker in center, thinner at edges
@@ -148,9 +175,29 @@ void main() {
   caustic *= smoothstep(-30.0, -5.0, d) * 0.04;
   glass += vec3(caustic);
 
+  // ── Snell's law refraction with chromatic aberration ──
+
+  // Compute surface normal from SDF gradient
+  vec2 normalDir = sdfNormal(pixel, halfSize, cornerRadius, waveAmp, noiseUv, t);
+
+  // Chromatic aberration: 3 refraction passes with different IOR
+  vec2 uvR = refractUV(uv, normalDir, 1.42, d); // Red: less refraction
+  vec2 uvG = refractUV(uv, normalDir, 1.45, d); // Green: medium
+  vec2 uvB = refractUV(uv, normalDir, 1.48, d); // Blue: most refraction
+
+  // Sample background at each refracted UV
+  float bgR = synthesizedBackground(uvR, uTime).r;
+  float bgG = synthesizedBackground(uvG, uTime).g;
+  float bgB = synthesizedBackground(uvB, uTime).b;
+  vec3 refracted = vec3(bgR, bgG, bgB);
+
   // Background bleeds through at edges (refraction zones)
   float edgeReveal = edgeFade * 0.3; // 30% of background visible at edges
-  vec3 color = mix(glass, bg, edgeReveal) * inside;
+
+  // Refracted background (chromatic) instead of plain bg
+  vec3 color = mix(glass, refracted, edgeReveal) * inside;
+  // Add additional refraction visibility: slight refraction even in glass center
+  color += refracted * inside * 0.15; // 15% of refracted bg always shows through
 
   // Surface tension meniscus
   float meniscus = exp(-abs(d) * 0.8) * 0.2;
