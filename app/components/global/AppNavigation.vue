@@ -10,7 +10,6 @@ const isHidden = ref(false)
 const isMenuOpen = ref(false)
 let lastScrollY = 0
 
-const panelRef = ref<HTMLElement | null>(null)
 const glassCanvasRef = ref<HTMLCanvasElement | null>(null)
 const hasWebGL = ref(true)
 
@@ -129,7 +128,7 @@ watch(isMenuOpen, (open) => {
     <Transition name="menu" :duration="{ enter: 1100, leave: 850 }">
       <div v-if="isMenuOpen" class="nav__overlay">
         <div class="nav__backdrop" @click="toggleMenu" />
-        <div ref="panelRef" class="nav__panel" @pointermove="handlePanelMove">
+        <div class="nav__panel" @pointermove="handlePanelMove">
           <!-- WebGL Glass (replaces 4 CSS layers) -->
           <canvas
             v-if="hasWebGL"
