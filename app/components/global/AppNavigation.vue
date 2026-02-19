@@ -3,45 +3,24 @@ import { profile } from '~/constants/profile'
 
 const { scrollTo } = useSmoothScroll()
 
+const logoSrc = '/assets/images/logo/logo-bm-white-origin.svg'
+
 const isScrolled = ref(false)
 const isHidden = ref(false)
 const isMenuOpen = ref(false)
 let lastScrollY = 0
+
+const lensRef = ref<HTMLElement | null>(null)
+const isGlassReady = ref(false)
+let mouseTarget = { x: 0.5, y: 0.5 }
+let mouseCurrent = { x: 0.5, y: 0.5 }
+let lensRafId: number | null = null
 
 const navItems = [
   { label: 'About', href: '#about' },
   { label: 'Work', href: '#work' },
   { label: 'Contact', href: '#contact' },
 ]
-
-/* ─── Mouse-reactive liquid glass ─── */
-const panelRef = ref<HTMLElement>()
-const mousePos = reactive({ x: 50, y: 50 })
-const targetPos = reactive({ x: 50, y: 50 })
-let rafId = 0
-
-/* Mouse drives noise shift + water lens position */
-const liquidStyle = computed(() => ({
-  '--lx': `${(mousePos.x - 50) * 0.18}px`,
-  '--ly': `${(mousePos.y - 50) * 0.18}px`,
-  '--mx': `${mousePos.x}%`,
-  '--my': `${mousePos.y}%`,
-}))
-
-function handlePanelMove(e: PointerEvent) {
-  const el = panelRef.value
-  if (!el)
-    return
-  const rect = el.getBoundingClientRect()
-  targetPos.x = ((e.clientX - rect.left) / rect.width) * 100
-  targetPos.y = ((e.clientY - rect.top) / rect.height) * 100
-}
-
-function animateLiquid() {
-  mousePos.x += (targetPos.x - mousePos.x) * 0.035
-  mousePos.y += (targetPos.y - mousePos.y) * 0.035
-  rafId = requestAnimationFrame(animateLiquid)
-}
 
 function handleNavClick(href: string) {
   isMenuOpen.value = false
@@ -50,6 +29,33 @@ function handleNavClick(href: string) {
 
 function toggleMenu() {
   isMenuOpen.value = !isMenuOpen.value
+}
+
+function onAfterEnter() {
+  isGlassReady.value = true
+}
+
+function onLeave() {
+  isGlassReady.value = false
+}
+
+function handlePanelMove(e: PointerEvent) {
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  mouseTarget.x = (e.clientX - rect.left) / rect.width
+  mouseTarget.y = (e.clientY - rect.top) / rect.height
+}
+
+function animateLens() {
+  mouseCurrent.x += (mouseTarget.x - mouseCurrent.x) * 0.06
+  mouseCurrent.y += (mouseTarget.y - mouseCurrent.y) * 0.06
+
+  if (lensRef.value) {
+    lensRef.value.style.setProperty('--lx', `${mouseCurrent.x * 100}%`)
+    lensRef.value.style.setProperty('--ly', `${mouseCurrent.y * 100}%`)
+  }
+
+  lensRafId = requestAnimationFrame(animateLens)
 }
 
 onMounted(() => {
@@ -63,22 +69,26 @@ onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
   onUnmounted(() => {
     window.removeEventListener('scroll', onScroll)
-    cancelAnimationFrame(rafId)
+    if (lensRafId)
+      cancelAnimationFrame(lensRafId)
   })
 })
 
 watch(isMenuOpen, (open) => {
   document.documentElement.style.overflow = open ? 'hidden' : ''
   document.body.style.overflow = open ? 'hidden' : ''
+  document.documentElement.classList.toggle('menu-open', open)
+
   if (open) {
-    mousePos.x = 50
-    mousePos.y = 50
-    targetPos.x = 50
-    targetPos.y = 50
-    rafId = requestAnimationFrame(animateLiquid)
+    mouseCurrent = { x: 0.5, y: 0.5 }
+    mouseTarget = { x: 0.5, y: 0.5 }
+    lensRafId = requestAnimationFrame(animateLens)
   }
   else {
-    cancelAnimationFrame(rafId)
+    if (lensRafId)
+      cancelAnimationFrame(lensRafId)
+    lensRafId = null
+    isGlassReady.value = false
   }
 })
 </script>
@@ -100,7 +110,7 @@ watch(isMenuOpen, (open) => {
         @click.prevent="() => { isMenuOpen = false; scrollTo(0) }"
       >
         <img
-          src="/assets/images/logo/logo-bm-white-origin.svg"
+          :src="logoSrc"
           alt="BM"
           class="nav__logo-img"
         >
@@ -121,40 +131,20 @@ watch(isMenuOpen, (open) => {
       </button>
     </nav>
 
-    <!-- Liquid Glass SVG filter — teleported to body to avoid scoped attribute issues -->
-    <Teleport to="body">
-      <svg style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none" aria-hidden="true">
-        <defs>
-          <!-- Liquid glass: smooth fluid refraction — large slow waves, not noisy -->
-          <filter id="liquid-glass-distort" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
-            <feTurbulence type="turbulence" baseFrequency="0.003 0.005" numOctaves="3" seed="31" result="waves" />
-            <feGaussianBlur in="waves" stdDeviation="3" result="smooth" />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="smooth"
-              scale="55"
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-        </defs>
-      </svg>
-    </Teleport>
-
     <!-- Overlay: backdrop + side panel -->
-    <Transition name="menu" :duration="{ enter: 1100, leave: 850 }">
+    <Transition name="menu" :duration="{ enter: 1100, leave: 850 }" @after-enter="onAfterEnter" @leave="onLeave">
       <div v-if="isMenuOpen" class="nav__overlay">
         <div class="nav__backdrop" @click="toggleMenu" />
-        <div ref="panelRef" class="nav__panel" :style="liquidStyle" @pointermove="handlePanelMove">
-          <!-- Layer 0: SVG displacement — organic edge blobs, follows mouse -->
-          <div class="nav__glass-refract" />
-          <!-- Layer 0.5: Mouse-following water lens — localized refraction hotspot -->
-          <div class="nav__glass-lens" />
-          <!-- Layer 1: Frosted blur + tinted overlay -->
-          <div class="nav__glass-frost" />
-          <!-- Layer 2: Specular highlights — glass depth -->
+        <div class="nav__panel" @pointermove="handlePanelMove">
+          <!-- Layer 1: Glass backdrop — blur + transparency -->
+          <div class="nav__glass-backdrop" :class="{ 'nav__glass--ready': isGlassReady }" />
+          <!-- Layer 2: Mouse-following liquid lens -->
+          <div ref="lensRef" class="nav__glass-lens" />
+          <!-- Layer 3: Specular light bands + shimmer -->
           <div class="nav__glass-specular" />
-          <!-- Layer 3: Content -->
+          <!-- Layer 4: Chromatic edge glow -->
+          <div class="nav__glass-edge" />
+          <!-- Layer 5: Content -->
           <div class="nav__panel-inner">
             <ul class="nav__menu" role="list">
               <li
@@ -237,11 +227,12 @@ watch(isMenuOpen, (open) => {
   border-bottom: none;
 }
 
+/* Nav bar height uses Fibonacci 55px — logo at 34px creates φ ratio (34/55 ≈ 0.618) */
 .nav__bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 34px;
+  height: clamp(42px, 3.4vw, 55px);
   position: relative;
   z-index: 2;
   isolation: isolate;
@@ -261,8 +252,9 @@ watch(isMenuOpen, (open) => {
   opacity: 0.3;
 }
 
+/* Logo height 34px (Fibonacci) — φ ratio with nav bar height (34/55 ≈ 0.618) */
 .nav__logo-img {
-  height: 28px;
+  height: clamp(30px, 2.1vw, 38px);
   width: auto;
   filter: brightness(1.1);
 }
@@ -285,8 +277,8 @@ watch(isMenuOpen, (open) => {
 
 .nav__trigger-box {
   position: relative;
-  width: 26px;
-  height: 20px;
+  width: 22px;
+  height: 18px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -303,7 +295,7 @@ watch(isMenuOpen, (open) => {
 
 /* ─ Asymmetric widths — visual rhythm ─ */
 .nav__trigger-bar:nth-child(1) {
-  width: 26px;
+  width: 22px;
   transition:
     transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
     width 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.06s,
@@ -312,7 +304,7 @@ watch(isMenuOpen, (open) => {
 }
 
 .nav__trigger-bar:nth-child(2) {
-  width: 16px;
+  width: 13px;
   transition:
     opacity 0.25s ease 0.12s,
     transform 0.25s ease 0.12s,
@@ -321,7 +313,7 @@ watch(isMenuOpen, (open) => {
 }
 
 .nav__trigger-bar:nth-child(3) {
-  width: 21px;
+  width: 17px;
   transition:
     transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
     width 0.4s cubic-bezier(0.22, 1, 0.36, 1),
@@ -331,15 +323,15 @@ watch(isMenuOpen, (open) => {
 
 /* Hover (closed): bars equalize + brighten */
 .nav__trigger:hover .nav__trigger-bar {
-  width: 26px;
+  width: 22px;
   background: #fff;
 }
 
 /* ─── Open: clean × — no glass, just bars ─── */
 .nav__trigger--open .nav__trigger-bar:nth-child(1) {
-  width: 24px;
+  width: 20px;
   background: rgba(255, 255, 255, 0.85);
-  transform: translateY(9px) rotate(45deg);
+  transform: translateY(8px) rotate(45deg);
   transition:
     transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.06s,
     width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
@@ -355,9 +347,9 @@ watch(isMenuOpen, (open) => {
 }
 
 .nav__trigger--open .nav__trigger-bar:nth-child(3) {
-  width: 24px;
+  width: 20px;
   background: rgba(255, 255, 255, 0.85);
-  transform: translateY(-9px) rotate(-45deg);
+  transform: translateY(-8px) rotate(-45deg);
   transition:
     transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.06s,
     width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
@@ -383,138 +375,132 @@ watch(isMenuOpen, (open) => {
   display: none;
 }
 
-/* Panel — liquid glass container */
+/* Panel — liquid glass container (transparent base lets glass layers shine) */
 .nav__panel {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
+  background: transparent;
 }
 
-/* Layer 0: Water-like refraction — organic blobs at edges, not a uniform ring */
-.nav__glass-refract {
-  position: absolute;
-  inset: -8px;
-  z-index: 0;
-  backdrop-filter: url(#liquid-glass-distort) blur(6px) saturate(160%) brightness(0.7);
-  -webkit-backdrop-filter: blur(6px) saturate(160%) brightness(0.7);
-  /* Scale from cursor origin creates parallax-like water bending */
-  transform-origin: var(--mx, 50%) var(--my, 50%);
-  transform: translate(var(--lx, 0px), var(--ly, 0px)) scale(1.04);
-  will-change: transform;
-  animation: refractBreathe 12s ease-in-out infinite;
-  /* Organic blobs at corners & edges — asymmetric, fluid shapes */
-  mask-image:
-    radial-gradient(ellipse 40% 34% at 94% 6%, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 42%, transparent 72%),
-    radial-gradient(ellipse 34% 30% at 4% 92%, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.3) 38%, transparent 68%),
-    radial-gradient(ellipse 22% 40% at 2% 38%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 35%, transparent 65%),
-    radial-gradient(ellipse 32% 26% at 90% 94%, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.25) 36%, transparent 64%),
-    radial-gradient(ellipse 26% 20% at 14% 5%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.15) 32%, transparent 58%),
-    radial-gradient(ellipse 18% 28% at 50% 98%, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.12) 30%, transparent 55%);
-  mask-composite: add;
-  -webkit-mask-image:
-    radial-gradient(ellipse 40% 34% at 94% 6%, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 42%, transparent 72%),
-    radial-gradient(ellipse 34% 30% at 4% 92%, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.3) 38%, transparent 68%),
-    radial-gradient(ellipse 22% 40% at 2% 38%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 35%, transparent 65%),
-    radial-gradient(ellipse 32% 26% at 90% 94%, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.25) 36%, transparent 64%),
-    radial-gradient(ellipse 26% 20% at 14% 5%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.15) 32%, transparent 58%),
-    radial-gradient(ellipse 18% 28% at 50% 98%, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.12) 30%, transparent 55%);
-  -webkit-mask-composite: source-over;
-}
+/* ─── Liquid Glass Layers (Apple-inspired) ─── */
 
-/* Layer 1: Dark opaque base — organic multi-blob coverage, ~80% dark */
-.nav__glass-frost {
+/* Layer 1: Glass backdrop — transparent blur */
+/* Mobile: solid fallback during clip-path anim, fades to blur via @after-enter */
+.nav__glass-backdrop {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: rgba(6, 6, 8, 0.92);
-  backdrop-filter: blur(2px) saturate(120%);
-  -webkit-backdrop-filter: blur(2px) saturate(120%);
-  /* Organic center mass — multiple overlapping blobs create irregular dark area */
-  mask-image:
-    radial-gradient(ellipse 72% 60% at 52% 46%, black 0%, black 35%, rgba(0, 0, 0, 0.7) 55%, rgba(0, 0, 0, 0.25) 74%, transparent 90%),
-    radial-gradient(ellipse 34% 28% at 80% 20%, black 0%, rgba(0, 0, 0, 0.55) 42%, transparent 78%),
-    radial-gradient(ellipse 30% 32% at 20% 80%, black 0%, rgba(0, 0, 0, 0.45) 38%, transparent 72%),
-    radial-gradient(ellipse 22% 36% at 88% 62%, black 0%, rgba(0, 0, 0, 0.35) 40%, transparent 70%),
-    radial-gradient(ellipse 28% 18% at 35% 12%, black 0%, rgba(0, 0, 0, 0.3) 35%, transparent 65%);
-  mask-composite: add;
-  -webkit-mask-image:
-    radial-gradient(ellipse 72% 60% at 52% 46%, black 0%, black 35%, rgba(0, 0, 0, 0.7) 55%, rgba(0, 0, 0, 0.25) 74%, transparent 90%),
-    radial-gradient(ellipse 34% 28% at 80% 20%, black 0%, rgba(0, 0, 0, 0.55) 42%, transparent 78%),
-    radial-gradient(ellipse 30% 32% at 20% 80%, black 0%, rgba(0, 0, 0, 0.45) 38%, transparent 72%),
-    radial-gradient(ellipse 22% 36% at 88% 62%, black 0%, rgba(0, 0, 0, 0.35) 40%, transparent 70%),
-    radial-gradient(ellipse 28% 18% at 35% 12%, black 0%, rgba(0, 0, 0, 0.3) 35%, transparent 65%);
-  -webkit-mask-composite: source-over;
+  background: rgba(10, 12, 18, 0.88);
+  transition: background 0.6s ease, backdrop-filter 0.6s ease;
 }
 
-/* Layer 0.5: Mouse-following water lens — localized refraction at cursor */
+/* After clip-path animation completes — enable blur safely */
+.nav__glass--ready {
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  background: rgba(10, 12, 18, 0.5);
+}
+
+/* Layer 2: Mouse-following liquid lens — chromatic aberration */
 .nav__glass-lens {
-  position: absolute;
-  width: clamp(180px, 22vw, 280px);
-  height: clamp(180px, 22vw, 280px);
-  border-radius: 50%;
-  z-index: 0;
-  left: var(--mx, 50%);
-  top: var(--my, 50%);
-  transform: translate(-50%, -50%);
-  will-change: left, top;
-  backdrop-filter: url(#liquid-glass-distort) blur(18px) saturate(200%) brightness(0.68) contrast(1.08);
-  -webkit-backdrop-filter: blur(18px) saturate(200%) brightness(0.68) contrast(1.08);
-  /* Soft circular falloff — strong center, feathered edges */
-  mask-image: radial-gradient(
-    circle,
-    rgba(0, 0, 0, 0.5) 0%,
-    rgba(0, 0, 0, 0.3) 22%,
-    rgba(0, 0, 0, 0.12) 45%,
-    rgba(0, 0, 0, 0.04) 62%,
-    transparent 78%
-  );
-  -webkit-mask-image: radial-gradient(
-    circle,
-    rgba(0, 0, 0, 0.5) 0%,
-    rgba(0, 0, 0, 0.3) 22%,
-    rgba(0, 0, 0, 0.12) 45%,
-    rgba(0, 0, 0, 0.04) 62%,
-    transparent 78%
-  );
-  pointer-events: none;
-}
-
-/* Caustic specular highlight inside lens */
-.nav__glass-lens::after {
-  content: '';
-  position: absolute;
-  inset: 18%;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.06) 0%,
-    rgba(255, 255, 255, 0.02) 35%,
-    transparent 65%
-  );
-}
-
-/* Layer 2: Bevel + specular — soft glass depth, no hard borders */
-.nav__glass-specular {
   position: absolute;
   inset: 0;
   z-index: 2;
+  --lx: 50%;
+  --ly: 50%;
   background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.02) 14%, transparent 35%),
-    radial-gradient(ellipse 60% 40% at 15% 8%, rgba(255, 255, 255, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 25% at 80% 90%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
-  /* Soft inset glow instead of hard border — fluid glass edge */
-  box-shadow:
-    inset 0 1px 12px rgba(255, 255, 255, 0.06),
-    inset 0 -1px 12px rgba(0, 0, 0, 0.15),
-    inset 1px 0 8px rgba(255, 255, 255, 0.03),
-    inset -1px 0 8px rgba(0, 0, 0, 0.08);
+    /* Blue offset — left of cursor */
+    radial-gradient(
+      ellipse 220px 220px at calc(var(--lx) - 3px) var(--ly),
+      rgba(0, 71, 255, 0.07) 0%,
+      transparent 70%
+    ),
+    /* Cyan offset — right of cursor */
+    radial-gradient(
+      ellipse 220px 220px at calc(var(--lx) + 3px) var(--ly),
+      rgba(0, 245, 255, 0.05) 0%,
+      transparent 70%
+    ),
+    /* Core highlight — bright center */
+    radial-gradient(
+      ellipse 180px 180px at var(--lx) var(--ly),
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(255, 255, 255, 0.02) 40%,
+      transparent 70%
+    );
+  mix-blend-mode: screen;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+/* Lens fades in after glass is ready */
+.nav__glass--ready ~ .nav__glass-lens {
+  opacity: 1;
+}
+
+/* Layer 3: Specular highlights — light bands for glass depth */
+.nav__glass-specular {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background:
+    /* Top edge — brightest specular rim */
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 8%, transparent 22%),
+    /* Left edge caustic */
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, transparent 14%),
+    /* Diagonal caustic band — gives 3D curvature feel */
+    linear-gradient(135deg, transparent 25%, rgba(255, 255, 255, 0.025) 38%, transparent 52%);
+  pointer-events: none;
+}
+
+/* Animated shimmer — slow-drifting light across glass surface */
+.nav__glass-specular::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 15%,
+    rgba(255, 255, 255, 0.035) 32%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.02) 72%,
+    transparent 90%
+  );
+  background-size: 250% 250%;
+  animation: liquidShimmer 10s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+/* Layer 4: Chromatic edge glow — refraction at glass borders */
+.nav__glass-edge {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  box-shadow:
+    /* Blue left edge — primary refraction color */
+    inset 1px 0 0 rgba(0, 71, 255, 0.2),
+    inset 2px 0 8px rgba(0, 71, 255, 0.06),
+    /* Cyan right edge — complementary refraction */
+    inset -1px 0 0 rgba(0, 245, 255, 0.1),
+    /* White top edge — specular rim light */
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 2px 12px rgba(255, 255, 255, 0.03),
+    /* Purple bottom edge — chromatic aberration */
+    inset 0 -1px 0 rgba(68, 0, 255, 0.08);
+  pointer-events: none;
+}
+
+@keyframes liquidShimmer {
+  0% { background-position: 100% 0%; }
+  100% { background-position: 0% 100%; }
 }
 
 .nav__panel-inner {
   position: relative;
-  z-index: 3;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -537,9 +523,10 @@ watch(isMenuOpen, (open) => {
   align-items: baseline;
   gap: clamp(0.8125rem, 1.5vw, 1.3125rem);
   padding: clamp(1rem, 1.8vh, 1.5rem) 0;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.5);
   text-decoration: none;
   perspective: 600px;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
   transition: color 0.5s cubic-bezier(0.45, 0, 0.55, 1);
 }
 
@@ -567,7 +554,7 @@ watch(isMenuOpen, (open) => {
 
 /* Dim siblings when one is hovered */
 .nav__menu:hover .nav__menu-link:not(:hover) {
-  color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.2);
 }
 
 .nav__menu-index {
@@ -720,51 +707,37 @@ watch(isMenuOpen, (open) => {
   to { transform: scaleX(1); }
 }
 
-/* Slow organic drift — refraction blobs subtly shift like light on water */
-@keyframes refractBreathe {
-  0% { mask-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
-  33% { mask-position: -4px 3px, 3px -2px, -2px 4px, 4px -3px, -3px 2px, 2px -1px; }
-  66% { mask-position: 3px -2px, -3px 4px, 4px -1px, -2px 3px, 2px -4px, -1px 3px; }
-  100% { mask-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
-}
-
 /* ─── Transition: Mobile (clip-path circle) — soft, no harsh flash ─── */
 .menu-enter-active {
   transition:
     clip-path 1.05s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-    filter 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .menu-leave-active {
   transition:
     clip-path 0.8s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.35s 0.25s ease,
-    filter 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity 0.35s 0.25s ease;
 }
 
 .menu-enter-from {
   clip-path: circle(0% at calc(100% - 3rem) 2rem);
   opacity: 0;
-  filter: brightness(1.15) blur(14px);
 }
 
 .menu-enter-to {
   clip-path: circle(150% at calc(100% - 3rem) 2rem);
   opacity: 1;
-  filter: brightness(1) blur(0);
 }
 
 .menu-leave-from {
   clip-path: circle(150% at calc(100% - 3rem) 2rem);
   opacity: 1;
-  filter: brightness(1) blur(0);
 }
 
 .menu-leave-to {
   clip-path: circle(0% at calc(100% - 3rem) 2rem);
   opacity: 0;
-  filter: brightness(1.15) blur(14px);
 }
 
 /* ─── Desktop: Side panel (40vw) + slide transition ─── */
@@ -778,58 +751,25 @@ watch(isMenuOpen, (open) => {
   }
 
   .nav__panel {
-    width: 40vw;
-    min-width: 420px;
-    max-width: 640px;
+    width: 30vw;
+    min-width: 360px;
+    max-width: 480px;
     flex-shrink: 0;
+    /* Transition always active — panel slides via transform class toggle */
+    transform: translateX(0);
+    transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Desktop: organic refraction blobs at left edge + corners */
-  .nav__glass-refract {
-    mask-image:
-      radial-gradient(ellipse 45% 30% at 0% 25%, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.3) 40%, transparent 70%),
-      radial-gradient(ellipse 35% 25% at 0% 72%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.2) 38%, transparent 65%),
-      radial-gradient(ellipse 30% 28% at 95% 10%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 35%, transparent 62%),
-      radial-gradient(ellipse 25% 22% at 92% 88%, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.18) 32%, transparent 58%),
-      radial-gradient(ellipse 20% 35% at 0% 50%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.15) 30%, transparent 55%);
-    mask-composite: add;
-    -webkit-mask-image:
-      radial-gradient(ellipse 45% 30% at 0% 25%, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.3) 40%, transparent 70%),
-      radial-gradient(ellipse 35% 25% at 0% 72%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.2) 38%, transparent 65%),
-      radial-gradient(ellipse 30% 28% at 95% 10%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 35%, transparent 62%),
-      radial-gradient(ellipse 25% 22% at 92% 88%, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.18) 32%, transparent 58%),
-      radial-gradient(ellipse 20% 35% at 0% 50%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.15) 30%, transparent 55%);
-    -webkit-mask-composite: source-over;
+  /* Desktop: always enable blur (no clip-path conflict) */
+  .nav__glass-backdrop {
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    background: rgba(10, 12, 18, 0.5);
   }
 
-  .nav__glass-frost {
-    background: rgba(6, 6, 8, 0.92);
-    /* Desktop: organic dark center with left-edge organic windows */
-    mask-image:
-      radial-gradient(ellipse 85% 65% at 55% 48%, black 0%, black 30%, rgba(0, 0, 0, 0.7) 50%, rgba(0, 0, 0, 0.3) 70%, transparent 88%),
-      radial-gradient(ellipse 30% 25% at 75% 18%, black 0%, rgba(0, 0, 0, 0.5) 40%, transparent 72%),
-      radial-gradient(ellipse 25% 30% at 65% 82%, black 0%, rgba(0, 0, 0, 0.4) 35%, transparent 68%);
-    mask-composite: add;
-    -webkit-mask-image:
-      radial-gradient(ellipse 85% 65% at 55% 48%, black 0%, black 30%, rgba(0, 0, 0, 0.7) 50%, rgba(0, 0, 0, 0.3) 70%, transparent 88%),
-      radial-gradient(ellipse 30% 25% at 75% 18%, black 0%, rgba(0, 0, 0, 0.5) 40%, transparent 72%),
-      radial-gradient(ellipse 25% 30% at 65% 82%, black 0%, rgba(0, 0, 0, 0.4) 35%, transparent 68%);
-    -webkit-mask-composite: source-over;
-  }
-
-  .nav__glass-specular {
-    /* Soft left-edge glow — no hard border line */
-    box-shadow:
-      inset 0 1px 12px rgba(255, 255, 255, 0.06),
-      inset 0 -1px 12px rgba(0, 0, 0, 0.15),
-      inset 3px 0 16px rgba(255, 255, 255, 0.04),
-      inset -1px 0 8px rgba(0, 0, 0, 0.08),
-      -20px 0 60px rgba(0, 0, 0, 0.25);
-  }
-
+  /* Lens visible immediately on desktop */
   .nav__glass-lens {
-    width: clamp(150px, 16vw, 220px);
-    height: clamp(150px, 16vw, 220px);
+    opacity: 1;
   }
 
   .nav__menu-word {
@@ -851,8 +791,8 @@ watch(isMenuOpen, (open) => {
     filter: none;
   }
 
-  /* Backdrop fade — soft, gradual */
-  .menu-enter-active .nav__backdrop {
+  /* Backdrop fade */
+  .nav__backdrop {
     transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
@@ -860,27 +800,16 @@ watch(isMenuOpen, (open) => {
     opacity: 0;
   }
 
-  .menu-leave-active .nav__backdrop {
-    transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
   .menu-leave-to .nav__backdrop {
     opacity: 0;
   }
 
-  /* Panel slide from right — smooth glide */
-  .menu-enter-active .nav__panel {
-    transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
+  /* Panel slide — enter from right */
   .menu-enter-from .nav__panel {
     transform: translateX(100%);
   }
 
-  .menu-leave-active .nav__panel {
-    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
+  /* Panel slide — leave to right */
   .menu-leave-to .nav__panel {
     transform: translateX(100%);
   }
@@ -931,10 +860,6 @@ watch(isMenuOpen, (open) => {
 
   .nav__trigger-bar {
     transition: none !important;
-  }
-
-  .nav__glass-refract {
-    animation: none;
   }
 }
 </style>

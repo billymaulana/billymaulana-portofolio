@@ -85,9 +85,11 @@ const distortionLines = [
               <textPath href="#scrollCircle">SCROLL · DISCOVER · SCROLL · DISCOVER ·&nbsp;</textPath>
             </text>
           </svg>
-          <svg class="hero__scroll-arrow" viewBox="0 0 10 26" fill="none" aria-hidden="true">
-            <line x1="5" y1="0" x2="5" y2="21" stroke="currentColor" stroke-width="1" stroke-linecap="round" />
-            <path d="M1.5 18L5 23.5 8.5 18" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+          <!-- Center: arrow icon -->
+          <svg class="hero__scroll-arrow" viewBox="0 0 12 28" fill="none" aria-hidden="true">
+            <circle cx="6" cy="3" r="1.5" fill="currentColor" opacity="0.7" />
+            <line x1="6" y1="6" x2="6" y2="22" stroke="currentColor" stroke-width="1" stroke-linecap="round" />
+            <path d="M2.5 19L6 24.5 9.5 19" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </div>
       </div>
@@ -112,14 +114,15 @@ const distortionLines = [
 }
 
 /* ─── Content — Golden section vertical position ─── */
+/* φ spacing: logo→name = 89px(Fib), name→subtitle = 34px(Fib), subtitle→meta = natural */
 .hero__content {
   position: relative;
   z-index: var(--z-content, 10);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  /* Push optical center above dead-center → golden section (~38.2% from top) */
-  padding-top: clamp(5.5rem, 10vh, 8rem);
+  /* padding-top clears nav + golden section offset: Fibonacci 89px base */
+  padding-top: clamp(5.5625rem, 10vh, 8.5rem);
   padding-bottom: clamp(3.4375rem, 8vh, 5.5rem);
 }
 
@@ -135,6 +138,7 @@ const distortionLines = [
 }
 
 /* ─── Subtitle — refined uppercase label ─── */
+/* φ gap: name → subtitle = Fibonacci 34px (2.125rem), scales to 21px (1.3125rem) on small screens */
 .hero__subtitle {
   font-size: var(--text-label);
   font-weight: 500;
@@ -142,7 +146,7 @@ const distortionLines = [
   letter-spacing: 0.2em;
   text-transform: uppercase;
   line-height: 1.618;
-  margin-top: clamp(1.3125rem, 2.5vh, 2.125rem);
+  margin-top: clamp(1.3125rem, 3vh, 2.125rem);
 }
 
 .hero__subtitle-sep {
@@ -175,35 +179,36 @@ const distortionLines = [
   line-height: 1.618;
 }
 
-/* ─── Scroll indicator — φ-based sizing ─── */
+/* ─── Scroll indicator — rotating ring + center dot & line ─── */
 .hero__scroll-ring {
   position: relative;
-  width: clamp(55px, 5vw, 72px);
-  height: clamp(55px, 5vw, 72px);
+  width: clamp(58px, 5.2vw, 76px);
+  height: clamp(58px, 5.2vw, 76px);
 }
 
 .hero__scroll-svg {
   width: 100%;
   height: 100%;
-  animation: scrollRotate 15s linear infinite;
+  animation: scrollRotate 18s linear infinite;
 }
 
 .hero__scroll-text {
-  font-size: 7px;
-  fill: rgba(255, 255, 255, 0.7);
-  letter-spacing: 0.24em;
+  font-size: 6.8px;
+  fill: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.28em;
   text-transform: uppercase;
   font-family: 'Satoshi', system-ui, sans-serif;
   font-weight: 500;
 }
 
+/* Center arrow — floats subtly inside the rotating ring */
 .hero__scroll-arrow {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 10px;
-  height: 22px;
-  color: rgba(255, 255, 255, 0.75);
+  width: 12px;
+  height: 24px;
+  color: rgba(255, 255, 255, 0.7);
   transform: translate(-50%, -50%);
   animation: scrollArrowFloat 2.4s ease-in-out infinite;
 }
@@ -215,7 +220,7 @@ const distortionLines = [
 
 @keyframes scrollArrowFloat {
   0%, 100% { opacity: 0.45; transform: translate(-50%, -55%); }
-  50% { opacity: 0.8; transform: translate(-50%, -45%); }
+  50% { opacity: 0.85; transform: translate(-50%, -45%); }
 }
 
 /* ─── Utilities ─── */
@@ -291,6 +296,10 @@ const distortionLines = [
   }
 }
 
+.hero__scroll {
+  transition: opacity 0.4s var(--ease-out-expo);
+}
+
 /* ─── Reduced motion ─── */
 @media (prefers-reduced-motion: reduce) {
   .hero__scroll-svg {
@@ -299,7 +308,7 @@ const distortionLines = [
 
   .hero__scroll-arrow {
     animation: none;
-    opacity: 0.35;
+    opacity: 0.4;
   }
 }
 </style>
