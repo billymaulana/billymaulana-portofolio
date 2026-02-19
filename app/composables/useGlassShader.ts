@@ -251,7 +251,33 @@ void main() {
   float meniscus = exp(-abs(d) * 0.8) * 0.2;
   color += vec3(meniscus);
 
-  // Alpha
+  // ─── Specular Highlights ───
+  // Fresnel: brighter at glancing angles (near SDF edge)
+  float fresnel = pow(1.0 - abs(dot(normalDir, vec2(0.0, 1.0))), 3.0);
+  float specEdge = fresnel * smoothstep(-20.0, -2.0, d) * 0.25;
+
+  // Top rim: bright line at very top of SDF
+  float topRim = exp(-(pixel.y - (center.y - halfSize.y)) * 0.1)
+               * smoothstep(-2.0, 0.0, d) * 0.2;
+
+  // Mouse highlight: subtle hotspot near cursor
+  float mouseHighlight = exp(-mouseDist * mouseDist / (80.0 * 80.0)) * 0.12;
+
+  // Combine specular
+  float specular = specEdge + topRim + mouseHighlight;
+
+  // ─── Noise Grain ───
+  float grain = hash21(uv * uResolution + uTime * 100.0) * 0.04;
+
+  // ─── Shimmer ───
+  float shimmer = sin(uv.x * 4.0 + uv.y * 2.0 + uTime * 0.5) * 0.5 + 0.5;
+  shimmer *= sin(uv.x * 2.0 - uv.y * 3.0 + uTime * 0.3) * 0.5 + 0.5;
+  shimmer *= smoothstep(-30.0, -5.0, d) * 0.03;
+
+  // Final composition
+  color += vec3(specular + grain + shimmer) * inside;
+
+  // Alpha (keep existing meniscus + inside logic)
   float alpha = max(inside, meniscus * 0.5) * uOpenProgress;
 
   fragColor = vec4(color, alpha);
