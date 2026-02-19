@@ -185,17 +185,51 @@ void main() {
   vec2 uvG = refractUV(uv, normalDir, 1.45, d); // Green: medium
   vec2 uvB = refractUV(uv, normalDir, 1.48, d); // Blue: most refraction
 
+  // ── Mouse refraction lens ──────────────────────────
+  vec2 mousePixel = uMouse * uResolution;
+  float mouseDist = length(pixel - mousePixel);
+
+  // Lens parameters
+  float lensRadius = 160.0;
+  float lensFactor = 1.0 - smoothstep(0.0, lensRadius, mouseDist);
+
+  // Clear zone — inner 40% of lens = higher transparency
+  float clearZone = 1.0 - smoothstep(0.0, lensRadius * 0.4, mouseDist);
+
+  // Refraction boost — 1.5x inside lens
+  float refractionBoost = 1.0 + lensFactor * 0.5;
+
+  // Chromatic boost — 2x at lens boundary (ring-shaped)
+  float chromaticBoost = smoothstep(lensRadius * 0.3, lensRadius * 0.6, mouseDist)
+                       * (1.0 - smoothstep(lensRadius * 0.6, lensRadius, mouseDist));
+
+  // Apply mouse lens boosts to refracted UVs
+  vec2 mouseDir = normalize(pixel - mousePixel + 0.001);
+  float lensRefract = lensFactor * 0.015;
+  uvR += mouseDir * lensRefract * refractionBoost;
+  uvG += mouseDir * lensRefract * refractionBoost * 0.8;
+  uvB += mouseDir * lensRefract * refractionBoost * 0.6;
+
+  // Extra chromatic split at lens boundary
+  uvR += mouseDir * chromaticBoost * 0.008;
+  uvB -= mouseDir * chromaticBoost * 0.008;
+
   // Sample background at each refracted UV
   float bgR = synthesizedBackground(uvR, uTime).r;
   float bgG = synthesizedBackground(uvG, uTime).g;
   float bgB = synthesizedBackground(uvB, uTime).b;
   vec3 refracted = vec3(bgR, bgG, bgB);
 
+  // Apply glassTintMod — reduce glass tint in clear zone
+  float glassTintMod = mix(1.0, 0.3, clearZone);
+  float baseTintMod = mix(0.1, 0.06, edgeFade) * glassTintMod;
+  vec3 glassMod = vec3(baseTintMod) * inside;
+
   // Background bleeds through at edges (refraction zones)
   float edgeReveal = edgeFade * 0.3; // 30% of background visible at edges
 
-  // Refracted background (chromatic) instead of plain bg
-  vec3 color = mix(glass, refracted, edgeReveal) * inside;
+  // Refracted background (chromatic) instead of plain bg — using mouse-modified glass
+  vec3 color = mix(glassMod, refracted, edgeReveal) * inside;
   // Add additional refraction visibility: slight refraction even in glass center
   color += refracted * inside * 0.15; // 15% of refracted bg always shows through
 
