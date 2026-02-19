@@ -20,6 +20,13 @@ const defaultGlassConfig: GlassConfig = {
   reducedMotion: false,
 }
 
+interface FBO {
+  texture: WebGLTexture
+  framebuffer: WebGLFramebuffer
+  width: number
+  height: number
+}
+
 // ─── GLSL Shaders (ES 3.00) ─────────────────────────
 
 const vertexShaderSource = /* glsl */ `#version 300 es
@@ -47,6 +54,7 @@ uniform vec2 uMouseVelocity;
 uniform float uOpenProgress;
 uniform float uScrollY;
 uniform int uIsDesktop;
+uniform sampler2D uWakeTexture;
 
 // ─── Hash & Noise helpers ────────────────────────────
 
@@ -185,6 +193,12 @@ void main() {
   vec2 uvG = refractUV(uv, normalDir, 1.45, d); // Green: medium
   vec2 uvB = refractUV(uv, normalDir, 1.48, d); // Blue: most refraction
 
+  // ── Wake displacement (water ripples) ──────────────
+  float wake = texture(uWakeTexture, uv).r;
+  uvR += normalDir * wake * 0.012;
+  uvG += normalDir * wake * 0.01;
+  uvB += normalDir * wake * 0.008;
+
   // ── Mouse refraction lens ──────────────────────────
   vec2 mousePixel = uMouse * uResolution;
   float mouseDist = length(pixel - mousePixel);
@@ -244,6 +258,46 @@ void main() {
 }
 `
 
+// ─── Wake Update Shader (wave equation propagation) ──
+
+const wakeFragmentShaderSource = /* glsl */ `#version 300 es
+precision highp float;
+
+in vec2 vUv;
+out vec4 fragColor;
+
+uniform sampler2D uPrevState;
+uniform vec2 uTexelSize;
+uniform vec2 uMousePos;
+uniform float uMouseSpeed;
+uniform float uDamping;
+
+void main() {
+  vec2 state = texture(uPrevState, vUv).rg;
+  float height = state.r;
+  float velocity = state.g;
+
+  // Sample neighbors for wave equation (Laplacian)
+  float left   = texture(uPrevState, vUv - vec2(uTexelSize.x, 0.0)).r;
+  float right  = texture(uPrevState, vUv + vec2(uTexelSize.x, 0.0)).r;
+  float top    = texture(uPrevState, vUv + vec2(0.0, uTexelSize.y)).r;
+  float bottom = texture(uPrevState, vUv - vec2(0.0, uTexelSize.y)).r;
+
+  // Wave equation: acceleration from neighbors
+  float accel = (left + right + top + bottom) * 0.25 - height;
+  velocity += accel * 2.0;
+  velocity *= uDamping;
+  height += velocity;
+
+  // Add ripple at mouse position
+  float mouseD = length(vUv - uMousePos);
+  float ripple = exp(-mouseD * mouseD * 800.0) * uMouseSpeed * 0.3;
+  height += ripple;
+
+  fragColor = vec4(height, velocity, 0.0, 1.0);
+}
+`
+
 // ─── Composable ──────────────────────────────────────
 
 export function useGlassShader(config: Partial<GlassConfig> = {}) {
@@ -260,7 +314,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
   let vao: WebGLVertexArrayObject | null = null
   let vertexBuffer: WebGLBuffer | null = null
 
-  // Uniform locations
+  // Uniform locations (main shader)
   let uResolution: WebGLUniformLocation | null = null
   let uTime: WebGLUniformLocation | null = null
   let uMouse: WebGLUniformLocation | null = null
@@ -268,6 +322,13 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
   let uOpenProgress: WebGLUniformLocation | null = null
   let uScrollY: WebGLUniformLocation | null = null
   let uIsDesktop: WebGLUniformLocation | null = null
+  let uWakeTexture: WebGLUniformLocation | null = null
+
+  // Wake system (displacement ripples via ping-pong FBOs)
+  let wakeFBO_A: FBO | null = null
+  let wakeFBO_B: FBO | null = null
+  let wakeProgram: WebGLProgram | null = null
+  let wakeUniforms: Record<string, WebGLUniformLocation | null> = {}
 
   // Mutable state from external calls
   let mouseX = 0
@@ -293,6 +354,58 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
       return null
     }
     return shader
+  }
+
+  function createProgramFromSource(vertSource: string, fragSource: string): WebGLProgram | null {
+    const vs = compileShader(gl!.VERTEX_SHADER, vertSource)
+    const fs = compileShader(gl!.FRAGMENT_SHADER, fragSource)
+    if (!vs || !fs)
+      return null
+
+    const prog = gl!.createProgram()
+    if (!prog)
+      return null
+
+    gl!.attachShader(prog, vs)
+    gl!.attachShader(prog, fs)
+    gl!.bindAttribLocation(prog, 0, 'aPosition')
+    gl!.linkProgram(prog)
+
+    if (!gl!.getProgramParameter(prog, gl!.LINK_STATUS)) {
+      console.error('[glass] Program link error:', gl!.getProgramInfoLog(prog))
+      gl!.deleteProgram(prog)
+      return null
+    }
+
+    gl!.deleteShader(vs)
+    gl!.deleteShader(fs)
+    return prog
+  }
+
+  function getUniforms(prog: WebGLProgram, names: string[]): Record<string, WebGLUniformLocation | null> {
+    const result: Record<string, WebGLUniformLocation | null> = {}
+    for (const name of names) {
+      result[name] = gl!.getUniformLocation(prog, name)
+    }
+    return result
+  }
+
+  function createFBO(w: number, h: number): FBO | null {
+    if (!gl)
+      return null
+    const texture = gl.createTexture()!
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, w, h, 0, gl.RG, gl.HALF_FLOAT, null)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+
+    const framebuffer = gl.createFramebuffer()!
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    return { texture, framebuffer, width: w, height: h }
   }
 
   function createShaderProgram(): boolean {
@@ -329,6 +442,7 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     uOpenProgress = gl!.getUniformLocation(program, 'uOpenProgress')
     uScrollY = gl!.getUniformLocation(program, 'uScrollY')
     uIsDesktop = gl!.getUniformLocation(program, 'uIsDesktop')
+    uWakeTexture = gl!.getUniformLocation(program, 'uWakeTexture')
 
     return true
   }
@@ -377,6 +491,36 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     if (!gl || !program || !canvas)
       return
 
+    const elapsed = cfg.reducedMotion ? 0 : (performance.now() - startTime) / 1000
+
+    handleResize()
+
+    // ── Pass 1: Update wake (write to FBO_B from FBO_A) ──
+    if (wakeProgram && wakeFBO_A && wakeFBO_B) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, wakeFBO_B.framebuffer)
+      gl.viewport(0, 0, wakeFBO_B.width, wakeFBO_B.height)
+
+      gl.useProgram(wakeProgram)
+      gl.activeTexture(gl.TEXTURE0)
+      gl.bindTexture(gl.TEXTURE_2D, wakeFBO_A.texture)
+      gl.uniform1i(wakeUniforms.uPrevState!, 0)
+      gl.uniform2f(wakeUniforms.uTexelSize!, 1.0 / wakeFBO_A.width, 1.0 / wakeFBO_A.height)
+      gl.uniform2f(wakeUniforms.uMousePos!, mouseX, mouseY)
+      gl.uniform1f(wakeUniforms.uMouseSpeed!, Math.sqrt(mouseVX * mouseVX + mouseVY * mouseVY) * 50)
+      gl.uniform1f(wakeUniforms.uDamping!, 0.98)
+
+      gl.bindVertexArray(vao)
+      gl.drawArrays(gl.TRIANGLES, 0, 6)
+      gl.bindVertexArray(null)
+
+      // Swap FBOs (ping-pong)
+      const temp = wakeFBO_A
+      wakeFBO_A = wakeFBO_B
+      wakeFBO_B = temp
+    }
+
+    // ── Pass 2: Main glass render (to screen) ──
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
     gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT)
@@ -384,7 +528,6 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     gl.useProgram(program)
 
     // Set uniforms
-    const elapsed = cfg.reducedMotion ? 0 : (performance.now() - startTime) / 1000
     gl.uniform2f(uResolution, gl.drawingBufferWidth, gl.drawingBufferHeight)
     gl.uniform1f(uTime, elapsed)
     gl.uniform2f(uMouse, mouseX, mouseY)
@@ -392,6 +535,13 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     gl.uniform1f(uOpenProgress, openProgress)
     gl.uniform1f(uScrollY, 0)
     gl.uniform1i(uIsDesktop, cachedInnerWidth >= 1024 ? 1 : 0)
+
+    // Bind wake texture for main shader
+    if (wakeFBO_A) {
+      gl.activeTexture(gl.TEXTURE0)
+      gl.bindTexture(gl.TEXTURE_2D, wakeFBO_A.texture)
+      gl.uniform1i(uWakeTexture, 0)
+    }
 
     gl.bindVertexArray(vao)
     gl.drawArrays(gl.TRIANGLES, 0, 6)
@@ -413,6 +563,20 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width
       canvas.height = height
+
+      // Recreate wake FBOs at new half resolution
+      const newWakeW = Math.floor(width / 2)
+      const newWakeH = Math.floor(height / 2)
+      if (wakeFBO_A && (wakeFBO_A.width !== newWakeW || wakeFBO_A.height !== newWakeH)) {
+        gl.deleteTexture(wakeFBO_A.texture)
+        gl.deleteFramebuffer(wakeFBO_A.framebuffer)
+        if (wakeFBO_B) {
+          gl.deleteTexture(wakeFBO_B.texture)
+          gl.deleteFramebuffer(wakeFBO_B.framebuffer)
+        }
+        wakeFBO_A = createFBO(newWakeW, newWakeH)
+        wakeFBO_B = createFBO(newWakeW, newWakeH)
+      }
     }
   }
 
@@ -445,7 +609,26 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
     if (!createQuadVAO())
       return false
 
+    // Create wake program (wave equation propagation)
+    wakeProgram = createProgramFromSource(vertexShaderSource, wakeFragmentShaderSource)
+    if (wakeProgram) {
+      wakeUniforms = getUniforms(wakeProgram, [
+        'uPrevState',
+        'uTexelSize',
+        'uMousePos',
+        'uMouseSpeed',
+        'uDamping',
+      ])
+    }
+
     handleResize()
+
+    // Create wake FBOs at half resolution
+    const wakeW = Math.floor(canvas.width / 2)
+    const wakeH = Math.floor(canvas.height / 2)
+    wakeFBO_A = createFBO(wakeW, wakeH)
+    wakeFBO_B = createFBO(wakeW, wakeH)
+
     return true
   }
 
@@ -478,6 +661,16 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
   function destroy() {
     stop()
     if (gl) {
+      if (wakeFBO_A) {
+        gl.deleteTexture(wakeFBO_A.texture)
+        gl.deleteFramebuffer(wakeFBO_A.framebuffer)
+      }
+      if (wakeFBO_B) {
+        gl.deleteTexture(wakeFBO_B.texture)
+        gl.deleteFramebuffer(wakeFBO_B.framebuffer)
+      }
+      if (wakeProgram)
+        gl.deleteProgram(wakeProgram)
       if (vao)
         gl.deleteVertexArray(vao)
       if (vertexBuffer)
@@ -485,6 +678,10 @@ export function useGlassShader(config: Partial<GlassConfig> = {}) {
       if (program)
         gl.deleteProgram(program)
     }
+    wakeFBO_A = null
+    wakeFBO_B = null
+    wakeProgram = null
+    wakeUniforms = {}
     vao = null
     vertexBuffer = null
     program = null
