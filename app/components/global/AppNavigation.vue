@@ -10,11 +10,16 @@ const isHidden = ref(false)
 const isMenuOpen = ref(false)
 let lastScrollY = 0
 
-const lensRef = ref<HTMLElement | null>(null)
-const isGlassReady = ref(false)
+const panelRef = ref<HTMLElement | null>(null)
+const glassCanvasRef = ref<HTMLCanvasElement | null>(null)
+const hasWebGL = ref(true)
+
+const glassShader = useGlassShader({
+  reducedMotion: false,
+})
+
+// Mouse state
 let mouseTarget = { x: 0.5, y: 0.5 }
-let mouseCurrent = { x: 0.5, y: 0.5 }
-let lensRafId: number | null = null
 
 const navItems = [
   { label: 'About', href: '#about' },
@@ -31,34 +36,23 @@ function toggleMenu() {
   isMenuOpen.value = !isMenuOpen.value
 }
 
-function onAfterEnter() {
-  isGlassReady.value = true
-}
-
-function onLeave() {
-  isGlassReady.value = false
-}
-
 function handlePanelMove(e: PointerEvent) {
   const el = e.currentTarget as HTMLElement
   const rect = el.getBoundingClientRect()
-  mouseTarget.x = (e.clientX - rect.left) / rect.width
-  mouseTarget.y = (e.clientY - rect.top) / rect.height
-}
-
-function animateLens() {
-  mouseCurrent.x += (mouseTarget.x - mouseCurrent.x) * 0.06
-  mouseCurrent.y += (mouseTarget.y - mouseCurrent.y) * 0.06
-
-  if (lensRef.value) {
-    lensRef.value.style.setProperty('--lx', `${mouseCurrent.x * 100}%`)
-    lensRef.value.style.setProperty('--ly', `${mouseCurrent.y * 100}%`)
-  }
-
-  lensRafId = requestAnimationFrame(animateLens)
+  const x = (e.clientX - rect.left) / rect.width
+  const y = (e.clientY - rect.top) / rect.height
+  const dx = x - mouseTarget.x
+  const dy = y - mouseTarget.y
+  mouseTarget.x = x
+  mouseTarget.y = y
+  glassShader.setMouse(x, y, dx, dy)
 }
 
 onMounted(() => {
+  if (glassCanvasRef.value) {
+    hasWebGL.value = glassShader.init(glassCanvasRef.value)
+  }
+
   function onScroll() {
     const currentY = window.scrollY
     isScrolled.value = currentY > 50
@@ -69,8 +63,7 @@ onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
   onUnmounted(() => {
     window.removeEventListener('scroll', onScroll)
-    if (lensRafId)
-      cancelAnimationFrame(lensRafId)
+    glassShader.destroy()
   })
 })
 
@@ -80,15 +73,16 @@ watch(isMenuOpen, (open) => {
   document.documentElement.classList.toggle('menu-open', open)
 
   if (open) {
-    mouseCurrent = { x: 0.5, y: 0.5 }
     mouseTarget = { x: 0.5, y: 0.5 }
-    lensRafId = requestAnimationFrame(animateLens)
+    if (hasWebGL.value) {
+      glassShader.setOpenProgress(1)
+      glassShader.resize()
+      glassShader.start()
+    }
   }
   else {
-    if (lensRafId)
-      cancelAnimationFrame(lensRafId)
-    lensRafId = null
-    isGlassReady.value = false
+    glassShader.setOpenProgress(0)
+    glassShader.stop()
   }
 })
 </script>
@@ -132,19 +126,19 @@ watch(isMenuOpen, (open) => {
     </nav>
 
     <!-- Overlay: backdrop + side panel -->
-    <Transition name="menu" :duration="{ enter: 1100, leave: 850 }" @after-enter="onAfterEnter" @leave="onLeave">
+    <Transition name="menu" :duration="{ enter: 1100, leave: 850 }">
       <div v-if="isMenuOpen" class="nav__overlay">
         <div class="nav__backdrop" @click="toggleMenu" />
-        <div class="nav__panel" @pointermove="handlePanelMove">
-          <!-- Layer 1: Glass backdrop — blur + transparency -->
-          <div class="nav__glass-backdrop" :class="{ 'nav__glass--ready': isGlassReady }" />
-          <!-- Layer 2: Mouse-following liquid lens -->
-          <div ref="lensRef" class="nav__glass-lens" />
-          <!-- Layer 3: Specular light bands + shimmer -->
-          <div class="nav__glass-specular" />
-          <!-- Layer 4: Chromatic edge glow -->
-          <div class="nav__glass-edge" />
-          <!-- Layer 5: Content -->
+        <div ref="panelRef" class="nav__panel" @pointermove="handlePanelMove">
+          <!-- WebGL Glass (replaces 4 CSS layers) -->
+          <canvas
+            v-if="hasWebGL"
+            ref="glassCanvasRef"
+            class="nav__glass-canvas"
+          />
+          <!-- CSS fallback (shown only when WebGL unavailable) -->
+          <div v-else class="nav__glass-body" />
+          <!-- Content -->
           <div class="nav__panel-inner">
             <ul class="nav__menu" role="list">
               <li
@@ -375,7 +369,7 @@ watch(isMenuOpen, (open) => {
   display: none;
 }
 
-/* Panel — liquid glass container (transparent base lets glass layers shine) */
+/* Panel — liquid glass container */
 .nav__panel {
   position: relative;
   width: 100%;
@@ -384,123 +378,30 @@ watch(isMenuOpen, (open) => {
   background: transparent;
 }
 
-/* ─── Liquid Glass Layers (Apple-inspired) ─── */
-
-/* Layer 1: Glass backdrop — transparent blur */
-/* Mobile: solid fallback during clip-path anim, fades to blur via @after-enter */
-.nav__glass-backdrop {
+/* ─── WebGL Glass Canvas ─── */
+.nav__glass-canvas {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: rgba(10, 12, 18, 0.88);
-  transition: background 0.6s ease, backdrop-filter 0.6s ease;
-}
-
-/* After clip-path animation completes — enable blur safely */
-.nav__glass--ready {
-  backdrop-filter: blur(20px) saturate(1.6);
-  -webkit-backdrop-filter: blur(20px) saturate(1.6);
-  background: rgba(10, 12, 18, 0.5);
-}
-
-/* Layer 2: Mouse-following liquid lens — chromatic aberration */
-.nav__glass-lens {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  --lx: 50%;
-  --ly: 50%;
-  background:
-    /* Blue offset — left of cursor */
-    radial-gradient(
-      ellipse 220px 220px at calc(var(--lx) - 3px) var(--ly),
-      rgba(0, 71, 255, 0.07) 0%,
-      transparent 70%
-    ),
-    /* Cyan offset — right of cursor */
-    radial-gradient(
-      ellipse 220px 220px at calc(var(--lx) + 3px) var(--ly),
-      rgba(0, 245, 255, 0.05) 0%,
-      transparent 70%
-    ),
-    /* Core highlight — bright center */
-    radial-gradient(
-      ellipse 180px 180px at var(--lx) var(--ly),
-      rgba(255, 255, 255, 0.09) 0%,
-      rgba(255, 255, 255, 0.02) 40%,
-      transparent 70%
-    );
-  mix-blend-mode: screen;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-
-/* Lens fades in after glass is ready */
-.nav__glass--ready ~ .nav__glass-lens {
-  opacity: 1;
-}
-
-/* Layer 3: Specular highlights — light bands for glass depth */
-.nav__glass-specular {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  background:
-    /* Top edge — brightest specular rim */
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 8%, transparent 22%),
-    /* Left edge caustic */
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, transparent 14%),
-    /* Diagonal caustic band — gives 3D curvature feel */
-    linear-gradient(135deg, transparent 25%, rgba(255, 255, 255, 0.025) 38%, transparent 52%);
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 
-/* Animated shimmer — slow-drifting light across glass surface */
-.nav__glass-specular::after {
-  content: '';
+/* CSS fallback — shown only when WebGL2 is unavailable */
+.nav__glass-body {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    transparent 15%,
-    rgba(255, 255, 255, 0.035) 32%,
-    transparent 50%,
-    rgba(255, 255, 255, 0.02) 72%,
-    transparent 90%
-  );
-  background-size: 250% 250%;
-  animation: liquidShimmer 10s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-
-/* Layer 4: Chromatic edge glow — refraction at glass borders */
-.nav__glass-edge {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  box-shadow:
-    /* Blue left edge — primary refraction color */
-    inset 1px 0 0 rgba(0, 71, 255, 0.2),
-    inset 2px 0 8px rgba(0, 71, 255, 0.06),
-    /* Cyan right edge — complementary refraction */
-    inset -1px 0 0 rgba(0, 245, 255, 0.1),
-    /* White top edge — specular rim light */
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 2px 12px rgba(255, 255, 255, 0.03),
-    /* Purple bottom edge — chromatic aberration */
-    inset 0 -1px 0 rgba(68, 0, 255, 0.08);
-  pointer-events: none;
-}
-
-@keyframes liquidShimmer {
-  0% { background-position: 100% 0%; }
-  100% { background-position: 0% 100%; }
+  z-index: 1;
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .nav__panel-inner {
   position: relative;
-  z-index: 5;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -740,7 +641,7 @@ watch(isMenuOpen, (open) => {
   opacity: 0;
 }
 
-/* ─── Desktop: Side panel (40vw) + slide transition ─── */
+/* ─── Desktop: Side panel + slide transition ─── */
 @media (min-width: 1024px) {
   .nav__backdrop {
     display: block;
@@ -755,21 +656,16 @@ watch(isMenuOpen, (open) => {
     min-width: 360px;
     max-width: 480px;
     flex-shrink: 0;
-    /* Transition always active — panel slides via transform class toggle */
     transform: translateX(0);
     transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Desktop: always enable blur (no clip-path conflict) */
-  .nav__glass-backdrop {
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    background: rgba(10, 12, 18, 0.5);
-  }
-
-  /* Lens visible immediately on desktop */
-  .nav__glass-lens {
-    opacity: 1;
+  /* Desktop: soft organic edge via large border-radius on the panel.
+     Gooey SVG filter removed — it destroys gradient details with
+     its 10px Gaussian blur. The organic border is achieved via
+     border-radius + overflow: hidden on the panel container. */
+  .nav__panel {
+    border-radius: 24px 0 0 24px;
   }
 
   .nav__menu-word {
@@ -815,14 +711,13 @@ watch(isMenuOpen, (open) => {
   }
 }
 
-/* ─── Mobile ─── */
 @media (max-width: 480px) {
   .nav__menu-word {
     font-size: clamp(1.75rem, 9vw, 3rem);
   }
 }
 
-/* ─── Reduced motion ─── */
+/* ─── Reduced motion — disable WebGL animations, simplify transitions ─── */
 @media (prefers-reduced-motion: reduce) {
   .nav__menu-item {
     animation: none;
