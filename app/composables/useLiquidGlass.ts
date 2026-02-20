@@ -11,8 +11,8 @@ interface LiquidGlassState {
 }
 
 export function useLiquidGlass(): LiquidGlassState {
-  const BASE_SCALE = 77
-  const MAX_SCALE = 180
+  const BASE_SCALE = 10
+  const MAX_SCALE = 30
   const LERP_SPEED = 0.06
 
   const displacementScale = ref(BASE_SCALE)

@@ -2,13 +2,13 @@
 const props = withDefaults(defineProps<{
   displacementScale?: number
 }>(), {
-  displacementScale: 77,
+  displacementScale: 10,
 })
 
 // Compute R/G/B scales for chromatic aberration (~10% spread)
-const scaleR = computed(() => Math.round(props.displacementScale * 0.91))
+const scaleR = computed(() => Math.round(props.displacementScale * 0.97))
 const scaleG = computed(() => props.displacementScale)
-const scaleB = computed(() => Math.round(props.displacementScale * 1.09))
+const scaleB = computed(() => Math.round(props.displacementScale * 1.03))
 </script>
 
 <template>
@@ -34,26 +34,12 @@ const scaleB = computed(() => Math.round(props.displacementScale * 1.09))
         <!-- 2. Smooth the noise for displacement -->
         <feGaussianBlur in="noise" stdDeviation="1.5" result="smoothNoise" />
 
-        <!-- 3. Edge-concentrated displacement image -->
-        <!-- Red channel = X displacement, Green channel = Y displacement -->
-        <!-- Neutral center (128,128) = no displacement; edges ramp to 0 or 255 -->
-        <feImage
-          href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cdefs%3E%3ClinearGradient id='lx' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0%25' stop-color='%23FF0000'/%3E%3Cstop offset='15%25' stop-color='%23800000'/%3E%3Cstop offset='50%25' stop-color='%23808000'/%3E%3Cstop offset='85%25' stop-color='%23008000'/%3E%3Cstop offset='100%25' stop-color='%2300FF00'/%3E%3C/linearGradient%3E%3ClinearGradient id='ly' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%230000FF'/%3E%3Cstop offset='15%25' stop-color='%23000080'/%3E%3Cstop offset='50%25' stop-color='%23000080'/%3E%3Cstop offset='85%25' stop-color='%23000080'/%3E%3Cstop offset='100%25' stop-color='%230000FF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23lx)'/%3E%3Crect width='200' height='200' fill='url(%23ly)' style='mix-blend-mode:screen'/%3E%3Crect x='30' y='30' width='140' height='140' rx='20' fill='%23808080' filter='blur(15px)'/%3E%3C/svg%3E"
-          x="0%"
-          y="0%"
-          width="100%"
-          height="100%"
-          preserveAspectRatio="none"
-          result="edgeMap"
-        />
+        <!-- 3. Use smoothed noise directly as displacement source (no edge map = no rectangular artifacts) -->
 
-        <!-- 4. Merge organic noise with edge map -->
-        <feComposite in="smoothNoise" in2="edgeMap" operator="arithmetic" k1="0.5" k2="0.5" k3="0" k4="0" result="mergedDisplacement" />
-
-        <!-- 5a. Red channel displacement -->
+        <!-- 4a. Red channel displacement -->
         <feDisplacementMap
           in="SourceGraphic"
-          in2="mergedDisplacement"
+          in2="smoothNoise"
           :scale="scaleR"
           xChannelSelector="R"
           yChannelSelector="G"
@@ -64,7 +50,7 @@ const scaleB = computed(() => Math.round(props.displacementScale * 1.09))
         <!-- 5b. Green channel displacement -->
         <feDisplacementMap
           in="SourceGraphic"
-          in2="mergedDisplacement"
+          in2="smoothNoise"
           :scale="scaleG"
           xChannelSelector="R"
           yChannelSelector="G"
@@ -75,7 +61,7 @@ const scaleB = computed(() => Math.round(props.displacementScale * 1.09))
         <!-- 5c. Blue channel displacement -->
         <feDisplacementMap
           in="SourceGraphic"
-          in2="mergedDisplacement"
+          in2="smoothNoise"
           :scale="scaleB"
           xChannelSelector="R"
           yChannelSelector="G"

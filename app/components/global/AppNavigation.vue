@@ -56,11 +56,10 @@ function handlePanelMove(e: PointerEvent) {
   flowShader.setMouse(x, y, dx, dy)
 }
 
-onMounted(() => {
-  if (flowCanvasRef.value) {
-    hasWebGL.value = flowShader.init(flowCanvasRef.value)
-  }
+// Track whether flow shader has been initialized
+let flowInitialized = false
 
+onMounted(() => {
   // Test if backdrop-filter: url(#test) works
   const testEl = document.createElement('div')
   testEl.style.backdropFilter = 'url(#nonexistent)'
@@ -80,13 +79,22 @@ onMounted(() => {
   })
 })
 
-watch(isMenuOpen, (open) => {
+watch(isMenuOpen, async (open) => {
   document.documentElement.style.overflow = open ? 'hidden' : ''
   document.body.style.overflow = open ? 'hidden' : ''
   document.documentElement.classList.toggle('menu-open', open)
 
   if (open) {
+    // Wait for v-if canvas to enter DOM
+    await nextTick()
     mouseTarget = { x: 0.5, y: 0.5 }
+
+    // Init flow shader on first open (canvas is inside v-if)
+    if (!flowInitialized && flowCanvasRef.value) {
+      hasWebGL.value = flowShader.init(flowCanvasRef.value)
+      flowInitialized = hasWebGL.value
+    }
+
     if (hasWebGL.value) {
       flowShader.setOpenProgress(1)
       flowShader.resize()
@@ -413,8 +421,8 @@ watch(isMenuOpen, (open) => {
   -webkit-backdrop-filter: url(#liquid-glass) blur(1px) saturate(1.2);
   /* Near-clear glass: very subtle white tint */
   background: rgba(255, 255, 255, 0.04);
-  /* Subtle border — no heavy glow */
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* No visible border — let the glass speak for itself */
+  border: none;
   overflow: hidden;
 }
 
