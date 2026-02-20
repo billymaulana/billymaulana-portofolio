@@ -482,17 +482,18 @@ watch(isMenuOpen, async (open) => {
 .nav__overlay {
   position: fixed;
   inset: 0;
-  /* Above nav (100) but below cursor (200) — teleported to body */
   z-index: 150;
   overflow: hidden;
+  /* clip-path is applied via inline style from GSAP — no CSS transition needed */
 }
 
-/* Backdrop — hidden on mobile, covers full overlay on desktop */
+/* ─── Backdrop ─── */
+/* Hidden on mobile, covers left side on desktop */
 .nav__backdrop {
   display: none;
 }
 
-/* Panel — liquid glass container */
+/* ─── Panel — liquid glass container ─── */
 .nav__panel {
   position: relative;
   width: 100%;
@@ -612,6 +613,16 @@ watch(isMenuOpen, async (open) => {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* ─── Ink Canvas (WebGL menu text distortion) ─── */
+.nav__ink-canvas {
+  position: relative;
+  width: 100%;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.5s var(--ease-out-expo);
+}
+
+/* ─── Panel Inner ─── */
 .nav__panel-inner {
   position: relative;
   z-index: 2;
@@ -621,7 +632,7 @@ watch(isMenuOpen, async (open) => {
   padding: clamp(5.5rem, 11vh, 8rem) clamp(2.125rem, 5vw, 3.4375rem) clamp(2.125rem, 4vh, 3.4375rem);
 }
 
-/* ─── Menu links ─── */
+/* ─── Menu links (base / mobile) ─── */
 .nav__menu {
   list-style: none;
 }
@@ -639,7 +650,6 @@ watch(isMenuOpen, async (open) => {
   padding: clamp(1rem, 1.8vh, 1.5rem) 0;
   color: rgba(255, 255, 255, 0.5);
   text-decoration: none;
-  perspective: 600px;
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
   transition: color 0.5s cubic-bezier(0.45, 0, 0.55, 1);
 }
@@ -689,70 +699,13 @@ watch(isMenuOpen, async (open) => {
   opacity: 0.3;
 }
 
-/* ─── Cube flip text ─── */
-.nav__menu-word {
-  display: inline-flex;
+/* ─── Menu label ─── */
+.nav__menu-label {
   font-family: 'Clash Display', 'Satoshi', system-ui, sans-serif;
   font-size: clamp(2.5rem, 8vw, 5.5rem);
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.02em;
-  transform-origin: center bottom;
-  transition: transform 0.4s cubic-bezier(0.45, 0, 0.55, 1);
-}
-
-/* Subtle 3D tilt — makes the slide feel like a physical cube rotating */
-.nav__menu-link:hover .nav__menu-word {
-  transform: rotateX(4deg);
-}
-
-.nav__menu-char {
-  display: inline-block;
-  height: 1.15em;
-  overflow: hidden;
-}
-
-.nav__menu-char-inner {
-  display: flex;
-  flex-direction: column;
-  /* Symmetric easing — no "pause" when reversing mid-flip */
-  transition: transform 0.38s cubic-bezier(0.45, 0, 0.55, 1);
-  will-change: transform;
-}
-
-.nav__menu-char-face {
-  display: block;
-  height: 1.15em;
-  line-height: 1.15em;
-}
-
-/* Alt face — second face of the 2D cube, slides up on hover */
-.nav__menu-char-face--alt {
-  color: #fff;
-}
-
-/* 2D cube: smooth vertical slide to reveal alt face */
-.nav__menu-link:hover .nav__menu-char-inner {
-  transform: translateY(-1.15em);
-}
-
-.nav__menu-divider {
-  display: block;
-  width: 100%;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.06);
-  transition: background 0.5s cubic-bezier(0.45, 0, 0.55, 1), opacity 0.5s cubic-bezier(0.45, 0, 0.55, 1);
-  transform-origin: left;
-  animation: menuDividerIn 0.6s var(--ease-out-expo) both;
-  animation-delay: calc(var(--delay, 0.15s) + 0.1s);
-}
-
-.nav__menu-item:hover .nav__menu-divider {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.nav__menu:hover .nav__menu-item:not(:hover) .nav__menu-divider {
-  opacity: 0.4;
 }
 
 /* ─── Panel footer ─── */
@@ -833,55 +786,83 @@ watch(isMenuOpen, async (open) => {
   }
 }
 
-@keyframes menuDividerIn {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+/* ─── Desktop: Ink canvas visible, DOM menu sr-only ─── */
+@media (min-width: 768px) {
+  /* DOM menu is visually hidden — ink canvas handles visuals, links stay for a11y */
+  .nav__menu {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .nav__ink-canvas {
+    display: block;
+  }
 }
 
-/* ─── Transition: Mobile (clip-path circle) — soft, no harsh flash ─── */
-.menu-enter-active {
-  transition:
-    clip-path 1.05s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+/* ─── Mobile: DOM menu visible, ink canvas hidden ─── */
+@media (max-width: 767px) {
+  .nav__ink-canvas {
+    display: none;
+  }
+
+  .nav__menu {
+    list-style: none;
+  }
+
+  .nav__menu-item {
+    animation: menuItemIn 0.9s var(--ease-out-expo) both;
+    animation-delay: var(--delay);
+  }
+
+  .nav__menu-link {
+    display: flex;
+    align-items: baseline;
+    gap: clamp(0.8125rem, 1.5vw, 1.3125rem);
+    padding: clamp(1rem, 1.8vh, 1.5rem) 0;
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    transition: color 0.5s cubic-bezier(0.45, 0, 0.55, 1);
+  }
+
+  .nav__menu-link:hover {
+    color: #fff;
+  }
+
+  .nav__menu-index {
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.2);
+    letter-spacing: 0.15em;
+  }
+
+  .nav__menu-label {
+    font-family: 'Clash Display', 'Satoshi', system-ui, sans-serif;
+    font-size: clamp(2.5rem, 8vw, 5.5rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
 }
 
-.menu-leave-active {
-  transition:
-    clip-path 0.8s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.35s 0.25s ease;
-}
-
-.menu-enter-from {
-  clip-path: circle(0% at calc(100% - 3rem) 2rem);
-  opacity: 0;
-}
-
-.menu-enter-to {
-  clip-path: circle(150% at calc(100% - 3rem) 2rem);
-  opacity: 1;
-}
-
-.menu-leave-from {
-  clip-path: circle(150% at calc(100% - 3rem) 2rem);
-  opacity: 1;
-}
-
-.menu-leave-to {
-  clip-path: circle(0% at calc(100% - 3rem) 2rem);
-  opacity: 0;
-}
-
-/* ─── Desktop: Side panel + slide transition ─── */
+/* ─── Desktop: Side panel layout ─── */
 @media (min-width: 1024px) {
   .nav__backdrop {
     display: block;
     position: absolute;
     inset: 0;
     /* Stop before the glass panel so backdrop-filter sees raw page content */
-    right: clamp(360px, 30vw, 480px);
+    right: clamp(400px, 36vw, 540px);
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     cursor: pointer;
+    transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .nav__panel {
@@ -889,9 +870,9 @@ watch(isMenuOpen, async (open) => {
     top: 0;
     right: 0;
     bottom: 0;
-    width: 30vw;
-    min-width: 360px;
-    max-width: 480px;
+    width: 36vw;
+    min-width: 400px;
+    max-width: 540px;
     transform: translateX(0);
     transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
     /* clip-path reliably clips backdrop-filter at compositing level
@@ -904,51 +885,13 @@ watch(isMenuOpen, async (open) => {
     border-radius: 28px 0 0 28px;
   }
 
-  .nav__menu-word {
+  .nav__menu-label {
     font-size: clamp(2.125rem, 3.5vw, 3.5rem);
-  }
-
-  /* Override mobile clip-path — use panel slide instead */
-  .menu-enter-active,
-  .menu-leave-active {
-    transition: none;
-  }
-
-  .menu-enter-from,
-  .menu-enter-to,
-  .menu-leave-from,
-  .menu-leave-to {
-    clip-path: none;
-    opacity: 1;
-    filter: none;
-  }
-
-  /* Backdrop fade */
-  .nav__backdrop {
-    transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .menu-enter-from .nav__backdrop {
-    opacity: 0;
-  }
-
-  .menu-leave-to .nav__backdrop {
-    opacity: 0;
-  }
-
-  /* Panel slide — enter from right */
-  .menu-enter-from .nav__panel {
-    transform: translateX(100%);
-  }
-
-  /* Panel slide — leave to right */
-  .menu-leave-to .nav__panel {
-    transform: translateX(100%);
   }
 }
 
 @media (max-width: 480px) {
-  .nav__menu-word {
+  .nav__menu-label {
     font-size: clamp(1.75rem, 9vw, 3rem);
   }
 }
@@ -965,28 +908,8 @@ watch(isMenuOpen, async (open) => {
     opacity: 1;
   }
 
-  .menu-enter-active,
-  .menu-leave-active {
-    transition: opacity 0.3s;
-  }
-
-  .menu-enter-from,
-  .menu-leave-to {
-    clip-path: none;
-    opacity: 0;
-    filter: none;
-  }
-
   .nav__menu-link::after {
     transition: none;
-  }
-
-  .nav__menu-char-inner {
-    transition: none;
-  }
-
-  .nav__menu-char-face--alt {
-    display: none;
   }
 
   .nav__trigger-bar {
@@ -1004,6 +927,10 @@ watch(isMenuOpen, async (open) => {
   .nav__chromatic-text {
     text-shadow: none;
     -webkit-text-stroke: none;
+  }
+
+  .nav__ink-canvas {
+    transition: none;
   }
 }
 </style>
