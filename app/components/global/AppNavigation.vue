@@ -26,6 +26,9 @@ const { displacementScale, startCoupling, stopCoupling } = useLiquidGlass()
 // Check SVG filter support in backdrop-filter
 const supportsSvgFilter = ref(true)
 
+// Glass body visibility — controlled via JS to avoid white card flash during transitions
+const glassVisible = ref(false)
+
 // Mouse state
 let mouseTarget = { x: 0.5, y: 0.5 }
 
@@ -102,8 +105,16 @@ watch(isMenuOpen, async (open) => {
       // Start SVG-WebGL displacement coupling
       startCoupling(() => flowShader.getFlowIntensity())
     }
+
+    // Show glass body AFTER panel slide starts (prevents white card flash on open)
+    setTimeout(() => {
+      glassVisible.value = true
+    }, 200)
   }
   else {
+    // Hide glass body IMMEDIATELY before panel starts sliding (prevents static white card on close)
+    glassVisible.value = false
+
     flowShader.setOpenProgress(0)
     flowShader.stop()
     stopCoupling()
@@ -160,7 +171,10 @@ watch(isMenuOpen, async (open) => {
           <!-- Glass body: SVG filter + noise grain -->
           <div
             class="nav__glass-body"
-            :class="{ 'nav__glass-body--fallback': !supportsSvgFilter }"
+            :class="{
+              'nav__glass-body--fallback': !supportsSvgFilter,
+              'nav__glass-body--visible': glassVisible,
+            }"
           />
 
           <!-- WebGL Blue Flow Canvas (overlay, pointer-events: none) -->
@@ -168,6 +182,7 @@ watch(isMenuOpen, async (open) => {
             v-if="hasWebGL"
             ref="flowCanvasRef"
             class="nav__flow-canvas"
+            :class="{ 'nav__flow-canvas--visible': glassVisible }"
           />
 
           <!-- Content (z-index 2, above glass) -->
@@ -421,23 +436,16 @@ watch(isMenuOpen, async (open) => {
   -webkit-backdrop-filter: url(#liquid-glass) blur(1px) saturate(1.2);
   /* Near-clear glass: very subtle white tint */
   background: rgba(255, 255, 255, 0.04);
-  /* No visible border — let the glass speak for itself */
   border: none;
   overflow: hidden;
-  /* Fade in/out with panel transition to prevent white card flash */
+  /* Start invisible — JS toggles --visible class to prevent white card flash */
+  opacity: 0;
   transition: opacity 0.4s var(--ease-out-expo);
 }
 
-/* Hide glass body during transition start/end */
-.menu-enter-from .nav__glass-body,
-.menu-leave-to .nav__glass-body {
-  opacity: 0;
-}
-
-/* Also hide flow canvas during transitions */
-.menu-enter-from .nav__flow-canvas,
-.menu-leave-to .nav__flow-canvas {
-  opacity: 0;
+/* Show glass body only when JS signals the panel is settled */
+.nav__glass-body--visible {
+  opacity: 1;
 }
 
 /* Noise/grain texture overlay */
@@ -490,7 +498,12 @@ watch(isMenuOpen, async (open) => {
   pointer-events: none;
   mix-blend-mode: screen;
   border-radius: inherit;
+  opacity: 0;
   transition: opacity 0.4s var(--ease-out-expo);
+}
+
+.nav__flow-canvas--visible {
+  opacity: 1;
 }
 
 /* CSS fallback when SVG filter in backdrop-filter is unsupported */
@@ -778,13 +791,15 @@ watch(isMenuOpen, async (open) => {
     transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Desktop: soft organic edge via large border-radius on the panel.
-     Gooey SVG filter removed — it destroys gradient details with
-     its 10px Gaussian blur. The organic border is achieved via
-     border-radius + overflow: hidden on the panel container. */
+  /* Desktop: soft organic edge via large border-radius on the panel. */
   .nav__panel {
     border-radius: 28px 0 0 28px;
     overflow: hidden;
+  }
+
+  /* Explicit border-radius on glass body — inherit + backdrop-filter can fail in some GPUs */
+  .nav__glass-body {
+    border-radius: 28px 0 0 28px;
   }
 
   .nav__menu-word {
