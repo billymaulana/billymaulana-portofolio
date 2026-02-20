@@ -217,12 +217,6 @@ watch(isMenuOpen, (open) => {
 </template>
 
 <style scoped>
-@property --border-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
-}
-
 /* ─── Nav bar ─── */
 .nav {
   position: fixed;
@@ -419,12 +413,8 @@ watch(isMenuOpen, (open) => {
   -webkit-backdrop-filter: url(#liquid-glass) blur(1px) saturate(1.2);
   /* Near-clear glass: very subtle white tint */
   background: rgba(255, 255, 255, 0.04);
-  /* Organic border: animated conic gradient shimmer */
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  /* Inner glow */
-  box-shadow:
-    inset 0 0 20px -5px rgba(255, 255, 255, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  /* Subtle border — no heavy glow */
+  border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
 }
 
@@ -449,31 +439,23 @@ watch(isMenuOpen, (open) => {
   100% { transform: translate(0, 0); }
 }
 
-/* Organic border glow (animated conic gradient) */
+/* Organic border shimmer — top edge only, invisible elsewhere */
 .nav__glass-body::after {
   content: '';
   position: absolute;
-  inset: -1px;
-  z-index: -1;
-  border-radius: inherit;
-  background: conic-gradient(
-    from var(--border-angle, 0deg),
-    rgba(255, 255, 255, 0.4),
-    rgba(255, 255, 255, 0.05),
-    rgba(255, 255, 255, 0.25),
-    rgba(255, 255, 255, 0.05),
-    rgba(255, 255, 255, 0.4)
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.06),
+    transparent
   );
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  padding: 1px;
-  animation: borderRotate 20s linear infinite;
-}
-
-@keyframes borderRotate {
-  to { --border-angle: 360deg; }
+  border-radius: inherit;
 }
 
 /* ─── Flow Canvas (WebGL blue liquid overlay) ─── */
@@ -872,10 +854,6 @@ watch(isMenuOpen, (open) => {
   }
 
   .nav__glass-body::before {
-    animation: none;
-  }
-
-  .nav__glass-body::after {
     animation: none;
   }
 

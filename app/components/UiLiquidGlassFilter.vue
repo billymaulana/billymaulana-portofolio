@@ -87,11 +87,11 @@ const scaleB = computed(() => Math.round(props.displacementScale * 1.09))
         <feBlend in="redOnly" in2="greenOnly" mode="screen" result="rg" />
         <feBlend in="rg" in2="blueOnly" mode="screen" result="chromatic" />
 
-        <!-- 6. Fresnel edge glow -->
-        <feMorphology in="SourceGraphic" operator="dilate" radius="3" result="dilated" />
-        <feGaussianBlur in="dilated" stdDeviation="4" result="glowBlur" />
+        <!-- 6. Fresnel edge glow — very subtle, barely visible -->
+        <feMorphology in="SourceGraphic" operator="dilate" radius="1" result="dilated" />
+        <feGaussianBlur in="dilated" stdDeviation="2" result="glowBlur" />
         <feComposite in="glowBlur" in2="SourceGraphic" operator="out" result="edgeGlow" />
-        <feColorMatrix in="edgeGlow" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.15 0" result="fresnelGlow" />
+        <feColorMatrix in="edgeGlow" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.04 0" result="fresnelGlow" />
 
         <!-- 7. Final composite: chromatic refraction + Fresnel glow -->
         <feComposite in="fresnelGlow" in2="chromatic" operator="over" result="final" />
