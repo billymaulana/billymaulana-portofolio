@@ -5,14 +5,23 @@ const { scrollTo } = useSmoothScroll()
 
 const logoSrc = '/assets/images/logo/logo-bm-white-origin.svg'
 
+// ─── Refs ───
+const triggerRef = ref<HTMLElement | null>(null)
+const flowCanvasRef = ref<HTMLCanvasElement | null>(null)
+const inkCanvasRef = ref<HTMLCanvasElement | null>(null)
+
 const isScrolled = ref(false)
 const isHidden = ref(false)
 const isMenuOpen = ref(false)
 let lastScrollY = 0
 
-// Flow field (WebGL blue liquid)
-const flowCanvasRef = ref<HTMLCanvasElement | null>(null)
+// WebGL & filter support
 const hasWebGL = ref(true)
+const supportsSvgFilter = ref(true)
+const glassVisible = ref(false)
+
+// ─── Composables ───
+const liquidMorph = useLiquidMorph()
 
 const flowShader = useGlassShader({
   reducedMotion: typeof window !== 'undefined'
@@ -20,24 +29,31 @@ const flowShader = useGlassShader({
     : false,
 })
 
-// SVG filter displacement coupling
-const { displacementScale, startCoupling, stopCoupling } = useLiquidGlass()
+const { displacementScale, displacementMapUri, startCoupling, stopCoupling } = useLiquidGlass()
 
-// Check SVG filter support in backdrop-filter
-const supportsSvgFilter = ref(true)
-
-// Glass body visibility — controlled via JS to avoid white card flash during transitions
-const glassVisible = ref(false)
-
-// Mouse state
-let mouseTarget = { x: 0.5, y: 0.5 }
-
+// ─── Nav items ───
 const navItems = [
-  { label: 'About', href: '#about' },
-  { label: 'Work', href: '#work' },
-  { label: 'Contact', href: '#contact' },
+  { index: '01', label: 'About', href: '#about' },
+  { index: '02', label: 'Work', href: '#work' },
+  { index: '03', label: 'Contact', href: '#contact' },
 ]
 
+// ─── Ink distortion (lazy, desktop only) ───
+type InkState = ReturnType<typeof import('~/composables/useMenuInkDistortion').useMenuInkDistortion>
+let inkDistortion: InkState | null = null
+
+// ─── Mouse state ───
+let mouseTarget = { x: 0.5, y: 0.5 }
+
+// Track whether flow shader has been initialized
+let flowInitialized = false
+
+// ─── Responsive font size for ink canvas ───
+function computeMenuFontSize(): number {
+  return Math.min(Math.max(window.innerWidth * 0.035, 34), 56)
+}
+
+// ─── Handlers ───
 function handleNavClick(href: string) {
   isMenuOpen.value = false
   setTimeout(() => scrollTo(href, { offset: -80 }), 400)
@@ -59,11 +75,24 @@ function handlePanelMove(e: PointerEvent) {
   flowShader.setMouse(x, y, dx, dy)
 }
 
-// Track whether flow shader has been initialized
-let flowInitialized = false
+function handleInkCanvasClick(e: MouseEvent) {
+  if (!inkDistortion)
+    return
+  const href = inkDistortion.hitTest(e.clientX, e.clientY)
+  if (href)
+    handleNavClick(href)
+}
 
+// ─── Escape key ───
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && isMenuOpen.value) {
+    isMenuOpen.value = false
+  }
+}
+
+// ─── Lifecycle ───
 onMounted(() => {
-  // Test if backdrop-filter: url(#test) works
+  // Test SVG filter support in backdrop-filter
   const testEl = document.createElement('div')
   testEl.style.backdropFilter = 'url(#nonexistent)'
   supportsSvgFilter.value = testEl.style.backdropFilter !== ''
@@ -76,19 +105,31 @@ onMounted(() => {
   }
 
   window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('keydown', onKeydown)
+
   onUnmounted(() => {
     window.removeEventListener('scroll', onScroll)
+    window.removeEventListener('keydown', onKeydown)
     flowShader.destroy()
+    liquidMorph.kill()
+    if (inkDistortion)
+      inkDistortion.destroy()
   })
 })
 
+// ─── Menu open/close orchestration ───
 watch(isMenuOpen, async (open) => {
   document.documentElement.style.overflow = open ? 'hidden' : ''
   document.body.style.overflow = open ? 'hidden' : ''
   document.documentElement.classList.toggle('menu-open', open)
 
   if (open) {
-    // Wait for v-if canvas to enter DOM
+    // Start circle clip-path expansion from trigger button
+    if (triggerRef.value) {
+      liquidMorph.open(triggerRef.value)
+    }
+
+    // Wait for v-if DOM to render
     await nextTick()
     mouseTarget = { x: 0.5, y: 0.5 }
 
@@ -102,22 +143,54 @@ watch(isMenuOpen, async (open) => {
       flowShader.setOpenProgress(1)
       flowShader.resize()
       flowShader.start()
-      // Start SVG-WebGL displacement coupling
       startCoupling(() => flowShader.getFlowIntensity())
+
+      // Inject splats at button position (top-right area) for liquid expansion feel
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+          flowShader.injectSplat(0.85, 0.05, 1.2 - i * 0.15)
+        }, i * 60)
+      }
     }
 
-    // Show glass body AFTER panel slide starts (prevents white card flash on open)
+    // Init ink distortion on first open (desktop only, >= 768px)
+    if (window.innerWidth >= 768 && inkCanvasRef.value) {
+      try {
+        const { useMenuInkDistortion: createInk } = await import('~/composables/useMenuInkDistortion')
+        inkDistortion = createInk({
+          fontSize: computeMenuFontSize(),
+          items: navItems,
+        })
+        inkDistortion.init(inkCanvasRef.value)
+        inkDistortion.start()
+      }
+      catch {
+        // Ink distortion is optional — fail silently
+      }
+    }
+
+    // Show glass body after morph transition has progressed
     setTimeout(() => {
       glassVisible.value = true
-    }, 200)
+    }, 300)
   }
   else {
-    // Hide glass body IMMEDIATELY before panel starts sliding (prevents static white card on close)
+    // Hide glass body immediately before close animation
     glassVisible.value = false
 
+    // Close circle clip-path
+    liquidMorph.close()
+
+    // Stop flow shader & coupling
     flowShader.setOpenProgress(0)
     flowShader.stop()
     stopCoupling()
+
+    // Destroy ink distortion (re-init on next open for clean state)
+    if (inkDistortion) {
+      inkDistortion.destroy()
+      inkDistortion = null
+    }
   }
 })
 </script>
@@ -146,6 +219,7 @@ watch(isMenuOpen, async (open) => {
       </a>
 
       <button
+        ref="triggerRef"
         class="nav__trigger"
         :class="{ 'nav__trigger--open': isMenuOpen }"
         :aria-expanded="isMenuOpen"
@@ -159,84 +233,84 @@ watch(isMenuOpen, async (open) => {
         </span>
       </button>
     </nav>
+  </header>
 
-    <!-- Overlay: backdrop + side panel -->
-    <Transition name="menu" :duration="{ enter: 1100, leave: 850 }">
-      <div v-if="isMenuOpen" class="nav__overlay">
-        <div class="nav__backdrop" @click="toggleMenu" />
-        <div class="nav__panel" @pointermove="handlePanelMove">
-          <!-- SVG Filter Definitions -->
-          <UiLiquidGlassFilter :displacement-scale="displacementScale" />
+  <!-- Teleported to body: escapes nav stacking context so backdrop-filter can see page content -->
+  <Teleport to="body">
+    <div
+      v-if="isMenuOpen"
+      class="nav__overlay"
+      :style="{ clipPath: liquidMorph.clipPath.value }"
+    >
+      <div class="nav__backdrop" @click="toggleMenu" />
+      <div class="nav__panel" @pointermove="handlePanelMove">
+        <!-- SVG Filter Definitions -->
+        <UiLiquidGlassFilter :displacement-scale="displacementScale" :displacement-map-uri="displacementMapUri" />
 
-          <!-- Glass body: SVG filter + noise grain -->
-          <div
-            class="nav__glass-body"
-            :class="{
-              'nav__glass-body--fallback': !supportsSvgFilter,
-              'nav__glass-body--visible': glassVisible,
-            }"
-          />
+        <!-- Glass body: SVG filter + noise grain -->
+        <div
+          class="nav__glass-body"
+          :class="{
+            'nav__glass-body--fallback': !supportsSvgFilter,
+            'nav__glass-body--visible': glassVisible,
+          }"
+        />
 
-          <!-- WebGL Blue Flow Canvas (overlay, pointer-events: none) -->
+        <!-- WebGL Blue Flow Canvas (overlay, pointer-events: none) -->
+        <canvas
+          v-if="hasWebGL"
+          ref="flowCanvasRef"
+          class="nav__flow-canvas"
+          :class="{ 'nav__flow-canvas--visible': glassVisible }"
+        />
+
+        <!-- Content (z-index 2, above glass) -->
+        <div class="nav__panel-inner">
+          <!-- WebGL Ink Distortion Canvas (renders menu text with liquid effect) -->
           <canvas
-            v-if="hasWebGL"
-            ref="flowCanvasRef"
-            class="nav__flow-canvas"
-            :class="{ 'nav__flow-canvas--visible': glassVisible }"
+            ref="inkCanvasRef"
+            class="nav__ink-canvas"
+            aria-hidden="true"
+            @click="handleInkCanvasClick"
           />
 
-          <!-- Content (z-index 2, above glass) -->
-          <div class="nav__panel-inner">
-            <ul class="nav__menu" role="list">
-              <li
-                v-for="(item, i) in navItems"
-                :key="item.href"
-                class="nav__menu-item"
-                :style="{ '--delay': `${0.2 + i * 0.1}s` }"
+          <!-- DOM menu (accessible fallback + hit areas) -->
+          <ul class="nav__menu" role="list">
+            <li
+              v-for="(item, i) in navItems"
+              :key="item.href"
+              class="nav__menu-item"
+              :style="{ '--delay': `${0.5 + i * 0.1}s` }"
+            >
+              <a
+                :href="item.href"
+                class="nav__menu-link"
+                @click.prevent="handleNavClick(item.href)"
               >
-                <a
-                  :href="item.href"
-                  class="nav__menu-link nav__chromatic-text"
-                  @click.prevent="handleNavClick(item.href)"
-                >
-                  <span class="nav__menu-index">{{ String(i + 1).padStart(2, '0') }}</span>
-                  <span class="nav__menu-word">
-                    <span
-                      v-for="(char, ci) in item.label.split('')"
-                      :key="ci"
-                      class="nav__menu-char"
-                      :style="{ '--ci': ci }"
-                    >
-                      <span class="nav__menu-char-inner">
-                        <span class="nav__menu-char-face">{{ char }}</span>
-                        <span class="nav__menu-char-face nav__menu-char-face--alt">{{ char }}</span>
-                      </span>
-                    </span>
-                  </span>
-                </a>
-                <span class="nav__menu-divider" :style="{ '--delay': `${0.2 + i * 0.1}s` }" />
-              </li>
-            </ul>
+                <span class="nav__menu-index">{{ item.index }}</span>
+                <span class="nav__menu-label">{{ item.label }}</span>
+              </a>
+            </li>
+          </ul>
 
-            <div class="nav__panel-footer">
-              <div class="nav__footer-col">
-                <span class="nav__footer-label">Get in touch</span>
-                <a :href="`mailto:${profile.email}`" class="nav__footer-link nav__chromatic-text">{{ profile.email }}</a>
-              </div>
-              <div class="nav__footer-col">
-                <span class="nav__footer-label">Social</span>
-                <div class="nav__footer-socials">
-                  <a :href="profile.github" target="_blank" rel="noopener" class="nav__footer-link nav__chromatic-text">GitHub</a>
-                  <a :href="profile.linkedin" target="_blank" rel="noopener" class="nav__footer-link nav__chromatic-text">LinkedIn</a>
-                  <a :href="profile.instagram" target="_blank" rel="noopener" class="nav__footer-link nav__chromatic-text">Instagram</a>
-                </div>
+          <div class="nav__panel-footer">
+            <div class="nav__footer-col">
+              <span class="nav__footer-label">Get in touch</span>
+              <a :href="`mailto:${profile.email}`" class="nav__footer-link nav__chromatic-text">{{ profile.email }}</a>
+            </div>
+            <div class="nav__footer-col">
+              <span class="nav__footer-label">Social</span>
+              <div class="nav__footer-socials">
+                <a :href="profile.github" target="_blank" rel="noopener" class="nav__footer-link nav__chromatic-text">GitHub</a>
+                <a :href="profile.linkedin" target="_blank" rel="noopener" class="nav__footer-link nav__chromatic-text">LinkedIn</a>
+                <a :href="profile.instagram" target="_blank" rel="noopener" class="nav__footer-link nav__chromatic-text">Instagram</a>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </Transition>
-  </header>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -263,6 +337,8 @@ watch(isMenuOpen, async (open) => {
 }
 
 .nav--open {
+  /* Above overlay (z:150) so the × button remains clickable */
+  z-index: 160;
   background: transparent;
   backdrop-filter: none;
   border-bottom: none;
@@ -406,7 +482,8 @@ watch(isMenuOpen, async (open) => {
 .nav__overlay {
   position: fixed;
   inset: 0;
-  z-index: 1;
+  /* Above nav (100) but below cursor (200) — teleported to body */
+  z-index: 150;
   overflow: hidden;
 }
 
@@ -424,25 +501,36 @@ watch(isMenuOpen, async (open) => {
   background: transparent;
 }
 
-/* ─── Glass Body: SVG filter + organic border ─── */
+/* ─── Glass Body: SVG displacement + edge-heavy luminance ─── */
 .nav__glass-body {
   position: absolute;
   inset: 0;
   z-index: 0;
   border-radius: inherit;
-  /* Liquid glass: SVG filter for refraction + blur — visible even on dark backgrounds */
-  backdrop-filter: url(#liquid-glass) blur(12px) saturate(1.4) brightness(1.15);
-  -webkit-backdrop-filter: url(#liquid-glass) blur(12px) saturate(1.4) brightness(1.15);
-  /* Glass tint: visible shape on pure black — subtle gradient + left-edge highlight */
-  background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.10) 0%,
-    rgba(255, 255, 255, 0.04) 35%,
-    rgba(255, 255, 255, 0.07) 100%
-  );
-  /* Soft edge glow on left side — traces the rounded edge like real glass catching light */
-  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.06),
-              inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  /* Subtle backdrop frosting — just enough for glass depth */
+  backdrop-filter: blur(1px) brightness(1.15);
+  -webkit-backdrop-filter: blur(1px) brightness(1.15);
+  /* SVG displacement: edge-concentrated refraction + chromatic aberration on the glass surface.
+     Chrome doesn't support feDisplacementMap in backdrop-filter, so we use regular filter
+     which applies to the composited element (gradient + noise + border = visible displacement). */
+  filter: url(#liquid-glass);
+  /* Multi-layer glass tint: brighter at edges where displacement is strongest.
+     Edge glow gives the displacement visible content to refract. */
+  background:
+    /* Left edge glow — glass edge catching ambient light */
+    linear-gradient(90deg, rgba(180, 200, 230, 0.18) 0%, transparent 35%),
+    /* Top specular highlight — light source above-left */
+    linear-gradient(180deg, rgba(200, 210, 230, 0.13) 0%, transparent 25%),
+    /* Bottom-left corner ambient — subtle depth cue */
+    radial-gradient(ellipse at 10% 90%, rgba(160, 180, 220, 0.08), transparent 50%),
+    /* Base glass tint */
+    linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0.05) 100%);
+  /* Edge glow insets — traces the rounded edge like real glass */
+  box-shadow:
+    inset 2px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 2px 0 rgba(255, 255, 255, 0.08),
+    inset -1px 0 0 rgba(255, 255, 255, 0.04),
+    0 0 40px rgba(80, 120, 200, 0.04);
   border: none;
   overflow: hidden;
   /* Start invisible — JS toggles --visible class to prevent white card flash */
@@ -462,7 +550,7 @@ watch(isMenuOpen, async (open) => {
   inset: -50%;
   z-index: 0;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.055;
+  opacity: 0.07;
   mix-blend-mode: overlay;
   pointer-events: none;
   animation: grainShimmer 30s linear infinite;
@@ -476,6 +564,11 @@ watch(isMenuOpen, async (open) => {
   100% { transform: translate(0, 0); }
 }
 
+@keyframes borderPulse {
+  0%, 100% { border-color: rgba(255, 255, 255, 0.14); }
+  50% { border-color: rgba(255, 255, 255, 0.08); }
+}
+
 /* Subtle inner border glow — traces the glass edge for definition on dark backgrounds */
 .nav__glass-body::after {
   content: '';
@@ -483,12 +576,14 @@ watch(isMenuOpen, async (open) => {
   inset: 0;
   z-index: 1;
   border-radius: inherit;
-  /* Inner border — visible edge definition on dark backgrounds */
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  /* Inner border — visible edge definition, stronger for liquid glass visibility */
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-right: none;
   /* Highlight concentrated on top-left edge (light source direction) */
-  mask-image: linear-gradient(160deg, rgba(0,0,0,0.8), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.35));
-  -webkit-mask-image: linear-gradient(160deg, rgba(0,0,0,0.8), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.35));
+  mask-image: linear-gradient(160deg, rgba(0,0,0,0.9), rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.4));
+  -webkit-mask-image: linear-gradient(160deg, rgba(0,0,0,0.9), rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.4));
+  /* Subtle pulse animation for living glass feel */
+  animation: borderPulse 6s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -512,9 +607,9 @@ watch(isMenuOpen, async (open) => {
 
 /* CSS fallback when SVG filter in backdrop-filter is unsupported */
 .nav__glass-body--fallback {
-  backdrop-filter: blur(18px) saturate(1.3);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .nav__panel-inner {
@@ -782,6 +877,8 @@ watch(isMenuOpen, async (open) => {
     display: block;
     position: absolute;
     inset: 0;
+    /* Stop before the glass panel so backdrop-filter sees raw page content */
+    right: clamp(360px, 30vw, 480px);
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     cursor: pointer;
@@ -897,6 +994,10 @@ watch(isMenuOpen, async (open) => {
   }
 
   .nav__glass-body::before {
+    animation: none;
+  }
+
+  .nav__glass-body::after {
     animation: none;
   }
 
