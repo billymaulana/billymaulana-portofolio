@@ -133,13 +133,16 @@ watch(isMenuOpen, async (open) => {
     await nextTick()
     mouseTarget = { x: 0.5, y: 0.5 }
 
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
     // Init flow shader on first open (canvas is inside v-if)
-    if (!flowInitialized && flowCanvasRef.value) {
+    // Skip when user prefers reduced motion — flow is purely decorative
+    if (!prefersReduced && !flowInitialized && flowCanvasRef.value) {
       hasWebGL.value = flowShader.init(flowCanvasRef.value)
       flowInitialized = hasWebGL.value
     }
 
-    if (hasWebGL.value) {
+    if (!prefersReduced && hasWebGL.value) {
       flowShader.setOpenProgress(1)
       flowShader.resize()
       flowShader.start()
@@ -154,7 +157,8 @@ watch(isMenuOpen, async (open) => {
     }
 
     // Init ink distortion on first open (desktop only, >= 768px)
-    if (window.innerWidth >= 768 && inkCanvasRef.value) {
+    // Skip when user prefers reduced motion — WebGL text distortion is non-essential
+    if (!prefersReduced && window.innerWidth >= 768 && inkCanvasRef.value) {
       try {
         const { useMenuInkDistortion: createInk } = await import('~/composables/useMenuInkDistortion')
         inkDistortion = createInk({
@@ -270,6 +274,7 @@ watch(isMenuOpen, async (open) => {
           <canvas
             ref="inkCanvasRef"
             class="nav__ink-canvas"
+            :class="{ 'nav__ink-canvas--visible': glassVisible }"
             aria-hidden="true"
             @click="handleInkCanvasClick"
           />
@@ -620,6 +625,10 @@ watch(isMenuOpen, async (open) => {
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.5s var(--ease-out-expo);
+}
+
+.nav__ink-canvas--visible {
+  opacity: 1;
 }
 
 /* ─── Panel Inner ─── */
