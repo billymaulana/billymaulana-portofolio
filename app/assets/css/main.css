@@ -106,6 +106,13 @@ body {
   pointer-events: none;
 }
 
+/* ---------- @property for animated border gradient ---------- */
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 /* ---------- Reduced Motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *,

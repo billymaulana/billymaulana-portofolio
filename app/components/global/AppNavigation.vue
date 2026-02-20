@@ -23,6 +23,9 @@ const flowShader = useGlassShader({
 // SVG filter displacement coupling
 const { displacementScale, startCoupling, stopCoupling } = useLiquidGlass()
 
+// Check SVG filter support in backdrop-filter
+const supportsSvgFilter = ref(true)
+
 // Mouse state
 let mouseTarget = { x: 0.5, y: 0.5 }
 
@@ -57,6 +60,11 @@ onMounted(() => {
   if (flowCanvasRef.value) {
     hasWebGL.value = flowShader.init(flowCanvasRef.value)
   }
+
+  // Test if backdrop-filter: url(#test) works
+  const testEl = document.createElement('div')
+  testEl.style.backdropFilter = 'url(#nonexistent)'
+  supportsSvgFilter.value = testEl.style.backdropFilter !== ''
 
   function onScroll() {
     const currentY = window.scrollY
@@ -142,7 +150,10 @@ watch(isMenuOpen, (open) => {
           <UiLiquidGlassFilter :displacement-scale="displacementScale" />
 
           <!-- Glass body: SVG filter + noise grain -->
-          <div class="nav__glass-body" />
+          <div
+            class="nav__glass-body"
+            :class="{ 'nav__glass-body--fallback': !supportsSvgFilter }"
+          />
 
           <!-- WebGL Blue Flow Canvas (overlay, pointer-events: none) -->
           <canvas
@@ -475,6 +486,13 @@ watch(isMenuOpen, (open) => {
   pointer-events: none;
   mix-blend-mode: screen;
   border-radius: inherit;
+}
+
+/* CSS fallback when SVG filter in backdrop-filter is unsupported */
+.nav__glass-body--fallback {
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .nav__panel-inner {
