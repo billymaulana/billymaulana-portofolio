@@ -407,11 +407,10 @@ watch(isMenuOpen, async (open) => {
   position: fixed;
   inset: 0;
   z-index: 1;
-  display: flex;
   overflow: hidden;
 }
 
-/* Backdrop — hidden on mobile, visible on desktop */
+/* Backdrop — hidden on mobile, covers full overlay on desktop */
 .nav__backdrop {
   display: none;
 }
@@ -781,17 +780,21 @@ watch(isMenuOpen, async (open) => {
 @media (min-width: 1024px) {
   .nav__backdrop {
     display: block;
-    flex: 1;
+    position: absolute;
+    inset: 0;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     cursor: pointer;
   }
 
   .nav__panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
     width: 30vw;
     min-width: 360px;
     max-width: 480px;
-    flex-shrink: 0;
     transform: translateX(0);
     transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
     /* clip-path reliably clips backdrop-filter at compositing level
