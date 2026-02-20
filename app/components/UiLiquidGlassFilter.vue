@@ -21,7 +21,7 @@ const scaleB = computed(() => Math.round(props.displacementScale * 1.03))
   >
     <defs>
       <!-- Main liquid glass filter -->
-      <filter id="liquid-glass" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+      <filter id="liquid-glass" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
         <!-- 1. Organic noise texture -->
         <feTurbulence
           type="fractalNoise"
@@ -71,16 +71,7 @@ const scaleB = computed(() => Math.round(props.displacementScale * 1.03))
 
         <!-- 5d. Recombine R+G+B with screen blend -->
         <feBlend in="redOnly" in2="greenOnly" mode="screen" result="rg" />
-        <feBlend in="rg" in2="blueOnly" mode="screen" result="chromatic" />
-
-        <!-- 6. Fresnel edge glow — very subtle, barely visible -->
-        <feMorphology in="SourceGraphic" operator="dilate" radius="1" result="dilated" />
-        <feGaussianBlur in="dilated" stdDeviation="2" result="glowBlur" />
-        <feComposite in="glowBlur" in2="SourceGraphic" operator="out" result="edgeGlow" />
-        <feColorMatrix in="edgeGlow" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.04 0" result="fresnelGlow" />
-
-        <!-- 7. Final composite: chromatic refraction + Fresnel glow -->
-        <feComposite in="fresnelGlow" in2="chromatic" operator="over" result="final" />
+        <feBlend in="rg" in2="blueOnly" mode="screen" />
       </filter>
     </defs>
   </svg>
