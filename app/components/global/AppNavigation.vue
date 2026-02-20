@@ -10,12 +10,18 @@ const isHidden = ref(false)
 const isMenuOpen = ref(false)
 let lastScrollY = 0
 
-const glassCanvasRef = ref<HTMLCanvasElement | null>(null)
+// Flow field (WebGL blue liquid)
+const flowCanvasRef = ref<HTMLCanvasElement | null>(null)
 const hasWebGL = ref(true)
 
-const glassShader = useGlassShader({
-  reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+const flowShader = useGlassShader({
+  reducedMotion: typeof window !== 'undefined'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false,
 })
+
+// SVG filter displacement coupling
+const { displacementScale, startCoupling, stopCoupling } = useLiquidGlass()
 
 // Mouse state
 let mouseTarget = { x: 0.5, y: 0.5 }
@@ -44,12 +50,12 @@ function handlePanelMove(e: PointerEvent) {
   const dy = y - mouseTarget.y
   mouseTarget.x = x
   mouseTarget.y = y
-  glassShader.setMouse(x, y, dx, dy)
+  flowShader.setMouse(x, y, dx, dy)
 }
 
 onMounted(() => {
-  if (glassCanvasRef.value) {
-    hasWebGL.value = glassShader.init(glassCanvasRef.value)
+  if (flowCanvasRef.value) {
+    hasWebGL.value = flowShader.init(flowCanvasRef.value)
   }
 
   function onScroll() {
@@ -62,7 +68,7 @@ onMounted(() => {
   window.addEventListener('scroll', onScroll, { passive: true })
   onUnmounted(() => {
     window.removeEventListener('scroll', onScroll)
-    glassShader.destroy()
+    flowShader.destroy()
   })
 })
 
@@ -74,14 +80,17 @@ watch(isMenuOpen, (open) => {
   if (open) {
     mouseTarget = { x: 0.5, y: 0.5 }
     if (hasWebGL.value) {
-      glassShader.setOpenProgress(1)
-      glassShader.resize()
-      glassShader.start()
+      flowShader.setOpenProgress(1)
+      flowShader.resize()
+      flowShader.start()
+      // Start SVG-WebGL displacement coupling
+      startCoupling(() => flowShader.getFlowIntensity())
     }
   }
   else {
-    glassShader.setOpenProgress(0)
-    glassShader.stop()
+    flowShader.setOpenProgress(0)
+    flowShader.stop()
+    stopCoupling()
   }
 })
 </script>
@@ -129,15 +138,20 @@ watch(isMenuOpen, (open) => {
       <div v-if="isMenuOpen" class="nav__overlay">
         <div class="nav__backdrop" @click="toggleMenu" />
         <div class="nav__panel" @pointermove="handlePanelMove">
-          <!-- WebGL Glass (replaces 4 CSS layers) -->
+          <!-- SVG Filter Definitions -->
+          <UiLiquidGlassFilter :displacement-scale="displacementScale" />
+
+          <!-- Glass body: SVG filter + noise grain -->
+          <div class="nav__glass-body" />
+
+          <!-- WebGL Blue Flow Canvas (overlay, pointer-events: none) -->
           <canvas
             v-if="hasWebGL"
-            ref="glassCanvasRef"
-            class="nav__glass-canvas"
+            ref="flowCanvasRef"
+            class="nav__flow-canvas"
           />
-          <!-- CSS fallback (shown only when WebGL unavailable) -->
-          <div v-else class="nav__glass-body" />
-          <!-- Content -->
+
+          <!-- Content (z-index 2, above glass) -->
           <div class="nav__panel-inner">
             <ul class="nav__menu" role="list">
               <li
@@ -148,7 +162,7 @@ watch(isMenuOpen, (open) => {
               >
                 <a
                   :href="item.href"
-                  class="nav__menu-link"
+                  class="nav__menu-link nav__chromatic-text"
                   @click.prevent="handleNavClick(item.href)"
                 >
                   <span class="nav__menu-index">{{ String(i + 1).padStart(2, '0') }}</span>
@@ -173,14 +187,14 @@ watch(isMenuOpen, (open) => {
             <div class="nav__panel-footer">
               <div class="nav__footer-col">
                 <span class="nav__footer-label">Get in touch</span>
-                <a :href="`mailto:${profile.email}`" class="nav__footer-link">{{ profile.email }}</a>
+                <a :href="`mailto:${profile.email}`" class="nav__footer-link nav__chromatic-text">{{ profile.email }}</a>
               </div>
               <div class="nav__footer-col">
                 <span class="nav__footer-label">Social</span>
                 <div class="nav__footer-socials">
-                  <a :href="profile.github" target="_blank" rel="noopener" class="nav__footer-link">GitHub</a>
-                  <a :href="profile.linkedin" target="_blank" rel="noopener" class="nav__footer-link">LinkedIn</a>
-                  <a :href="profile.instagram" target="_blank" rel="noopener" class="nav__footer-link">Instagram</a>
+                  <a :href="profile.github" target="_blank" rel="noopener" class="nav__footer-link nav__chromatic-text">GitHub</a>
+                  <a :href="profile.linkedin" target="_blank" rel="noopener" class="nav__footer-link nav__chromatic-text">LinkedIn</a>
+                  <a :href="profile.instagram" target="_blank" rel="noopener" class="nav__footer-link nav__chromatic-text">Instagram</a>
                 </div>
               </div>
             </div>
@@ -192,6 +206,12 @@ watch(isMenuOpen, (open) => {
 </template>
 
 <style scoped>
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 /* ─── Nav bar ─── */
 .nav {
   position: fixed;
@@ -377,25 +397,84 @@ watch(isMenuOpen, (open) => {
   background: transparent;
 }
 
-/* ─── WebGL Glass Canvas ─── */
-.nav__glass-canvas {
+/* ─── Glass Body: SVG filter + organic border ─── */
+.nav__glass-body {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  /* Apple-style liquid glass: SVG filter for refraction + minimal blur */
+  backdrop-filter: url(#liquid-glass) blur(1px) saturate(1.2);
+  -webkit-backdrop-filter: url(#liquid-glass) blur(1px) saturate(1.2);
+  /* Near-clear glass: very subtle white tint */
+  background: rgba(255, 255, 255, 0.04);
+  /* Organic border: animated conic gradient shimmer */
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  /* Inner glow */
+  box-shadow:
+    inset 0 0 20px -5px rgba(255, 255, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+/* Noise/grain texture overlay */
+.nav__glass-body::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  z-index: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  animation: grainShimmer 30s linear infinite;
+}
+
+@keyframes grainShimmer {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 1px); }
+  50% { transform: translate(1px, -2px); }
+  75% { transform: translate(-1px, -1px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Organic border glow (animated conic gradient) */
+.nav__glass-body::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--border-angle, 0deg),
+    rgba(255, 255, 255, 0.4),
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.25),
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.4)
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  padding: 1px;
+  animation: borderRotate 20s linear infinite;
+}
+
+@keyframes borderRotate {
+  to { --border-angle: 360deg; }
+}
+
+/* ─── Flow Canvas (WebGL blue liquid overlay) ─── */
+.nav__flow-canvas {
   position: absolute;
   inset: 0;
   z-index: 1;
   width: 100%;
   height: 100%;
   pointer-events: none;
-}
-
-/* CSS fallback — shown only when WebGL2 is unavailable */
-.nav__glass-body {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  backdrop-filter: blur(18px) saturate(1.3);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  mix-blend-mode: screen;
+  border-radius: inherit;
 }
 
 .nav__panel-inner {
@@ -585,6 +664,23 @@ watch(isMenuOpen, (open) => {
   gap: 1.3125rem;
 }
 
+/* ─── Chromatic text effect (RGB split) ─── */
+.nav__chromatic-text {
+  text-shadow:
+    -1px 0 0 rgba(255, 0, 0, 0.12),
+    1px 0 0 rgba(0, 100, 255, 0.12),
+    0 0 4px rgba(255, 255, 255, 0.08);
+  -webkit-text-stroke: 0.3px rgba(255, 255, 255, 0.2);
+  transition: text-shadow 0.4s var(--ease-out-expo);
+}
+
+.nav__chromatic-text:hover {
+  text-shadow:
+    -3px 0 0 rgba(255, 0, 0, 0.18),
+    3px 0 0 rgba(0, 100, 255, 0.18),
+    0 0 8px rgba(255, 255, 255, 0.12);
+}
+
 /* ─── Animations ─── */
 @keyframes menuItemIn {
   from {
@@ -664,7 +760,8 @@ watch(isMenuOpen, (open) => {
      its 10px Gaussian blur. The organic border is achieved via
      border-radius + overflow: hidden on the panel container. */
   .nav__panel {
-    border-radius: 24px 0 0 24px;
+    border-radius: 28px 0 0 28px;
+    overflow: hidden;
   }
 
   .nav__menu-word {
@@ -754,6 +851,19 @@ watch(isMenuOpen, (open) => {
 
   .nav__trigger-bar {
     transition: none !important;
+  }
+
+  .nav__glass-body::before {
+    animation: none;
+  }
+
+  .nav__glass-body::after {
+    animation: none;
+  }
+
+  .nav__chromatic-text {
+    text-shadow: none;
+    -webkit-text-stroke: none;
   }
 }
 </style>
