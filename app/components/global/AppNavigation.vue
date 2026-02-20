@@ -431,11 +431,19 @@ watch(isMenuOpen, async (open) => {
   inset: 0;
   z-index: 0;
   border-radius: inherit;
-  /* Apple-style liquid glass: SVG filter for refraction + minimal blur */
-  backdrop-filter: url(#liquid-glass) blur(1px) saturate(1.2);
-  -webkit-backdrop-filter: url(#liquid-glass) blur(1px) saturate(1.2);
-  /* Near-clear glass: very subtle white tint */
-  background: rgba(255, 255, 255, 0.04);
+  /* Liquid glass: SVG filter for refraction + blur — visible even on dark backgrounds */
+  backdrop-filter: url(#liquid-glass) blur(12px) saturate(1.4) brightness(1.15);
+  -webkit-backdrop-filter: url(#liquid-glass) blur(12px) saturate(1.4) brightness(1.15);
+  /* Glass tint: visible shape on pure black — subtle gradient + left-edge highlight */
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.04) 35%,
+    rgba(255, 255, 255, 0.07) 100%
+  );
+  /* Soft edge glow on left side — traces the rounded edge like real glass catching light */
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.06),
+              inset 0 1px 0 rgba(255, 255, 255, 0.04);
   border: none;
   overflow: hidden;
   /* Start invisible — JS toggles --visible class to prevent white card flash */
@@ -455,7 +463,7 @@ watch(isMenuOpen, async (open) => {
   inset: -50%;
   z-index: 0;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.04;
+  opacity: 0.055;
   mix-blend-mode: overlay;
   pointer-events: none;
   animation: grainShimmer 30s linear infinite;
@@ -469,23 +477,20 @@ watch(isMenuOpen, async (open) => {
   100% { transform: translate(0, 0); }
 }
 
-/* Organic border shimmer — top edge only, invisible elsewhere */
+/* Subtle inner border glow — traces the glass edge for definition on dark backgrounds */
 .nav__glass-body::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
+  inset: 0;
   z-index: 1;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.15),
-    rgba(255, 255, 255, 0.06),
-    transparent
-  );
   border-radius: inherit;
+  /* Inner border — visible edge definition on dark backgrounds */
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-right: none;
+  /* Highlight concentrated on top-left edge (light source direction) */
+  mask-image: linear-gradient(160deg, rgba(0,0,0,0.8), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.35));
+  -webkit-mask-image: linear-gradient(160deg, rgba(0,0,0,0.8), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.35));
+  pointer-events: none;
 }
 
 /* ─── Flow Canvas (WebGL blue liquid overlay) ─── */
@@ -789,15 +794,12 @@ watch(isMenuOpen, async (open) => {
     flex-shrink: 0;
     transform: translateX(0);
     transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  /* Desktop: soft organic edge via large border-radius on the panel. */
-  .nav__panel {
+    /* clip-path reliably clips backdrop-filter at compositing level
+       (overflow:hidden + border-radius fails to clip backdrop-filter in some GPUs) */
+    clip-path: inset(0 0 0 0 round 28px 0 0 28px);
     border-radius: 28px 0 0 28px;
-    overflow: hidden;
   }
 
-  /* Explicit border-radius on glass body — inherit + backdrop-filter can fail in some GPUs */
   .nav__glass-body {
     border-radius: 28px 0 0 28px;
   }
