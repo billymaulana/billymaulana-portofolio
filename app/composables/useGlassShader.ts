@@ -567,11 +567,10 @@ export function useGlassShader(config: Partial<FlowConfig> = {}) {
     const py = Math.floor(mouseY * dyeFBO_A.height)
     gl.readPixels(px, py, 1, 1, gl.RGBA, gl.FLOAT, dyeReadBuffer)
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-    return Math.min(Math.sqrt(
-      dyeReadBuffer[0] * dyeReadBuffer[0]
-      + dyeReadBuffer[1] * dyeReadBuffer[1]
-      + dyeReadBuffer[2] * dyeReadBuffer[2],
-    ), 1.0)
+    const r = dyeReadBuffer[0] ?? 0
+    const g = dyeReadBuffer[1] ?? 0
+    const b = dyeReadBuffer[2] ?? 0
+    return Math.min(Math.sqrt(r * r + g * g + b * b), 1.0)
   }
 
   // ─── Public API ──────────────────────────────────
