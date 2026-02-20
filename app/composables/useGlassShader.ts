@@ -488,7 +488,8 @@ export function useGlassShader(config: Partial<FlowConfig> = {}) {
    * Used by navigation transition to create liquid expansion from button.
    */
   function injectSplat(x: number, y: number, strength: number = 1.0) {
-    if (!gl || !running) return
+    if (!gl || !running)
+      return
     const angle = Math.random() * Math.PI * 2
     const dx = Math.cos(angle) * 0.1 * strength
     const dy = Math.sin(angle) * 0.1 * strength
