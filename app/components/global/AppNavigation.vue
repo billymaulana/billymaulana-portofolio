@@ -424,6 +424,20 @@ watch(isMenuOpen, async (open) => {
   /* No visible border — let the glass speak for itself */
   border: none;
   overflow: hidden;
+  /* Fade in/out with panel transition to prevent white card flash */
+  transition: opacity 0.4s var(--ease-out-expo);
+}
+
+/* Hide glass body during transition start/end */
+.menu-enter-from .nav__glass-body,
+.menu-leave-to .nav__glass-body {
+  opacity: 0;
+}
+
+/* Also hide flow canvas during transitions */
+.menu-enter-from .nav__flow-canvas,
+.menu-leave-to .nav__flow-canvas {
+  opacity: 0;
 }
 
 /* Noise/grain texture overlay */
@@ -476,6 +490,7 @@ watch(isMenuOpen, async (open) => {
   pointer-events: none;
   mix-blend-mode: screen;
   border-radius: inherit;
+  transition: opacity 0.4s var(--ease-out-expo);
 }
 
 /* CSS fallback when SVG filter in backdrop-filter is unsupported */
