@@ -483,6 +483,18 @@ export function useGlassShader(config: Partial<FlowConfig> = {}) {
     dyeFBO_B = temp2
   }
 
+  /**
+   * Inject a splat from external coordinates.
+   * Used by navigation transition to create liquid expansion from button.
+   */
+  function injectSplat(x: number, y: number, strength: number = 1.0) {
+    if (!gl || !running) return
+    const angle = Math.random() * Math.PI * 2
+    const dx = Math.cos(angle) * 0.1 * strength
+    const dy = Math.sin(angle) * 0.1 * strength
+    splat(x, y, dx, dy)
+  }
+
   // ─── Render Loop ─────────────────────────────────
 
   function render() {
@@ -700,5 +712,6 @@ export function useGlassShader(config: Partial<FlowConfig> = {}) {
     setMouse,
     setOpenProgress,
     getFlowIntensity,
+    injectSplat,
   }
 }
