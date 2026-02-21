@@ -6,6 +6,7 @@ const props = defineProps<{
 
 const canvasRef = ref<HTMLCanvasElement>()
 const isReady = ref(false)
+const showFallback = ref(false)
 let distortionInstance: ReturnType<typeof import('~/composables/useTextDistortion').useTextDistortion> | null = null
 let resizeHandler: (() => void) | null = null
 
@@ -27,12 +28,16 @@ function computeFontSize(): number {
 }
 
 onMounted(async () => {
-  if (!canvasRef.value)
+  // Reduced motion: skip WebGL entirely, show static HTML fallback
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    showFallback.value = true
     return
+  }
 
-  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (prefersReduced)
+  if (!canvasRef.value) {
+    showFallback.value = true
     return
+  }
 
   const { useTextDistortion } = await import('~/composables/useTextDistortion')
 
@@ -45,8 +50,11 @@ onMounted(async () => {
   })
 
   const success = sim.init(canvasRef.value)
-  if (!success)
+  if (!success) {
+    // WebGL not available — show HTML fallback
+    showFallback.value = true
     return
+  }
 
   distortionInstance = sim
 
@@ -73,13 +81,26 @@ onUnmounted(() => {
 <template>
   <div
     class="text-distortion"
-    :class="{ 'text-distortion--ready': isReady }"
+    :class="{
+      'text-distortion--ready': isReady,
+      'text-distortion--fallback': showFallback,
+    }"
   >
+    <!-- WebGL canvas (hidden when fallback active) -->
     <canvas
+      v-show="!showFallback"
       ref="canvasRef"
       class="text-distortion__canvas"
       aria-hidden="true"
     />
+    <!-- Static HTML fallback for reduced motion / WebGL failure -->
+    <div v-if="showFallback" class="text-distortion__fallback" aria-hidden="true">
+      <span
+        v-for="(line, i) in lines"
+        :key="i"
+        class="text-distortion__line"
+      >{{ line.text }}</span>
+    </div>
   </div>
 </template>
 
@@ -99,6 +120,22 @@ onUnmounted(() => {
 
 .text-distortion--ready .text-distortion__canvas {
   opacity: 1;
+}
+
+/* ─── Static fallback — matches canvas typography ─── */
+.text-distortion__fallback {
+  display: flex;
+  flex-direction: column;
+}
+
+.text-distortion__line {
+  display: block;
+  font-family: 'Clash Display', 'Satoshi', system-ui, sans-serif;
+  font-size: var(--text-display);
+  font-weight: 700;
+  line-height: 0.84;
+  color: #ffffff;
+  letter-spacing: -0.02em;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,7 +1,19 @@
 <script setup lang="ts">
 onMounted(async () => {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const gsap = (await import('gsap')).default
 
+  if (prefersReduced) {
+    // Reduced motion: show content immediately, no animation.
+    // gsap.set ensures elements are visible even if called after a brief delay.
+    gsap.set(['.hero__name', '.hero__subtitle', '.hero__meta', '.hero__scroll'], {
+      opacity: 1,
+      clearProps: 'all',
+    })
+    return
+  }
+
+  // Full motion: rich entrance with translation + easing
   const tl = gsap.timeline({ delay: 0.3 })
 
   tl.from('.hero__name', {
@@ -31,6 +43,7 @@ onMounted(async () => {
     scale: 0.8,
     duration: 1,
     ease: 'expo.out',
+    clearProps: 'all',
   }, '-=0.4')
 })
 
@@ -297,7 +310,7 @@ const distortionLines = [
 }
 
 .hero__scroll {
-  transition: opacity 0.4s var(--ease-out-expo);
+  /* Transition applied after GSAP entrance completes — avoid conflict with .from() */
 }
 
 /* ─── Reduced motion ─── */

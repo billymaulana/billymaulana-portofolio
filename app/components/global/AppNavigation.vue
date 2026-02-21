@@ -11,10 +11,11 @@ const isMenuOpen = ref(false)
 let lastScrollY = 0
 
 const glassCanvasRef = ref<HTMLCanvasElement | null>(null)
-const hasWebGL = ref(true)
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const hasWebGL = ref(!prefersReduced)
 
 const glassShader = useGlassShader({
-  reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  reducedMotion: prefersReduced,
 })
 
 // Mouse state
@@ -387,7 +388,7 @@ watch(isMenuOpen, (open) => {
   pointer-events: none;
 }
 
-/* CSS fallback — shown only when WebGL2 is unavailable */
+/* CSS fallback — shown when WebGL2 unavailable OR reduced motion */
 .nav__glass-body {
   position: absolute;
   inset: 0;
@@ -396,6 +397,15 @@ watch(isMenuOpen, (open) => {
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav__glass-body {
+    background: rgba(12, 12, 12, 0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+  }
 }
 
 .nav__panel-inner {
@@ -748,8 +758,13 @@ watch(isMenuOpen, (open) => {
     transition: none;
   }
 
+  /* Disable cube-flip: hide alt face AND prevent translateY slide */
   .nav__menu-char-face--alt {
     display: none;
+  }
+
+  .nav__menu-link:hover .nav__menu-char-inner {
+    transform: none;
   }
 
   .nav__trigger-bar {
