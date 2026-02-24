@@ -14,11 +14,6 @@ onMounted(async () => {
   if (!canvasRef.value)
     return
 
-  // Respect reduced motion
-  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (prefersReduced)
-    return
-
   const { useFluidSimulation } = await import('~/composables/useFluidSimulation')
   const sim = useFluidSimulation()
   const success = sim.init(canvasRef.value)
@@ -80,7 +75,7 @@ defineExpose({ splat })
 
 @media (prefers-reduced-motion: reduce) {
   .fluid-canvas {
-    display: none;
+    transition: none;
   }
 }
 </style>

@@ -30,10 +30,6 @@ onMounted(async () => {
   if (!canvasRef.value)
     return
 
-  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (prefersReduced)
-    return
-
   const { useTextDistortion } = await import('~/composables/useTextDistortion')
 
   // Wait for Clash Display to load before rendering text to canvas
