@@ -2,10 +2,19 @@
 useHead({
   htmlAttrs: { lang: 'en' },
 })
+
+const isPreloaderComplete = ref(false)
+
+function handlePreloaderComplete() {
+  isPreloaderComplete.value = true
+}
+
+provide('preloaderComplete', readonly(isPreloaderComplete))
 </script>
 
 <template>
   <div class="app">
+    <AppPreloader @complete="handlePreloaderComplete" />
     <AppNavigation />
     <AppCursor />
     <NuxtLayout>
