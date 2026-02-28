@@ -1,263 +1,342 @@
 <script setup lang="ts">
 import { featuredProjects } from '~/constants/projects'
 
-const sectionRef = ref<HTMLElement>()
+/**
+ * Projects: "Type as Showcase"
+ * Each project = full viewport, title at 15vw.
+ * Horizontal scroll-snap via GSAP pin.
+ * 5 distinct title treatments (no two alike).
+ * Background color shifts subtly per project.
+ */
 
-const projectGradients = [
-  'linear-gradient(135deg, #0047FF 0%, #8B00FF 100%)',
-  'linear-gradient(135deg, #FF3333 0%, #FF6B00 100%)',
-  'linear-gradient(135deg, #00FF88 0%, #00F5FF 100%)',
-  'linear-gradient(135deg, #FFD600 0%, #FF6B00 100%)',
-  'linear-gradient(135deg, #8B00FF 0%, #FF3333 100%)',
+const PROJECT_COLORS = [
+  '#000000', // Pure black
+  '#020208', // Hint of blue-black
+  '#050200', // Hint of warm-black
+  '#000205', // Hint of deep navy
+  '#030003', // Hint of purple-black
 ]
 
-const projectPatterns = [
-  'radial-gradient(circle at 30% 70%, rgba(255,255,255,0.08) 0%, transparent 50%)',
-  'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.03) 20px, rgba(255,255,255,0.03) 40px)',
-  'radial-gradient(circle at 70% 30%, rgba(255,255,255,0.1) 0%, transparent 40%), radial-gradient(circle at 20% 80%, rgba(255,255,255,0.06) 0%, transparent 30%)',
-  'repeating-conic-gradient(rgba(255,255,255,0.03) 0% 25%, transparent 0% 50%) 50% / 40px 40px',
-  'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 40%), linear-gradient(0deg, rgba(255,255,255,0.04) 0%, transparent 30%)',
-]
+const containerRef = ref<HTMLElement>()
+const trackRef = ref<HTMLElement>()
+const projectCount = featuredProjects.length
+
+let scrollCtx: gsap.Context | null = null
 
 onMounted(async () => {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (prefersReduced)
+    return
+
   const gsap = (await import('gsap')).default
   const { ScrollTrigger } = await import('gsap/ScrollTrigger')
   gsap.registerPlugin(ScrollTrigger)
 
-  if (!sectionRef.value)
-    return
+  scrollCtx = gsap.context(() => {
+    if (!containerRef.value || !trackRef.value)
+      return
 
-  // Header animation
-  gsap.from('.projects__header', {
-    y: 40,
-    opacity: 0,
-    duration: 0.8,
-    ease: 'power3.out',
-    scrollTrigger: {
-      trigger: sectionRef.value,
-      start: 'top 80%',
-    },
-  })
-
-  // Cards stagger
-  gsap.from('.project-card', {
-    y: 80,
-    opacity: 0,
-    duration: 1,
-    stagger: 0.15,
-    ease: 'power3.out',
-    scrollTrigger: {
-      trigger: '.projects__grid',
-      start: 'top 85%',
-    },
+    // Horizontal scroll-snap
+    gsap.to(trackRef.value, {
+      xPercent: -100 * (projectCount - 1),
+      ease: 'none',
+      scrollTrigger: {
+        trigger: containerRef.value,
+        pin: true,
+        scrub: 1,
+        snap: 1 / (projectCount - 1),
+        end: () => `+=${window.innerWidth * projectCount}`,
+      },
+    })
   })
 })
+
+onUnmounted(() => {
+  scrollCtx?.revert()
+})
+
+function getTreatmentClass(index: number): string {
+  const treatments = [
+    'condensed', // Project 1: Bold condensed uppercase
+    'outlined', // Project 2: Outlined with fill on hover
+    'italic', // Project 3: Mixed case, italic, wide tracking
+    'ultralight', // Project 4: Extra light, massive
+    'gradient', // Project 5: Gradient fill
+  ]
+  return treatments[index] ?? 'condensed'
+}
 </script>
 
 <template>
-  <section id="work" ref="sectionRef" class="projects section-padding" aria-label="Selected Work">
-    <div class="page-max">
-      <!-- Header -->
-      <div class="projects__header">
-        <h2 class="text-h2">
-          Selected Work
-        </h2>
-        <span class="projects__count glass">{{ featuredProjects.length }}</span>
-      </div>
+  <section
+    id="work"
+    ref="containerRef"
+    class="section-projects"
+    aria-label="Selected Projects"
+  >
+    <!-- Section label -->
+    <div class="section-projects__label page-margin">
+      <span class="section-projects__label-num">04</span>
+      <span class="section-projects__label-text">WORK</span>
+    </div>
 
-      <!-- Grid -->
-      <div class="projects__grid">
-        <article
-          v-for="(project, index) in featuredProjects"
-          :key="project.id"
-          class="project-card"
-          :data-cursor-label="project.url ? 'View' : 'Details'"
-        >
-          <!-- Visual -->
-          <div class="project-card__visual">
-            <div
-              class="project-card__gradient"
-              :style="{
-                background: projectGradients[index % projectGradients.length],
-              }"
-            />
-            <div
-              class="project-card__pattern"
-              :style="{
-                background: projectPatterns[index % projectPatterns.length],
-              }"
-            />
-            <span class="project-card__year text-label">{{ project.year }}</span>
+    <!-- Horizontal scroll track -->
+    <div ref="trackRef" class="section-projects__track">
+      <article
+        v-for="(project, index) in featuredProjects"
+        :key="project.id"
+        class="section-projects__slide"
+        :style="{ backgroundColor: PROJECT_COLORS[index] || '#000' }"
+      >
+        <!-- Project number -->
+        <span class="section-projects__number page-margin">
+          {{ String(index + 1).padStart(2, '0') }}
+        </span>
+
+        <!-- Project title — distinct treatment per project -->
+        <div class="section-projects__title-wrap page-margin">
+          <h3
+            class="section-projects__title"
+            :class="`section-projects__title--${getTreatmentClass(index)}`"
+          >
+            {{ project.name }}
+          </h3>
+        </div>
+
+        <!-- Project meta — bottom -->
+        <div class="section-projects__meta page-margin">
+          <div class="section-projects__meta-left">
+            <span class="section-projects__category">{{ project.category }}</span>
+            <span class="section-projects__year">{{ project.year }}</span>
           </div>
-
-          <!-- Info -->
-          <div class="project-card__info">
-            <span class="project-card__category text-label">{{ project.category }}</span>
-            <h3 class="project-card__title text-h3">
-              {{ project.name }}
-            </h3>
-            <p class="project-card__description text-small">
-              {{ project.description }}
-            </p>
-            <div class="project-card__tech">
-              <span v-for="tech in project.technologies" :key="tech" class="project-card__tag">
-                {{ tech }}
-              </span>
-            </div>
+          <div class="section-projects__tech">
+            <span
+              v-for="tech in project.technologies"
+              :key="tech"
+              class="section-projects__tag"
+            >{{ tech }}</span>
           </div>
+        </div>
 
-          <!-- Link overlay -->
-          <a
-            v-if="project.url"
-            :href="project.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="project-card__link"
-            :aria-label="`View ${project.name}`"
-          />
-        </article>
-      </div>
+        <!-- Full-panel link -->
+        <a
+          v-if="project.url || project.playStore"
+          :href="project.url || project.playStore"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="section-projects__link"
+          :aria-label="`View ${project.name}`"
+          data-cursor-label="View"
+        />
+      </article>
     </div>
   </section>
 </template>
 
 <style scoped>
-.projects__header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 3rem;
-}
-
-.projects__count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-small);
-  font-weight: 700;
-}
-
-.projects__grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--grid-gap);
-}
-
-.project-card {
+.section-projects {
   position: relative;
-  border-radius: var(--radius-lg);
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--color-bg);
   overflow: hidden;
-  background: var(--color-bg-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Section label — fixed top-left during scroll */
+.section-projects__label {
+  position: absolute;
+  top: clamp(1.5rem, 3vh, 2.5rem);
+  left: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 1em;
+  z-index: 2;
+}
+
+.section-projects__label-num {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.15em;
+}
+
+.section-projects__label-text {
+  font-family: var(--font-body);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  letter-spacing: var(--tracking-mega);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+/* Horizontal track */
+.section-projects__track {
+  display: flex;
+  width: fit-content;
+  height: 100%;
+}
+
+/* Each project slide */
+.section-projects__slide {
+  position: relative;
+  width: 100vw;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   cursor: pointer;
 }
 
-.project-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-
-.project-card:first-child {
-  grid-column: span 2;
-}
-
-.project-card__visual {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-}
-
-.project-card:first-child .project-card__visual {
-  aspect-ratio: 21 / 9;
-}
-
-.project-card__gradient {
+/* Project number */
+.section-projects__number {
   position: absolute;
-  inset: 0;
-  opacity: 0.8;
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.project-card:hover .project-card__gradient {
-  transform: scale(1.05);
-}
-
-.project-card__pattern {
-  position: absolute;
-  inset: 0;
-}
-
-.project-card__year {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(0, 0, 0, 0.3);
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-full);
-  backdrop-filter: blur(10px);
-}
-
-.project-card__info {
-  padding: 1.5rem;
-}
-
-.project-card__category {
-  color: var(--color-accent-light);
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
-.project-card__title {
-  margin-bottom: 0.75rem;
-}
-
-.project-card__description {
-  color: var(--color-text-secondary);
-  margin-bottom: 1rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.project-card__tech {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.project-card__tag {
-  font-size: var(--text-label);
-  font-weight: 500;
+  top: clamp(4rem, 8vh, 6rem);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
   color: var(--color-text-tertiary);
-  padding: 0.25rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-full);
+  letter-spacing: 0.15em;
 }
 
-.project-card__link {
+/* Title wrapper */
+.section-projects__title-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+/* Base title */
+.section-projects__title {
+  font-family: var(--font-display);
+  font-size: var(--text-project);
+  line-height: var(--leading-crush);
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  user-select: none;
+}
+
+/* Treatment 1: Condensed bold */
+.section-projects__title--condensed {
+  font-variation-settings: 'wght' 700;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Treatment 2: Outlined — stroke only, fill on hover */
+.section-projects__title--outlined {
+  font-variation-settings: 'wght' 700;
+  -webkit-text-stroke: 2px var(--color-text-primary);
+  color: transparent;
+  letter-spacing: var(--tracking-tight);
+  transition: color 0.5s var(--ease-expo);
+}
+
+.section-projects__slide:hover .section-projects__title--outlined {
+  color: var(--color-text-primary);
+}
+
+/* Treatment 3: Italic wide tracking */
+.section-projects__title--italic {
+  font-variation-settings: 'wght' 500;
+  font-style: italic;
+  letter-spacing: var(--tracking-ultra);
+  text-transform: none;
+}
+
+/* Treatment 4: Ultra-light, massive scale */
+.section-projects__title--ultralight {
+  font-variation-settings: 'wght' 200;
+  font-size: calc(var(--text-project) * 1.3);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Treatment 5: Gradient fill */
+.section-projects__title--gradient {
+  font-variation-settings: 'wght' 700;
+  background: linear-gradient(90deg, #fff 0%, #666 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Project meta — bottom */
+.section-projects__meta {
+  position: absolute;
+  bottom: clamp(1.5rem, 3vh, 2.5rem);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.section-projects__meta-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.section-projects__category {
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.section-projects__year {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.05em;
+}
+
+.section-projects__tech {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.section-projects__tag {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--color-text-tertiary);
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--color-text-ghost);
+  letter-spacing: 0.02em;
+}
+
+/* Full-panel link overlay */
+.section-projects__link {
   position: absolute;
   inset: 0;
   z-index: 1;
 }
 
+/* Responsive */
 @media (max-width: 768px) {
-  .projects__grid {
-    grid-template-columns: 1fr;
+  .section-projects__title {
+    font-size: clamp(2rem, 10vw, 4rem);
   }
 
-  .project-card:first-child {
-    grid-column: span 1;
+  .section-projects__title--ultralight {
+    font-size: clamp(2.5rem, 12vw, 5rem);
   }
 
-  .project-card:first-child .project-card__visual {
-    aspect-ratio: 16 / 9;
+  .section-projects__meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .section-projects__tech {
+    justify-content: flex-start;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .section-projects__title--outlined {
+    transition: none;
   }
 }
 </style>

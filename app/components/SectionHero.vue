@@ -1,314 +1,270 @@
 <script setup lang="ts">
-onMounted(async () => {
-  const gsap = (await import('gsap')).default
+import { useCharProximity } from '~/composables/useCharProximity'
 
-  const tl = gsap.timeline({ delay: 0.3 })
+const NAME_LINE_1 = 'BILLY'
+const NAME_LINE_2 = 'MAULANA'
 
-  tl.from('.hero__name', {
-    y: 60,
-    opacity: 0,
-    duration: 1.4,
-    ease: 'expo.out',
-  })
+const sectionRef = ref<HTMLElement>()
+const nameRef = ref<HTMLElement>()
+const charRefs = ref<HTMLElement[]>([])
 
-  tl.from('.hero__subtitle', {
-    opacity: 0,
-    y: 12,
-    duration: 0.8,
-    ease: 'expo.out',
-  }, '-=0.6')
-
-  tl.from('.hero__meta', {
-    opacity: 0,
-    y: 10,
-    duration: 0.8,
-    ease: 'expo.out',
-    stagger: 0.1,
-  }, '-=0.4')
-
-  tl.from('.hero__scroll', {
-    opacity: 0,
-    scale: 0.8,
-    duration: 1,
-    ease: 'expo.out',
-  }, '-=0.4')
+const proximity = useCharProximity({
+  radius: 350,
+  minWeight: 200,
+  maxWeight: 700,
+  smoothing: 0.08,
 })
 
-const distortionLines = [
-  { text: 'BILLY', indent: 0 },
-  { text: 'MAULANA', indent: 0 },
-]
+let scrollCtx: gsap.Context | null = null
+
+function collectCharRef(el: unknown) {
+  if (el instanceof HTMLElement) {
+    charRefs.value.push(el)
+  }
+}
+
+onMounted(async () => {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  // Start cursor proximity (even with reduced motion, weight shift is non-motion)
+  if (charRefs.value.length) {
+    proximity.setCharElements(charRefs.value)
+
+    // Only start cursor tracking on non-touch devices
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (!isTouch) {
+      proximity.start()
+    }
+    else {
+      // On touch: set all to mid-weight for visual interest
+      charRefs.value.forEach((el) => {
+        el.style.fontVariationSettings = `'wght' 500`
+      })
+    }
+  }
+
+  if (prefersReduced)
+    return
+
+  // Scroll-driven: shrink name, expand spacing, reduce opacity
+  const gsap = (await import('gsap')).default
+  const { ScrollTrigger } = await import('gsap/ScrollTrigger')
+  gsap.registerPlugin(ScrollTrigger)
+
+  scrollCtx = gsap.context(() => {
+    if (!sectionRef.value || !nameRef.value)
+      return
+
+    gsap.to(nameRef.value, {
+      scrollTrigger: {
+        trigger: sectionRef.value,
+        start: 'top top',
+        end: 'bottom top',
+        scrub: 1.2,
+      },
+      letterSpacing: '0.15em',
+      opacity: 0.15,
+      scale: 0.6,
+      ease: 'none',
+    })
+  })
+})
+
+onUnmounted(() => {
+  proximity.stop()
+  scrollCtx?.revert()
+})
 </script>
 
 <template>
   <section
-    id="hero"
-    class="hero"
-    aria-label="Billy Maulana — Frontend Developer"
+    ref="sectionRef"
+    class="section-hero"
+    aria-label="Billy Maulana — Frontend Architect"
   >
-    <UiFluidCanvas :start-delay="200" />
+    <!-- Noise grain overlay -->
+    <div class="section-hero__grain" aria-hidden="true" />
 
-    <!-- ─── Name + Subtitle ─── -->
-    <div class="hero__content page-margin">
-      <h1 class="sr-only">
-        Billy Maulana
-      </h1>
-
-      <div class="hero__name font-display">
-        <UiTextDistortion
-          :lines="distortionLines"
-          :start-delay="600"
-          class="hero__distortion"
-        />
+    <!-- Name: fills viewport -->
+    <div ref="nameRef" class="section-hero__name-container">
+      <!-- Line 1: BILLY -->
+      <div class="section-hero__line">
+        <span
+          v-for="(char, i) in NAME_LINE_1.split('')"
+          :key="`l1-${i}`"
+          :ref="collectCharRef"
+          class="section-hero__char"
+        >{{ char }}</span>
       </div>
-
-      <p class="hero__subtitle">
-        Frontend Engineer <span class="hero__subtitle-sep">&mdash;</span> Shaping Meaningful Digital Experiences
-      </p>
+      <!-- Line 2: MAULANA -->
+      <div class="section-hero__line">
+        <span
+          v-for="(char, i) in NAME_LINE_2.split('')"
+          :key="`l2-${i}`"
+          :ref="collectCharRef"
+          class="section-hero__char"
+        >{{ char }}</span>
+      </div>
     </div>
 
-    <!-- ─── Bottom anchors ─── -->
-    <div class="hero__bottom page-margin">
-      <div class="hero__meta-group">
-        <span class="hero__meta">Open to Purposeful Collaborations</span>
-        <span class="hero__meta">Curated Works &middot; &copy;2026</span>
-      </div>
+    <!-- Sub-role: bottom-right -->
+    <div class="section-hero__meta page-margin">
+      <span class="section-hero__role">Frontend Architect</span>
+      <span class="section-hero__location">Bandung, ID</span>
+    </div>
 
-      <!-- Rotating circle scroll indicator -->
-      <div class="hero__scroll">
-        <div class="hero__scroll-ring">
-          <svg class="hero__scroll-svg" viewBox="0 0 100 100" aria-hidden="true">
-            <defs>
-              <path id="scrollCircle" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" fill="none" />
-            </defs>
-            <text class="hero__scroll-text">
-              <textPath href="#scrollCircle">SCROLL · DISCOVER · SCROLL · DISCOVER ·&nbsp;</textPath>
-            </text>
-          </svg>
-          <!-- Center: arrow icon -->
-          <svg class="hero__scroll-arrow" viewBox="0 0 12 28" fill="none" aria-hidden="true">
-            <circle cx="6" cy="3" r="1.5" fill="currentColor" opacity="0.7" />
-            <line x1="6" y1="6" x2="6" y2="22" stroke="currentColor" stroke-width="1" stroke-linecap="round" />
-            <path d="M2.5 19L6 24.5 9.5 19" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </div>
-      </div>
+    <!-- Scroll indicator -->
+    <div class="section-hero__scroll" aria-hidden="true">
+      <span class="section-hero__scroll-text">SCROLL</span>
+      <span class="section-hero__scroll-line" />
     </div>
   </section>
 </template>
 
 <style scoped>
-/* ═══════════════════════════════════════════
-   HERO — Golden Ratio Grid (φ = 1.618)
-   Fibonacci spacing: 8 · 13 · 21 · 34 · 55 · 89
-   ═══════════════════════════════════════════ */
-
-.hero {
+.section-hero {
   position: relative;
+  width: 100%;
   height: 100vh;
   height: 100dvh;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  overflow: hidden;
-  background-color: #000000;
-}
-
-/* ─── Content — Golden section vertical position ─── */
-/* φ spacing: logo→name = 89px(Fib), name→subtitle = 34px(Fib), subtitle→meta = natural */
-.hero__content {
-  position: relative;
-  z-index: var(--z-content, 10);
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  /* padding-top clears nav + golden section offset: Fibonacci 89px base */
-  padding-top: clamp(5.5625rem, 10vh, 8.5rem);
-  padding-bottom: clamp(3.4375rem, 8vh, 5.5rem);
+  background: var(--color-bg);
+  overflow: hidden;
 }
 
-/* ─── Name — φ width (61.8% of content area) ─── */
-.hero__name {
-  width: 100%;
-  max-width: 61.8%;
+/* Noise grain — subtle texture for non-flat feel */
+.section-hero__grain {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  opacity: 0.5;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 1;
 }
 
-.hero__distortion {
+/* Name container — centered, fills viewport width */
+.section-hero__name-container {
   position: relative;
-  z-index: 2;
-}
-
-/* ─── Subtitle — refined uppercase label ─── */
-/* φ gap: name → subtitle = Fibonacci 34px (2.125rem), scales to 21px (1.3125rem) on small screens */
-.hero__subtitle {
-  font-size: var(--text-label);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  line-height: 1.618;
-  margin-top: clamp(1.3125rem, 3vh, 2.125rem);
-}
-
-.hero__subtitle-sep {
-  color: var(--color-text-tertiary);
-  margin: 0 0.4em;
-}
-
-/* ─── Bottom — anchored footer bar ─── */
-.hero__bottom {
-  position: relative;
-  z-index: var(--z-content, 10);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  padding-bottom: clamp(2.125rem, 4.5vh, 3.4375rem);
-}
-
-.hero__meta-group {
+  z-index: var(--z-content);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  align-items: flex-start;
+  padding-inline: var(--page-margin);
+  will-change: transform, opacity, letter-spacing;
 }
 
-.hero__meta {
+.section-hero__line {
+  display: flex;
+  line-height: var(--leading-crush);
+}
+
+/* Per-character styling */
+.section-hero__char {
+  font-family: var(--font-display);
+  font-variation-settings: 'wght' 200;
+  font-size: var(--text-hero);
+  line-height: var(--leading-crush);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  display: inline-block;
+  will-change: font-variation-settings;
+  cursor: default;
+  user-select: none;
+}
+
+/* Sub-role meta: bottom-right, quiet */
+.section-hero__meta {
+  position: absolute;
+  bottom: var(--page-margin);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  z-index: var(--z-content);
+}
+
+.section-hero__role {
+  font-family: var(--font-body);
+  font-weight: 400;
   font-size: var(--text-caption);
-  font-weight: 500;
+  letter-spacing: var(--tracking-ultra);
+  text-transform: uppercase;
   color: var(--color-text-secondary);
-  letter-spacing: 0.2em;
+}
+
+.section-hero__location {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  line-height: 1.618;
+  color: var(--color-text-tertiary);
 }
 
-/* ─── Scroll indicator — rotating ring + center dot & line ─── */
-.hero__scroll-ring {
-  position: relative;
-  width: clamp(58px, 5.2vw, 76px);
-  height: clamp(58px, 5.2vw, 76px);
+/* Scroll indicator: bottom-center */
+.section-hero__scroll {
+  position: absolute;
+  bottom: var(--page-margin);
+  left: var(--page-margin);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: var(--z-content);
 }
 
-.hero__scroll-svg {
-  width: 100%;
-  height: 100%;
-  animation: scrollRotate 18s linear infinite;
-}
-
-.hero__scroll-text {
-  font-size: 6.8px;
-  fill: rgba(255, 255, 255, 0.5);
-  letter-spacing: 0.28em;
+.section-hero__scroll-text {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-mega);
   text-transform: uppercase;
-  font-family: 'Satoshi', system-ui, sans-serif;
-  font-weight: 500;
+  color: var(--color-text-tertiary);
+  writing-mode: vertical-lr;
 }
 
-/* Center arrow — floats subtly inside the rotating ring */
-.hero__scroll-arrow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 12px;
-  height: 24px;
-  color: rgba(255, 255, 255, 0.7);
-  transform: translate(-50%, -50%);
-  animation: scrollArrowFloat 2.4s ease-in-out infinite;
-}
-
-@keyframes scrollRotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes scrollArrowFloat {
-  0%, 100% { opacity: 0.45; transform: translate(-50%, -55%); }
-  50% { opacity: 0.85; transform: translate(-50%, -45%); }
-}
-
-/* ─── Utilities ─── */
-.sr-only {
-  position: absolute;
+.section-hero__scroll-line {
   width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
+  height: 40px;
+  background: var(--color-text-tertiary);
+  animation: scroll-pulse 2s ease-in-out infinite;
 }
 
-/* ─── Responsive: Tablet landscape ─── */
-@media (max-width: 1024px) {
-  .hero__name {
-    max-width: 70%;
-  }
-
-  .hero__content {
-    padding-top: clamp(5rem, 9vh, 7rem);
-    padding-bottom: clamp(2.125rem, 6vh, 3.4375rem);
-  }
+@keyframes scroll-pulse {
+  0%, 100% { opacity: 0.3; transform: scaleY(0.5); transform-origin: top; }
+  50% { opacity: 1; transform: scaleY(1); transform-origin: top; }
 }
 
-/* ─── Responsive: Tablet portrait ─── */
+/* Responsive */
 @media (max-width: 768px) {
-  .hero__name {
-    max-width: 76.4%;
+  .section-hero__char {
+    font-size: clamp(3rem, 15vw, 6rem);
   }
 
-  .hero__subtitle {
-    font-size: var(--text-caption);
-    letter-spacing: 0.18em;
-    margin-top: clamp(0.8125rem, 2vh, 1.3125rem);
+  .section-hero__meta {
+    bottom: clamp(1rem, 3vh, 2rem);
   }
 
-  .hero__bottom {
-    padding-bottom: clamp(1.3125rem, 3vh, 2.125rem);
-  }
-}
-
-/* ─── Responsive: Mobile ─── */
-@media (max-width: 480px) {
-  .hero__name {
-    max-width: 92%;
-  }
-
-  .hero__content {
-    justify-content: flex-start;
-    padding-top: clamp(7.5rem, 28vh, 15rem);
-    padding-bottom: clamp(1.3125rem, 4vh, 2.125rem);
-  }
-
-  .hero__subtitle-sep,
-  .hero__subtitle-sep ~ * {
+  .section-hero__scroll {
     display: none;
   }
+}
 
-  .hero__subtitle {
-    margin-top: clamp(0.5rem, 1.5vh, 0.8125rem);
-  }
-
-  .hero__meta-group {
-    gap: 0.3125rem;
-  }
-
-  .hero__scroll-ring {
-    width: 48px;
-    height: 48px;
+@media (max-width: 480px) {
+  .section-hero__char {
+    font-size: clamp(2.5rem, 13vw, 4rem);
   }
 }
 
-.hero__scroll {
-  transition: opacity 0.4s var(--ease-out-expo);
-}
-
-/* ─── Reduced motion ─── */
+/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-  .hero__scroll-svg {
+  .section-hero__scroll-line {
     animation: none;
-  }
-
-  .hero__scroll-arrow {
-    animation: none;
-    opacity: 0.4;
+    opacity: 0.5;
   }
 }
 </style>

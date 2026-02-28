@@ -1,149 +1,208 @@
 <script setup lang="ts">
-const { scrollTo } = useSmoothScroll()
+/**
+ * Footer: "Circular Narrative"
+ * Mirrors the hero — same name, opposite weight (hero: 200, footer: 700).
+ * Scroll-driven: letters animate from weight 200 to 700 as you approach.
+ * The site LOOPS, not ends.
+ */
 
-function backToTop() {
-  scrollTo(0, { duration: 2 })
-}
+const NAME = 'BILLY MAULANA'
+const currentYear = new Date().getFullYear()
+
+const sectionRef = ref<HTMLElement>()
+const nameRef = ref<HTMLElement>()
+
+let scrollCtx: gsap.Context | null = null
+
+onMounted(async () => {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (prefersReduced)
+    return
+
+  const gsap = (await import('gsap')).default
+  const { ScrollTrigger } = await import('gsap/ScrollTrigger')
+  gsap.registerPlugin(ScrollTrigger)
+
+  scrollCtx = gsap.context(() => {
+    if (!sectionRef.value || !nameRef.value)
+      return
+
+    // Name weight morph: 200 → 700 as footer scrolls into view
+    gsap.fromTo(nameRef.value, {
+      fontVariationSettings: `'wght' 200`,
+      opacity: 0.3,
+    }, {
+      fontVariationSettings: `'wght' 700`,
+      opacity: 1,
+      scrollTrigger: {
+        trigger: sectionRef.value,
+        start: 'top 80%',
+        end: 'top 30%',
+        scrub: 1,
+      },
+    })
+  })
+})
+
+onUnmounted(() => {
+  scrollCtx?.revert()
+})
 </script>
 
 <template>
-  <footer class="footer" aria-label="Footer">
-    <div class="footer__gradient" aria-hidden="true" />
-
-    <div class="footer__content page-max page-margin">
-      <!-- Logo -->
-      <div class="footer__logo">
-        <span class="footer__logo-text">BM</span>
-        <span class="footer__logo-dot" />
+  <footer
+    ref="sectionRef"
+    class="section-footer"
+    aria-label="Footer"
+  >
+    <div class="section-footer__inner page-margin">
+      <!-- Name: mirrors hero -->
+      <div class="section-footer__top">
+        <span ref="nameRef" class="section-footer__name">
+          {{ NAME }}
+        </span>
+        <span class="section-footer__role">FRONTEND ARCHITECT</span>
       </div>
 
-      <!-- Tagline -->
-      <p class="footer__tagline text-body">
-        Transforming pixels into performance.
-      </p>
-
-      <!-- Back to top -->
-      <UiMagneticButton class="footer__back-to-top" :strength="0.3" aria-label="Back to top" @click="backToTop">
-        <span class="i-carbon-arrow-up" />
-      </UiMagneticButton>
-
       <!-- Bottom bar -->
-      <div class="footer__bottom">
-        <p class="footer__credit text-small">
-          Designed & Built by Billy Maulana
-        </p>
-        <p class="footer__copyright text-small">
-          &copy; {{ new Date().getFullYear() }} All rights reserved.
-        </p>
+      <div class="section-footer__bottom">
+        <span class="section-footer__copy">&copy; {{ currentYear }}</span>
+        <nav class="section-footer__links" aria-label="Social links">
+          <a
+            href="https://github.com/billymaulana"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-cursor-label="GitHub"
+          >GITHUB</a>
+          <a
+            href="https://linkedin.com/in/billy-maulana"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-cursor-label="LinkedIn"
+          >LINKEDIN</a>
+        </nav>
       </div>
     </div>
   </footer>
 </template>
 
 <style scoped>
-.footer {
+.section-footer {
   position: relative;
-  padding: 6rem 0 2rem;
-  overflow: hidden;
+  width: 100%;
+  padding: clamp(4rem, 8vh, 8rem) 0 clamp(1.5rem, 3vh, 3rem);
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-text-ghost);
 }
 
-.footer__gradient {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(
-      180deg,
-      var(--color-bg-primary) 0%,
-      rgba(0, 71, 255, 0.03) 30%,
-      rgba(139, 0, 255, 0.02) 60%,
-      var(--color-bg-primary) 100%
-    );
-  animation: gradientShift 10s ease infinite;
-  background-size: 100% 200%;
-}
-
-@keyframes gradientShift {
-  0%, 100% {
-    background-position: 0% 0%;
-  }
-  50% {
-    background-position: 0% 100%;
-  }
-}
-
-.footer__content {
-  position: relative;
+.section-footer__inner {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
+  gap: clamp(4rem, 8vh, 8rem);
 }
 
-.footer__logo {
+.section-footer__top {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.footer__logo-text {
-  font-size: 2rem;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-}
-
-.footer__logo-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-accent);
-}
-
-.footer__tagline {
-  color: var(--color-text-secondary);
-  text-align: center;
-}
-
-.footer__back-to-top {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: none;
+/* Name mirrors hero — same font, opposite weight */
+.section-footer__name {
+  font-family: var(--font-display);
+  font-variation-settings: 'wght' 700;
+  font-size: var(--text-display);
+  line-height: var(--leading-crush);
+  letter-spacing: var(--tracking-tight);
   color: var(--color-text-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  transition: all 0.3s;
-  margin: 1rem 0;
+  text-transform: uppercase;
+  will-change: font-variation-settings, opacity;
 }
 
-.footer__back-to-top:hover {
-  border-color: var(--color-accent);
-  background: rgba(0, 71, 255, 0.1);
+.section-footer__role {
+  font-family: var(--font-body);
+  font-size: var(--text-caption);
+  font-weight: 400;
+  letter-spacing: var(--tracking-ultra);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
 }
 
-.footer__bottom {
-  width: 100%;
+/* Bottom bar */
+.section-footer__bottom {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 2rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  margin-top: 2rem;
 }
 
-.footer__credit,
-.footer__copyright {
+.section-footer__copy {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
   color: var(--color-text-tertiary);
+  letter-spacing: 0.05em;
 }
 
-@media (max-width: 640px) {
-  .footer__bottom {
+.section-footer__links {
+  display: flex;
+  gap: 2rem;
+}
+
+.section-footer__links a {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color 0.3s var(--ease-expo);
+}
+
+/* Underline wipe on hover */
+.section-footer__links a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--color-text-primary);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.4s var(--ease-expo);
+}
+
+.section-footer__links a:hover {
+  color: var(--color-text-primary);
+}
+
+.section-footer__links a:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .section-footer__name {
+    font-size: clamp(2rem, 10vw, 4rem);
+  }
+
+  .section-footer__bottom {
     flex-direction: column;
-    gap: 0.5rem;
-    text-align: center;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .section-footer__name {
+    font-variation-settings: 'wght' 700;
+    opacity: 1;
+  }
+
+  .section-footer__links a::after {
+    transition: none;
   }
 }
 </style>

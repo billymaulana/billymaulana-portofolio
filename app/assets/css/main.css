@@ -1,112 +1,194 @@
-/* ═══════════════════════════════════════════
-   BILLY MAULANA — Design Tokens
-   "Liquid Prism" — Deep Black + Electric Blue
-   ═══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════
+   CONCEPT 3: TYPOGRAPHIC AVANT-GARDE — "Letters Are Alive"
+   Pure typography portfolio. Text IS the design material.
+   Variable font animation. Per-character interaction.
+   Black + White + ONE blue accent.
+   ═══════════════════════════════════════════════════════════════════════ */
 
-/* ---------- Reset ---------- */
+/* ─── Font Face: Clash Display Variable (200-700) ─── */
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/assets/fonts/clash-display/ClashDisplay-Variable.woff2') format('woff2-variations');
+  font-weight: 200 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+/* ─── Font Face: Satoshi Variable (300-900) ─── */
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/assets/fonts/satoshi/Satoshi-Variable.woff2') format('woff2-variations');
+  font-weight: 300 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/assets/fonts/satoshi/Satoshi-VariableItalic.woff2') format('woff2-variations');
+  font-weight: 300 900;
+  font-display: swap;
+  font-style: italic;
+}
+
+/* ─── Font Face: JetBrains Mono (monospace — loaded via Google Fonts CDN) ─── */
+/* See nuxt.config.ts <link> for CDN stylesheet */
+
+/* ─── Reset ─── */
+
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
-/* ---------- Custom Properties ---------- */
-:root {
-  /* — Colors — */
-  --color-bg:            #000000;
-  --color-bg-elevated:   #0a0a0a;
-  --color-surface:       #111111;
-
-  --color-text-primary:  #ffffff;
-  --color-text-secondary:#888888;
-  --color-text-tertiary: #555555;
-
-  --color-accent:        #0047FF;
-  --color-accent-light:  #00A3FF;
-  --color-accent-cyan:   #00F5FF;
-  --color-accent-purple: #4400FF;
-  --color-accent-glow:   rgba(0, 71, 255, 0.15);
-
-  /* — Typography Scale (fluid, φ-informed ratios) — */
-  --text-display:  clamp(3.5rem, 12vw, 13rem);
-  --text-h1:       clamp(2.5rem, 6vw, 6rem);
-  --text-h2:       clamp(1.75rem, 3.5vw, 3.5rem);
-  --text-h3:       clamp(1.25rem, 2vw, 2rem);
-  --text-body:     clamp(0.9375rem, 1.1vw, 1.125rem);
-  --text-label:    clamp(0.6875rem, 0.85vw, 0.8125rem);
-  --text-caption:  clamp(0.5625rem, 0.65vw, 0.6875rem);
-
-  /* — Spacing (Fibonacci / Golden Ratio, base 8px) — */
-  --page-margin:   clamp(1.5rem, 4.5vw, 5.5rem);
-  --section-gap:   clamp(5.5rem, 11vh, 9rem);
-
-  /* — Animation — */
-  --duration-fast:    0.2s;
-  --duration-normal:  0.4s;
-  --duration-slow:    0.8s;
-  --duration-slower:  1.2s;
-  --ease-out-expo:    cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-out-quart:   cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-in-out:      cubic-bezier(0.65, 0, 0.35, 1);
-
-  /* — Z-index layers — */
-  --z-fluid:       1;
-  --z-content:     10;
-  --z-nav:         100;
-  --z-cursor:      200;
-  --z-preloader:   300;
-}
-
-/* ---------- Design System Utilities ---------- */
-.page-margin {
-  padding-left: var(--page-margin);
-  padding-right: var(--page-margin);
-}
-
-.page-max {
-  max-width: 1440px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* ---------- Base ---------- */
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  scroll-behavior: auto;
 }
 
 body {
-  font-family: 'Satoshi', system-ui, -apple-system, sans-serif;
-  background-color: var(--color-bg);
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
   color: var(--color-text-primary);
-  line-height: 1.618;
-  font-kerning: normal;
-  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+  background-color: var(--color-bg);
   overflow-x: hidden;
 }
 
-/* ---------- Selection ---------- */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+/* ─── Design Tokens ─── */
+
+:root {
+  /* === STARK MONOCHROME === */
+  --color-bg: #000000;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #666666;
+  --color-text-tertiary: #333333;
+  --color-text-ghost: #1a1a1a;
+
+  /* === THE ONE ACCENT === */
+  --color-accent: #0047FF;
+  --color-accent-glow: rgba(0, 71, 255, 0.25);
+
+  /* === Grid Lines === */
+  --color-grid: rgba(255, 255, 255, 0.04);
+
+  /* === Font Stacks === */
+  --font-display: 'Clash Display', 'Inter', system-ui, sans-serif;
+  --font-body: 'Satoshi', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* === Type Scale (Extreme Range) === */
+  --text-hero: clamp(6rem, 22vw, 20rem);
+  --text-cta: clamp(8rem, 28vw, 26rem);
+  --text-project: clamp(3.5rem, 14vw, 12rem);
+  --text-display: clamp(3rem, 10vw, 9rem);
+  --text-word-stack: clamp(2.5rem, 8vw, 7rem);
+  --text-title: clamp(1.75rem, 4vw, 3.5rem);
+  --text-body: clamp(0.9375rem, 1.15vw, 1.125rem);
+  --text-small: clamp(0.8125rem, 0.9vw, 0.9375rem);
+  --text-caption: clamp(0.6875rem, 0.75vw, 0.75rem);
+  --text-micro: clamp(0.5625rem, 0.6vw, 0.625rem);
+
+  /* === Letter Spacing === */
+  --tracking-tight: -0.04em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.05em;
+  --tracking-mega: 0.15em;
+  --tracking-ultra: 0.3em;
+
+  /* === Line Height === */
+  --leading-crush: 0.85;
+  --leading-tight: 0.92;
+  --leading-normal: 1.1;
+  --leading-body: 1.55;
+
+  /* === Spacing === */
+  --page-margin: clamp(1.5rem, 4vw, 5rem);
+  --section-gap: clamp(6rem, 12vh, 12rem);
+
+  /* === Grid === */
+  --grid-columns: 12;
+  --grid-gutter: clamp(0.75rem, 1.5vw, 1.5rem);
+
+  /* === Z-Index === */
+  --z-bg: 0;
+  --z-grid: 1;
+  --z-content: 10;
+  --z-nav: 100;
+  --z-cursor: 200;
+  --z-preloader: 300;
+
+  /* === Easing === */
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-expo-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-expo-inout: cubic-bezier(0.87, 0, 0.13, 1);
+}
+
+/* ─── Utilities ─── */
+
+.page-margin {
+  padding-inline: var(--page-margin);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ─── Selection ─── */
+
 ::selection {
-  background-color: var(--color-accent-cyan);
-  color: var(--color-bg);
+  background: var(--color-accent);
+  color: var(--color-text-primary);
 }
 
-/* ---------- Focus ---------- */
-:focus-visible {
-  outline: 2px solid var(--color-accent-cyan);
-  outline-offset: 2px;
+/* ─── Hide Scrollbar ─── */
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
-/* ---------- Menu Open State ---------- */
-.menu-open .hero__scroll {
-  opacity: 0;
-  pointer-events: none;
-}
+/* ─── Reduced Motion ─── */
 
-/* ---------- Reduced Motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
