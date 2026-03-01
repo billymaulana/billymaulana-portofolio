@@ -1,20 +1,78 @@
 <script setup lang="ts">
 /**
- * Footer: "Circular Narrative"
- * Mirrors the hero — same name, opposite weight (hero: 200, footer: 700).
- * Scroll-driven: letters animate from weight 200 to 700 as you approach.
- * The site LOOPS, not ends.
+ * SectionFooter — "The Closing Credits"
+ * Circular narrative: mirrors preloader BM monogram stroke-draw.
+ * Visual objects: (1) Mini skills ticker, (2) BM monogram stroke-only SVG.
+ * Animation: Bottom-up stagger reveal (different from CTA's scale+blur).
+ * Live clock, back-to-top via useSmoothScroll.
  */
+import { useSmoothScroll } from '~/composables/useSmoothScroll'
+import { profile } from '~/constants/profile'
 
-const NAME = 'BILLY MAULANA'
-const currentYear = new Date().getFullYear()
+const { scrollTo } = useSmoothScroll()
 
 const sectionRef = ref<HTMLElement>()
-const nameRef = ref<HTMLElement>()
+const tickerRef = ref<HTMLElement>()
+const gridRef = ref<HTMLElement>()
+const monogramRef = ref<SVGSVGElement>()
+const bottomRef = ref<HTMLElement>()
 
-let scrollCtx: gsap.Context | null = null
+const currentYear = new Date().getFullYear()
+const currentTime = ref('')
+let clockInterval: ReturnType<typeof setInterval> | null = null
+let ctx: gsap.Context | null = null
+
+const skills = [
+  'Vue.js',
+  'Nuxt',
+  'TypeScript',
+  'GSAP',
+  'WebGL',
+  'Three.js',
+  'Figma',
+  'Design Systems',
+  'Performance',
+  'Accessibility',
+]
+
+const navLinks = [
+  { label: 'Home', href: '#main' },
+  { label: 'About', href: '#about' },
+  { label: 'Work', href: '#work' },
+  { label: 'Contact', href: '#contact' },
+]
+
+const socialLinks = [
+  { label: 'GitHub', href: profile.github },
+  { label: 'LinkedIn', href: profile.linkedin },
+  { label: 'Instagram', href: profile.instagram },
+  { label: 'Email', href: `mailto:${profile.email}` },
+]
+
+function updateClock() {
+  const now = new Date()
+  currentTime.value = now.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+}
+
+function scrollToTop() {
+  const hero = document.querySelector('.section-hero')
+  if (hero)
+    scrollTo(hero as HTMLElement, { duration: 2.0 })
+}
+
+function isExternal(href: string): boolean {
+  return href.startsWith('http') || href.startsWith('mailto:')
+}
 
 onMounted(async () => {
+  updateClock()
+  clockInterval = setInterval(updateClock, 1000)
+
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   if (prefersReduced)
     return
@@ -23,64 +81,204 @@ onMounted(async () => {
   const { ScrollTrigger } = await import('gsap/ScrollTrigger')
   gsap.registerPlugin(ScrollTrigger)
 
-  scrollCtx = gsap.context(() => {
-    if (!sectionRef.value || !nameRef.value)
+  ctx = gsap.context(() => {
+    if (!sectionRef.value)
       return
 
-    // Name weight morph: 200 → 700 as footer scrolls into view
-    gsap.fromTo(nameRef.value, {
-      fontVariationSettings: `'wght' 200`,
-      opacity: 0.3,
-    }, {
-      fontVariationSettings: `'wght' 700`,
-      opacity: 1,
-      scrollTrigger: {
-        trigger: sectionRef.value,
-        start: 'top 80%',
-        end: 'top 30%',
-        scrub: 1,
-      },
-    })
+    const trigger = {
+      trigger: sectionRef.value,
+      start: 'top 85%',
+    }
+
+    // 1. Ticker: slides in from right with elastic easing
+    if (tickerRef.value) {
+      gsap.from(tickerRef.value, {
+        x: 80,
+        opacity: 0,
+        duration: 0.8,
+        ease: 'elastic.out(1, 0.8)',
+        scrollTrigger: trigger,
+      })
+    }
+
+    // 2. Grid columns: stagger from bottom
+    if (gridRef.value) {
+      const cols = gridRef.value.querySelectorAll('.section-footer__col')
+      gsap.from(cols, {
+        y: 30,
+        opacity: 0,
+        duration: 0.7,
+        ease: 'power3.out',
+        stagger: 0.12,
+        scrollTrigger: {
+          trigger: sectionRef.value,
+          start: 'top 80%',
+        },
+      })
+
+      // Links within columns
+      const links = gridRef.value.querySelectorAll('a, .section-footer__col-label')
+      gsap.from(links, {
+        x: -8,
+        opacity: 0,
+        duration: 0.5,
+        ease: 'power3.out',
+        stagger: 0.05,
+        scrollTrigger: {
+          trigger: sectionRef.value,
+          start: 'top 78%',
+        },
+      })
+    }
+
+    // 3. BM monogram: stroke-dashoffset draw (wow moment — mirrors preloader)
+    if (monogramRef.value) {
+      const paths = monogramRef.value.querySelectorAll('path')
+      paths.forEach((path) => {
+        const len = path.getTotalLength()
+        gsap.set(path, {
+          strokeDasharray: len,
+          strokeDashoffset: len,
+        })
+      })
+
+      gsap.to(paths, {
+        strokeDashoffset: 0,
+        duration: 2,
+        ease: 'expo.inOut',
+        stagger: 0.2,
+        scrollTrigger: {
+          trigger: monogramRef.value,
+          start: 'top 90%',
+        },
+      })
+    }
+
+    // 4. Bottom bar: subtle reveal
+    if (bottomRef.value) {
+      gsap.from(bottomRef.value, {
+        opacity: 0,
+        y: 15,
+        duration: 0.6,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: bottomRef.value,
+          start: 'top 95%',
+        },
+      })
+    }
   })
 })
 
 onUnmounted(() => {
-  scrollCtx?.revert()
+  if (clockInterval)
+    clearInterval(clockInterval)
+  ctx?.revert()
 })
 </script>
 
 <template>
-  <footer
-    ref="sectionRef"
-    class="section-footer"
-    aria-label="Footer"
-  >
+  <footer ref="sectionRef" class="section-footer" aria-label="Footer">
+    <!-- Atmospheric gradient -->
+    <div class="section-footer__atmosphere" aria-hidden="true" />
+
+    <!-- 1. Mini Skills Ticker -->
+    <div ref="tickerRef" class="section-footer__ticker" aria-hidden="true">
+      <div class="section-footer__ticker-track">
+        <div class="section-footer__ticker-content">
+          <template v-for="(skill, i) in skills" :key="`a-${i}`">
+            <span class="section-footer__ticker-item">{{ skill }}</span>
+            <svg
+              class="section-footer__ticker-diamond"
+              viewBox="0 0 8 8"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M4 0L8 4L4 8L0 4Z" fill="currentColor" />
+            </svg>
+          </template>
+        </div>
+        <!-- Duplicate for seamless loop -->
+        <div class="section-footer__ticker-content" aria-hidden="true">
+          <template v-for="(skill, i) in skills" :key="`b-${i}`">
+            <span class="section-footer__ticker-item">{{ skill }}</span>
+            <svg
+              class="section-footer__ticker-diamond"
+              viewBox="0 0 8 8"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M4 0L8 4L4 8L0 4Z" fill="currentColor" />
+            </svg>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticker divider -->
+    <div class="section-footer__divider page-margin" aria-hidden="true" />
+
     <div class="section-footer__inner page-margin">
-      <!-- Name: mirrors hero -->
-      <div class="section-footer__top">
-        <span ref="nameRef" class="section-footer__name">
-          {{ NAME }}
-        </span>
-        <span class="section-footer__role">FRONTEND ARCHITECT</span>
+      <!-- BM Monogram SVG — Stroke-Only (circular narrative) -->
+      <svg
+        ref="monogramRef"
+        class="section-footer__monogram"
+        viewBox="1400 379 1525 1474"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <path d="M1479.88 383.753C1481.82 383.751 1483.77 383.749 1485.71 383.745C1491 383.739 1496.28 383.745 1501.57 383.753C1507.3 383.76 1513.02 383.755 1518.75 383.751C1529.96 383.746 1541.17 383.752 1552.38 383.761C1565.51 383.772 1578.64 383.772 1591.78 383.771C1616 383.77 1640.22 383.781 1664.45 383.796C1686.38 383.809 1708.32 383.815 1730.25 383.815C1731.65 383.815 1733.05 383.815 1734.45 383.815C1735.15 383.815 1735.84 383.815 1736.55 383.815C1740.04 383.814 1743.53 383.814 1747.02 383.814C1747.71 383.814 1748.4 383.814 1749.11 383.814C1767.58 383.814 1786.06 383.818 1804.54 383.825C1805.53 383.825 1805.53 383.825 1806.55 383.825C1809.87 383.826 1813.19 383.827 1816.51 383.829C1824.31 383.831 1832.11 383.833 1839.91 383.833C1936.73 383.838 1936.73 383.838 1980.09 384.358C1982.35 384.385 1984.61 384.408 1986.86 384.431C2002.15 384.591 2017.4 385.025 2032.67 385.956C2033.34 385.998 2034.02 386.039 2034.71 386.081C2076.72 388.688 2117.07 396.836 2156 413C2156.68 413.273 2157.36 413.547 2158.06 413.829C2169.69 418.507 2180.58 424.482 2191.51 430.609C2193.65 431.802 2195.79 432.972 2197.95 434.129C2207.32 439.248 2215.61 445.457 2224 452C2225.27 452.978 2226.54 453.956 2227.81 454.934C2242.67 466.431 2242.67 466.431 2247 471C2247 471.66 2247 472.32 2247 473C2247.93 473.371 2247.93 473.371 2248.87 473.75C2251.35 475.206 2251.95 476.378 2253 479C2253.66 479 2254.32 479 2255 479C2256.73 480.983 2258.34 482.972 2259.94 485.063C2260.67 486.007 2260.67 486.007 2261.41 486.971C2262.95 488.974 2264.47 490.986 2266 493C2266.48 493.625 2266.95 494.25 2267.45 494.894C2274.31 503.901 2280.42 513.151 2286 523C2286.36 523.614 2286.72 524.229 2287.08 524.862C2300.7 548.344 2309.23 574.546 2314.25 601.125C2314.4 601.922 2314.55 602.719 2314.71 603.541C2317.61 620.099 2318.33 636.675 2318.26 653.455C2318.25 656.629 2318.26 659.803 2318.27 662.977C2318.29 678.95 2317.46 694.542 2313.69 710.125C2313.47 711.053 2313.25 711.98 2313.02 712.936C2304.41 748.591 2288.64 781.843 2265 810C2264.32 810.808 2263.64 811.617 2262.95 812.449C2257.74 818.413 2252.13 824.001 2246.56 829.625C2245.76 830.445 2244.95 831.264 2244.12 832.108C2243.36 832.869 2242.6 833.63 2241.82 834.414C2241.13 835.105 2240.44 835.795 2239.74 836.506C2238 838 2238 838 2236 838C2236 838.66 2236 839.32 2236 840C2234.53 841.45 2234.53 841.45 2232.5 843.133C2211.53 860.426 2211.53 860.426 2201.69 884.516C2201.32 895.878 2203.5 904.471 2210.54 913.441C2212.11 915.24 2212.11 915.24 2215 917C2215 917.66 2215 918.32 2215 919C2215.58 919.271 2216.16 919.541 2216.75 919.82C2219.01 921.006 2220.9 922.348 2222.94 923.875C2237.05 933.827 2252.76 941.523 2267.97 949.638C2293.93 963.491 2318.69 978.211 2341.04 997.477C2343.71 999.756 2346.43 1001.95 2349.19 1004.13C2353.5 1007.54 2357.58 1011.15 2361.64 1014.86C2363.7 1016.72 2365.77 1018.56 2367.87 1020.38C2390.23 1039.9 2410.26 1061.42 2427 1086C2427.6 1086.88 2428.2 1087.75 2428.82 1088.65C2437.03 1100.65 2444.95 1112.68 2451.71 1125.55C2453.15 1128.29 2454.61 1131 2456.07 1133.72C2482.33 1182.91 2500.32 1236.55 2507 1292C2507.08 1292.67 2507.16 1293.34 2507.25 1294.03C2512.05 1334.06 2510.88 1374.05 2506 1414C2505.85 1415.29 2505.69 1416.58 2505.53 1417.91C2499.72 1464.74 2486.87 1511.19 2467 1554C2466.6 1554.88 2466.2 1555.75 2465.79 1556.66C2459.48 1570.45 2452.45 1583.79 2445 1597C2444.58 1597.74 2444.17 1598.48 2443.74 1599.25C2427.57 1627.82 2409 1656.34 2386.47 1680.34C2384.47 1682.49 2382.57 1684.68 2380.69 1686.94C2372.42 1696.41 2363.01 1704.9 2352 1711C2351.23 1711.46 2350.46 1711.92 2349.66 1712.39C2335.46 1720.26 2318.54 1722.34 2302.81 1718.56C2287.83 1713.72 2275.93 1701.79 2266 1690C2265.02 1688.88 2264.05 1687.77 2263.07 1686.66C2256.22 1678.86 2249.66 1670.91 2243.32 1662.7C2242.03 1661.04 2240.74 1659.4 2239.43 1657.75C2229.08 1644.67 2218.85 1631.46 2209.1 1617.91C2206.18 1613.86 2203.21 1609.84 2200.25 1605.81C2199.34 1604.58 2199.34 1604.58 2198.42 1603.32C2194.13 1597.52 2189.81 1591.74 2185.47 1585.99C2181.78 1581.08 2178.2 1576.11 2174.62 1571.12C2169.63 1564.16 2164.45 1557.36 2159.16 1550.61C2152.12 1541.62 2145.28 1532.48 2138.53 1523.27C2132.83 1515.5 2127.11 1507.76 2121.11 1500.21C2117.52 1495.68 2114 1491.1 2110.5 1486.5C2101.54 1474.75 2092.39 1463.16 2083.03 1451.73C2081.27 1449.57 2079.54 1447.41 2077.84 1445.21C2072.8 1438.75 2067.18 1432.91 2061.44 1427.06C2060.63 1426.23 2059.83 1425.4 2059 1424.55C2054.36 1419.89 2050.15 1416.38 2044 1414C2042.98 1413.6 2041.96 1413.19 2040.9 1412.78C2031.45 1410.1 2024.62 1412.1 2016 1416C2015.24 1416.34 2014.49 1416.68 2013.71 1417.04C2007.89 1420.41 2005.39 1426.98 2003 1433C2001.94 1437.2 2001.81 1441.35 2001.76 1445.66C2001.75 1446.77 2001.75 1446.77 2001.73 1447.9C2001.56 1463.71 2001.66 1478.68 2006 1494C2006.5 1495.9 2007.01 1497.79 2007.51 1499.69C2011.44 1514.13 2016.45 1528.11 2022 1542C2022.41 1543.02 2022.81 1544.04 2023.23 1545.08C2029.89 1561.57 2037.47 1577.55 2045.31 1593.5C2048.16 1599.31 2050.96 1605.15 2053.75 1611C2054.19 1611.91 2054.62 1612.83 2055.07 1613.77C2057.33 1618.5 2059.59 1623.23 2061.84 1627.96C2065.78 1636.24 2069.73 1644.51 2073.87 1652.69C2116.34 1737.07 2116.34 1737.07 2103 1779C2097.76 1794.56 2090.05 1808.8 2079 1821C2078.46 1821.63 2077.92 1822.26 2077.37 1822.91C2060.72 1841.23 2034.69 1847.42 2011 1849C2003.29 1849.32 1995.58 1849.27 1987.87 1849.25C1985.59 1849.26 1983.31 1849.26 1981.03 1849.26C1974.81 1849.27 1968.59 1849.27 1962.38 1849.26C1956.34 1849.26 1950.31 1849.26 1944.28 1849.27C1931.19 1849.28 1918.1 1849.28 1905.01 1849.27C1893.56 1849.27 1882.11 1849.27 1870.65 1849.27C1869.89 1849.27 1869.13 1849.27 1868.35 1849.27C1865.26 1849.27 1862.16 1849.27 1859.07 1849.27C1830.11 1849.28 1801.15 1849.27 1772.18 1849.26C1746.48 1849.25 1720.78 1849.25 1695.08 1849.26C1666.16 1849.27 1637.25 1849.28 1608.33 1849.27C1605.25 1849.27 1602.16 1849.27 1599.08 1849.27C1598.32 1849.27 1597.56 1849.27 1596.78 1849.27C1585.33 1849.26 1573.89 1849.27 1562.44 1849.27C1549.43 1849.28 1536.41 1849.28 1523.39 1849.27C1516.76 1849.26 1510.12 1849.26 1503.48 1849.27C1497.4 1849.27 1491.32 1849.27 1485.23 1849.26C1483.04 1849.26 1480.85 1849.26 1478.65 1849.26C1435.53 1849.35 1435.53 1849.35 1420 1834C1410.79 1823.47 1406.18 1811.97 1405.45 1798.11C1405.4 1797.32 1405.36 1796.54 1405.32 1795.73C1404.82 1785.58 1404.86 1775.43 1404.87 1765.28C1404.87 1763.02 1404.87 1760.76 1404.87 1758.49C1404.87 1752.3 1404.87 1746.11 1404.87 1739.92C1404.87 1733.87 1404.87 1727.82 1404.87 1721.77C1404.86 1709.26 1404.86 1696.74 1404.87 1684.23C1404.87 1671.56 1404.87 1658.88 1404.87 1646.21C1404.87 1645.41 1404.87 1644.61 1404.87 1643.78C1404.87 1640.51 1404.87 1637.25 1404.87 1633.98C1404.86 1603.59 1404.86 1573.19 1404.86 1542.8C1404.86 1541.9 1404.86 1541 1404.86 1540.07C1404.86 1539.17 1404.86 1538.27 1404.86 1537.34C1404.87 1509.86 1404.87 1482.37 1404.87 1454.89C1404.87 1453.05 1404.87 1451.21 1404.87 1449.37C1404.87 1441.97 1404.87 1434.56 1404.86 1427.16C1404.86 1406.47 1404.86 1385.78 1404.86 1365.09C1404.86 1364.15 1404.86 1363.21 1404.86 1362.24C1404.86 1332.21 1404.86 1302.19 1404.87 1272.17C1404.87 1271.2 1404.87 1270.22 1404.87 1269.22C1404.87 1253.41 1404.87 1237.6 1404.87 1221.79C1404.87 1159.14 1404.87 1096.49 1404.87 1033.84C1404.87 1018.06 1404.87 1002.29 1404.87 986.508C1404.87 985.051 1404.87 985.051 1404.87 983.564C1404.86 953.591 1404.86 923.618 1404.86 893.645C1404.86 892.704 1404.86 891.762 1404.86 890.792C1404.86 870.111 1404.86 849.431 1404.87 828.751C1404.87 821.35 1404.87 813.949 1404.87 806.548C1404.87 804.707 1404.87 802.866 1404.87 801.025C1404.87 773.566 1404.87 746.107 1404.86 718.648C1404.86 717.75 1404.86 716.852 1404.86 715.926C1404.86 715.03 1404.86 714.133 1404.86 713.209C1404.86 682.879 1404.86 652.548 1404.87 622.218C1404.87 618.951 1404.87 615.685 1404.87 612.419C1404.87 611.617 1404.87 610.816 1404.87 609.99C1404.87 597.366 1404.87 584.742 1404.87 572.119C1404.86 559.665 1404.87 547.212 1404.87 534.758C1404.87 528.113 1404.87 521.468 1404.87 514.824C1404.86 499.215 1404.89 483.608 1405 468C1405.01 467.04 1405.01 466.081 1405.02 465.092C1405.06 459.709 1405.12 454.327 1405.22 448.945C1405.24 447.377 1405.26 445.809 1405.28 444.241C1405.44 427.518 1408.7 410.305 1421 398C1429.87 390.826 1438.7 386.065 1450.13 384.879C1450.92 384.795 1451.7 384.712 1452.51 384.626C1461.63 383.735 1470.73 383.725 1479.88 383.753ZM1720 611.875C1718.93 611.914 1717.86 611.953 1716.76 611.994C1688.68 612.363 1688.68 612.363 1664.73 625.086C1664.16 625.718 1663.59 626.349 1663 627C1662.4 627.611 1661.8 628.222 1661.18 628.852C1657.11 633.416 1654.79 638.334 1652.69 644C1652.44 644.633 1652.2 645.266 1651.95 645.918C1646.97 660.481 1647.63 677.013 1647.4 692.199C1647.36 694.326 1647.32 696.453 1647.28 698.579C1647.18 704.156 1647.09 709.732 1646.99 715.309C1646.85 724.126 1646.68 732.943 1646.52 741.761C1646.46 745.009 1646.41 748.258 1646.35 751.506C1646.12 764.443 1645.82 777.375 1645.46 790.309C1645.04 805.129 1644.78 819.941 1644.76 834.768C1644.75 837.212 1644.74 839.656 1644.72 842.1C1644.26 874.103 1644.26 874.103 1659.23 901.453C1660.86 903.219 1660.86 903.219 1663 903C1663 903.66 1663 904.32 1663 905C1665.08 906.53 1665.08 906.53 1667.69 908C1668.56 908.516 1669.43 909.031 1670.32 909.563C1680.72 915.146 1694.01 914.32 1705.31 911.625C1715.89 908.379 1725.96 903.603 1736 899C1737.2 898.449 1737.2 898.449 1738.43 897.888C1745.12 894.82 1751.74 891.657 1758.29 888.311C1792.1 871.085 1827.66 857.694 1863.09 844.251C1867.4 842.614 1871.7 840.956 1876 839.281C1886.5 835.191 1897.02 831.255 1907.69 827.625C1974.03 806.114 1974.03 806.114 2031 768C2031 767.34 2031 766.68 2031 766C2031.55 765.786 2032.11 765.572 2032.68 765.352C2044.73 758.341 2053.56 740.561 2057.5 727.75C2059.06 721.507 2059.81 715.423 2060 709C2060.04 708.02 2060.08 707.041 2060.12 706.031C2060.57 685.291 2057.5 660.144 2043 644C2042.34 644 2041.68 644 2041 644C2040.73 643.361 2040.46 642.721 2040.19 642.063C2039.11 639.669 2039.11 639.669 2036 639C2036 638.34 2036 637.68 2036 637C2029.39 631.321 2021.85 626.739 2014 623C2013.08 622.558 2012.16 622.116 2011.21 621.66C1988.05 612.026 1959.79 613.035 1935 612.5C1934.12 612.48 1933.24 612.461 1932.33 612.441C1826.16 610.046 1826.16 610.046 1720 611.875ZM1902 1045C1900.71 1045.21 1899.42 1045.42 1898.08 1045.63C1871.72 1050.07 1846.19 1057.57 1822 1069C1820.89 1069.52 1820.89 1069.52 1819.76 1070.06C1794.89 1081.92 1771.5 1097.3 1751.22 1115.96C1749.22 1117.8 1747.19 1119.56 1745.12 1121.31C1741.6 1124.39 1738.26 1127.64 1734.94 1130.94C1734.45 1131.42 1733.97 1131.89 1733.48 1132.39C1717.02 1148.91 1704.12 1168.19 1692 1188C1691.54 1188.76 1691.07 1189.51 1690.6 1190.29C1642.9 1269.09 1640.78 1363.49 1640.87 1452.7C1640.88 1458.36 1640.87 1464.02 1640.87 1469.68C1635.47 1540.38 1635.47 1540.38 1656 1604C1656.66 1604 1657.32 1604 1658 1604C1658 1604.66 1658 1605.32 1658 1606C1658.66 1606 1659.32 1606 1660 1606C1660 1606.66 1660 1607.32 1660 1608C1676.95 1621.54 1698.41 1621.36 1719.04 1621.32C1722.06 1621.31 1725.09 1621.34 1728.11 1621.36C1742.07 1621.41 1755.91 1621.06 1768.5 1614.25C1769.17 1613.9 1769.84 1613.54 1770.53 1613.18C1780.6 1607.67 1786.16 1599.82 1790 1589C1796.15 1567.83 1795.09 1544.14 1795.55 1522.24C1795.57 1521.24 1795.6 1520.23 1795.62 1519.2C1796.22 1490.06 1796.1 1460.91 1796.04 1431.77C1796.02 1423.48 1796.02 1415.2 1796.01 1406.92C1796 1392.14 1795.98 1377.36 1795.97 1362.58C1795.96 1361.71 1795.96 1360.83 1795.96 1359.93C1795.95 1350.11 1795.94 1340.3 1795.92 1330.49C1795.92 1329.6 1795.92 1328.71 1795.92 1327.79C1795.91 1326 1795.91 1324.21 1795.91 1322.41C1795.91 1321.52 1795.91 1320.64 1795.9 1319.72C1795.9 1318.4 1795.9 1318.4 1795.9 1317.04C1795.88 1302.26 1795.86 1287.48 1795.85 1272.69C1795.85 1263.63 1795.83 1254.56 1795.81 1245.49C1795.8 1239.3 1795.79 1233.11 1795.79 1226.92C1795.79 1223.35 1795.79 1219.79 1795.78 1216.23C1795.76 1212.36 1795.76 1208.49 1795.77 1204.62C1795.76 1202.96 1795.76 1202.96 1795.75 1201.26C1795.79 1186.59 1798.51 1171.47 1808.12 1159.8C1826.12 1142.48 1852.45 1142.86 1875.85 1142.84C1877.28 1142.83 1878.71 1142.83 1880.14 1142.82C1883.98 1142.81 1887.81 1142.8 1891.65 1142.8C1894.06 1142.8 1896.48 1142.79 1898.89 1142.79C1906.49 1142.77 1914.08 1142.77 1921.68 1142.76C1930.37 1142.76 1939.05 1142.74 1947.73 1142.71C1954.5 1142.69 1961.27 1142.68 1968.04 1142.68C1972.05 1142.68 1976.07 1142.67 1980.08 1142.65C2003.19 1142.55 2026.46 1142.94 2049 1148.69C2050.02 1148.94 2051.05 1149.2 2052.1 1149.46C2073.97 1155.2 2093.38 1166.82 2110 1182C2111.12 1183 2112.25 1184.01 2113.37 1185.01C2120.02 1190.98 2126.17 1197.21 2132 1204C2132.93 1205.06 2133.86 1206.12 2134.8 1207.17C2141.33 1214.62 2147.37 1222.35 2153.26 1230.32C2156.08 1234.13 2159.03 1237.83 2162.02 1241.52C2164.34 1244.42 2166.61 1247.36 2168.87 1250.31C2169.3 1250.86 2169.72 1251.41 2170.16 1251.98C2172.24 1254.69 2174.3 1257.4 2176.37 1260.12C2183.34 1269.28 2190.63 1278.16 2198 1287C2198.5 1287.6 2198.99 1288.2 2199.51 1288.81C2217.49 1312.44 2217.49 1312.44 2242.8 1325.41C2251.46 1325.69 2257.21 1323.77 2263.75 1318.13C2272.11 1310.24 2274.8 1303.31 2275.2 1291.79C2276 1246.78 2252.75 1199.81 2227 1164C2225.85 1162.4 2225.85 1162.4 2224.68 1160.76C2212 1143.67 2196.3 1127.67 2180 1114C2179.04 1113.16 2178.08 1112.32 2177.09 1111.46C2164.5 1100.51 2150.78 1091.83 2136.41 1083.42C2134.91 1082.53 2133.4 1081.64 2131.89 1080.75C2097.08 1060.09 2058.88 1051.14 2019.44 1044.06C2018.35 1043.86 2017.27 1043.66 2016.15 1043.46C1979.38 1037.19 1938.7 1039.04 1902 1045Z" />
+        <path d="M2815.23 383.819C2818.48 383.813 2821.73 383.803 2824.99 383.792C2830.17 383.775 2835.36 383.769 2840.54 383.771C2842.46 383.77 2844.38 383.766 2846.29 383.758C2887 383.606 2887 383.606 2901.62 396.437C2903.11 397.93 2904.57 399.449 2906 401C2906.59 401.611 2907.19 402.222 2907.8 402.852C2917.99 413.901 2919.45 427.967 2919.43 442.444C2919.44 443.876 2919.45 445.308 2919.46 446.739C2919.48 450.661 2919.49 454.584 2919.49 458.506C2919.5 462.784 2919.53 467.063 2919.55 471.341C2919.59 479.842 2919.62 488.344 2919.64 496.845C2919.66 503.95 2919.68 511.056 2919.71 518.161C2919.72 519.191 2919.72 520.22 2919.73 521.281C2919.73 523.382 2919.74 525.484 2919.75 527.585C2919.86 554.875 2919.93 582.165 2919.99 609.455C2920 612.984 2920.01 616.514 2920.02 620.043C2920.18 691.214 2920.27 762.385 2920.33 833.557C2920.35 852.723 2920.36 871.89 2920.38 891.057C2920.39 893.236 2920.39 895.414 2920.39 897.593C2920.4 903.439 2920.4 909.285 2920.41 915.132C2920.45 955.601 2920.49 996.071 2920.53 1036.54C2920.53 1037.29 2920.53 1038.05 2920.53 1038.82C2920.53 1047.21 2920.54 1055.6 2920.55 1063.98C2920.55 1064.74 2920.55 1065.5 2920.55 1066.28C2920.55 1069.34 2920.56 1072.4 2920.56 1075.46C2920.6 1124.02 2920.65 1172.58 2920.7 1221.14C2920.72 1233.44 2920.73 1245.74 2920.74 1258.04C2920.74 1258.8 2920.74 1259.56 2920.75 1260.34C2920.77 1283.81 2920.79 1307.27 2920.82 1330.74C2920.82 1331.48 2920.82 1332.22 2920.82 1332.98C2920.83 1349.23 2920.85 1365.48 2920.86 1381.72C2920.87 1387.54 2920.87 1393.35 2920.88 1399.17C2920.88 1400.61 2920.88 1402.06 2920.88 1403.5C2920.9 1426.2 2920.93 1448.9 2920.95 1471.59C2920.98 1495.11 2921 1518.63 2921.02 1542.15C2921.03 1554.43 2921.04 1566.71 2921.06 1578.99C2921.12 1627.74 2921.05 1676.49 2920.65 1725.23C2920.62 1728.64 2920.6 1732.04 2920.58 1735.45C2920.3 1775.48 2920.3 1775.48 2919.27 1794.64C2919.22 1795.82 2919.17 1797 2919.12 1798.21C2918.19 1812.59 2913.01 1825.23 2902.61 1835.32C2892.58 1843.87 2881.65 1845.98 2869 1848C2867.91 1848.17 2866.82 1848.35 2865.7 1848.53C2862.07 1848.99 2858.6 1849.13 2854.94 1849.13C2853.93 1849.14 2853.93 1849.14 2852.89 1849.14C2850.65 1849.15 2848.41 1849.15 2846.16 1849.15C2844.54 1849.15 2842.93 1849.15 2841.31 1849.16C2836.93 1849.16 2832.54 1849.17 2828.16 1849.17C2825.41 1849.17 2822.67 1849.17 2819.92 1849.17C2810.32 1849.18 2800.71 1849.19 2791.11 1849.19C2782.2 1849.18 2773.29 1849.2 2764.38 1849.21C2756.7 1849.22 2749.02 1849.23 2741.34 1849.23C2736.76 1849.23 2732.19 1849.23 2727.62 1849.24C2723.3 1849.25 2718.99 1849.25 2714.68 1849.24C2713.11 1849.24 2711.54 1849.25 2709.97 1849.25C2695.42 1849.3 2680.8 1848.38 2666.62 1844.88C2665.76 1844.66 2664.89 1844.45 2664 1844.23C2642.35 1838.65 2622.06 1828.45 2605 1814C2604.47 1813.56 2603.94 1813.11 2603.4 1812.65C2596.5 1806.79 2590.74 1800.78 2586 1793C2585.62 1792.39 2585.24 1791.78 2584.85 1791.15C2566.52 1761.44 2558.93 1732.14 2558.76 1697.16C2558.76 1696.44 2558.75 1695.71 2558.75 1694.96C2558.73 1691.09 2558.71 1687.22 2558.7 1683.35C2558.7 1680.23 2558.68 1677.12 2558.64 1674C2558.42 1651.99 2559.75 1630.79 2563 1609C2563.1 1608.33 2563.2 1607.66 2563.3 1606.97C2566.32 1586.61 2570.83 1566.77 2575.81 1546.81C2576.1 1545.66 2576.38 1544.51 2576.68 1543.33C2583.7 1515.27 2591.98 1487.66 2600.81 1460.13C2602.79 1453.98 2604.74 1447.83 2606.7 1441.68C2606.92 1440.98 2607.14 1440.29 2607.37 1439.58C2612.22 1424.37 2616.97 1409.13 2621.69 1393.88C2622.04 1392.72 2622.4 1391.57 2622.77 1390.38C2624.15 1385.93 2625.52 1381.48 2626.9 1377.03C2628.7 1371.19 2630.51 1365.34 2632.33 1359.5C2638.42 1339.95 2638.42 1339.95 2644.25 1320.31C2644.47 1319.55 2644.69 1318.79 2644.92 1318C2664.7 1249.45 2681.78 1179.79 2690.31 1108.88C2690.47 1107.57 2690.63 1106.26 2690.8 1104.91C2692.77 1087.72 2693.16 1070.48 2693.17 1053.18C2693.17 1051.35 2693.17 1049.51 2693.18 1047.68C2693.18 1043.86 2693.19 1040.05 2693.19 1036.23C2693.19 1032.38 2693.19 1028.53 2693.21 1024.68C2693.28 1003.03 2693.2 981.562 2691 960C2690.92 959.203 2690.84 958.406 2690.76 957.585C2690.31 953.005 2689.78 948.44 2689.19 943.875C2689.1 943.218 2689.02 942.562 2688.93 941.885C2685.29 905.244 2685.29 905.244 2668 874C2667.46 873.422 2666.91 872.845 2666.36 872.25C2661.98 867.988 2657.09 865.658 2651 865C2641.26 866.09 2632.56 872.028 2626 879C2625.34 879 2624.68 879 2624 879C2623.74 879.535 2623.49 880.07 2623.22 880.621C2621.74 883.506 2620.09 886.269 2618.44 889.062C2598.34 924.03 2587.35 963.998 2575.25 1002.25C2574.7 1004 2574.14 1005.76 2573.59 1007.51C2573.32 1008.36 2573.05 1009.21 2572.77 1010.08C2572.24 1011.75 2571.72 1013.42 2571.19 1015.08C2570.05 1018.68 2568.91 1022.28 2567.78 1025.88C2556.49 1061.71 2556.49 1061.71 2546.09 1067.67C2544.53 1068.42 2544.53 1068.42 2542.94 1069.19C2541.89 1069.7 2540.85 1070.21 2539.78 1070.73C2532.12 1074.23 2522.35 1074.12 2514.23 1071.92C2499.6 1065.9 2490.65 1050.68 2482.16 1038.08C2478.27 1032.31 2474.13 1026.75 2469.88 1021.23C2469.4 1020.6 2468.93 1019.97 2468.43 1019.33C2468.01 1018.78 2467.59 1018.23 2467.15 1017.67C2465.9 1015.85 2464.94 1013.99 2464 1012C2463.34 1012 2462.68 1012 2462 1012C2460.63 1010.47 2459.33 1008.87 2458.06 1007.25C2452.18 999.894 2445.96 992.816 2439.17 986.273C2437 984 2437 984 2437 982C2436.01 981.67 2435.02 981.34 2434 981C2434 980.34 2434 979.68 2434 979C2433.41 978.743 2432.81 978.487 2432.2 978.223C2429.79 976.883 2428.55 975.563 2426.81 973.438C2421.1 966.704 2414.84 960.602 2408.14 954.863C2405.67 952.711 2403.28 950.48 2400.87 948.25C2396.71 944.439 2392.41 940.935 2387.94 937.5C2373.44 926.254 2361.82 912.741 2359 894C2357.41 879.351 2361.52 865.75 2365.19 851.687C2365.68 849.743 2366.18 847.799 2366.68 845.854C2374.18 816.411 2382.5 787.182 2390.78 757.948C2394.34 745.38 2397.83 732.795 2401.25 720.187C2401.7 718.519 2402.16 716.85 2402.61 715.181C2404.39 708.646 2406.16 702.111 2407.93 695.575C2442.37 568.464 2442.37 568.464 2459 533C2459.46 532.005 2459.92 531.009 2460.39 529.984C2466.59 516.57 2473.08 503.483 2481 491C2481.41 490.354 2481.82 489.708 2482.24 489.042C2487.35 481.059 2492.81 473.408 2498.67 465.965C2500.17 464.056 2501.65 462.132 2503.11 460.191C2503.74 459.365 2504.36 458.539 2505 457.687C2505.54 456.969 2506.07 456.251 2506.62 455.512C2507.08 455.013 2507.53 454.514 2508 454C2508.66 454 2509.32 454 2510 454C2510.27 453.361 2510.54 452.721 2510.81 452.062C2512 450 2512 450 2515 449C2515.33 448.01 2515.66 447.02 2516 446C2516.66 446 2517.32 446 2518 446C2518 445.34 2518 444.68 2518 444C2519.29 442.782 2519.29 442.782 2521.11 441.426C2521.78 440.927 2522.44 440.428 2523.13 439.914C2523.85 439.386 2524.57 438.857 2525.31 438.312C2526.05 437.767 2526.79 437.222 2527.55 436.66C2533.22 432.506 2538.95 428.583 2545 425C2545.72 424.573 2546.43 424.145 2547.17 423.705C2605.24 389.255 2664.59 385.461 2730.5 384.437C2731.8 384.417 2733.1 384.396 2734.45 384.375C2761.37 383.962 2788.3 383.86 2815.23 383.819Z" />
+      </svg>
+
+      <!-- 3-Column Grid -->
+      <div ref="gridRef" class="section-footer__grid">
+        <!-- Col 1: Identity -->
+        <div class="section-footer__col">
+          <a
+            class="section-footer__name"
+            href="#"
+            data-cursor-label="Top"
+            @click.prevent="scrollToTop"
+          >{{ profile.name.toUpperCase() }}</a>
+          <span class="section-footer__role">Frontend Architect</span>
+        </div>
+
+        <!-- Col 2: Navigation -->
+        <div class="section-footer__col">
+          <span class="section-footer__col-label">Navigation</span>
+          <nav class="section-footer__nav" aria-label="Footer navigation">
+            <a
+              v-for="link in navLinks"
+              :key="link.label"
+              :href="link.href"
+            >{{ link.label }}</a>
+          </nav>
+        </div>
+
+        <!-- Col 3: Connect -->
+        <div class="section-footer__col">
+          <span class="section-footer__col-label">Connect</span>
+          <nav class="section-footer__nav section-footer__nav--external" aria-label="Social links">
+            <a
+              v-for="link in socialLinks"
+              :key="link.label"
+              :href="link.href"
+              :target="isExternal(link.href) && !link.href.startsWith('mailto:') ? '_blank' : undefined"
+              :rel="isExternal(link.href) && !link.href.startsWith('mailto:') ? 'noopener noreferrer' : undefined"
+            >{{ link.label }}</a>
+          </nav>
+        </div>
       </div>
 
-      <!-- Bottom bar -->
-      <div class="section-footer__bottom">
-        <span class="section-footer__copy">&copy; {{ currentYear }}</span>
-        <nav class="section-footer__links" aria-label="Social links">
-          <a
-            href="https://github.com/billymaulana"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-cursor-label="GitHub"
-          >GITHUB</a>
-          <a
-            href="https://linkedin.com/in/billy-maulana"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-cursor-label="LinkedIn"
-          >LINKEDIN</a>
-        </nav>
+      <!-- Bottom Bar -->
+      <div ref="bottomRef" class="section-footer__bottom">
+        <span class="section-footer__bottom-item">&copy; {{ currentYear }}</span>
+        <span class="section-footer__bottom-separator" aria-hidden="true">&bull;</span>
+        <span class="section-footer__bottom-item">Made in Bandung</span>
+        <span class="section-footer__bottom-separator" aria-hidden="true">&bull;</span>
+        <span class="section-footer__clock">{{ currentTime }}</span>
       </div>
     </div>
   </footer>
@@ -90,119 +288,324 @@ onUnmounted(() => {
 .section-footer {
   position: relative;
   width: 100%;
-  padding: clamp(4rem, 8vh, 8rem) 0 clamp(1.5rem, 3vh, 3rem);
-  background: var(--color-bg);
-  border-top: 1px solid var(--color-text-ghost);
+  padding-bottom: clamp(1.5rem, 3vh, 3rem);
+  background: var(--bg-abyss);
+  border-top: 1px solid var(--bg-subtle);
+  overflow: hidden;
 }
+
+/* ─── Atmospheric gradient ─── */
+
+.section-footer__atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 60% 40% at 50% 0%,
+    rgba(0, 71, 255, 0.05) 0%,
+    transparent 70%
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   1. MINI SKILLS TICKER
+   ═══════════════════════════════════════════════════════════════ */
+
+.section-footer__ticker {
+  position: relative;
+  width: 100%;
+  padding: var(--space-4) 0;
+  overflow: hidden;
+}
+
+/* Edge fade masks */
+.section-footer__ticker::before,
+.section-footer__ticker::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: clamp(3rem, 8vw, 6rem);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.section-footer__ticker::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg-abyss) 0%, transparent 100%);
+}
+
+.section-footer__ticker::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg-abyss) 0%, transparent 100%);
+}
+
+.section-footer__ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 35s linear infinite;
+}
+
+.section-footer__ticker-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+.section-footer__ticker-item {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.section-footer__ticker-diamond {
+  width: 6px;
+  height: 6px;
+  color: var(--accent-primary);
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* ─── Ticker divider ─── */
+
+.section-footer__divider {
+  height: 1px;
+  background: var(--bg-subtle);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INNER CONTENT
+   ═══════════════════════════════════════════════════════════════ */
 
 .section-footer__inner {
+  position: relative;
+  z-index: var(--z-content);
   display: flex;
   flex-direction: column;
-  gap: clamp(4rem, 8vh, 8rem);
+  padding-top: clamp(4rem, 8vh, 8rem);
 }
 
-.section-footer__top {
+/* ═══════════════════════════════════════════════════════════════
+   2. BM MONOGRAM — STROKE-ONLY (circular narrative)
+   ═══════════════════════════════════════════════════════════════ */
+
+.section-footer__monogram {
+  position: absolute;
+  right: var(--page-margin);
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(200px, 30vw, 400px);
+  height: auto;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 1;
+}
+
+.section-footer__monogram path {
+  fill: transparent;
+  stroke: rgba(0, 71, 255, 0.08);
+  stroke-width: 2;
+  will-change: stroke-dashoffset;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3. THREE-COLUMN GRID
+   ═══════════════════════════════════════════════════════════════ */
+
+.section-footer__grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: var(--grid-gutter);
+}
+
+.section-footer__col {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
 }
 
-/* Name mirrors hero — same font, opposite weight */
+/* ─── Col 1: Identity ─── */
+
 .section-footer__name {
   font-family: var(--font-display);
-  font-variation-settings: 'wght' 700;
-  font-size: var(--text-display);
-  line-height: var(--leading-crush);
-  letter-spacing: var(--tracking-tight);
-  color: var(--color-text-primary);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: var(--tracking-heading);
+  color: var(--text-primary);
+  text-decoration: none;
   text-transform: uppercase;
-  will-change: font-variation-settings, opacity;
+  cursor: pointer;
+  transition: color 0.4s var(--ease-out-expo);
+}
+
+.section-footer__name:hover {
+  color: var(--accent-light);
 }
 
 .section-footer__role {
+  margin-top: var(--space-2);
   font-family: var(--font-body);
   font-size: var(--text-caption);
   font-weight: 400;
-  letter-spacing: var(--tracking-ultra);
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
-/* Bottom bar */
+/* ─── Column Labels ─── */
+
+.section-footer__col-label {
+  font-family: var(--font-body);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-4);
+}
+
+/* ─── Navigation Links ─── */
+
+.section-footer__nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-footer__nav a {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 500;
+  line-height: 2;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition:
+    color 0.3s var(--ease-out-expo),
+    transform 0.3s var(--ease-out-expo);
+}
+
+.section-footer__nav a:hover {
+  color: var(--text-primary);
+  transform: translateX(4px);
+}
+
+/* External link arrow */
+.section-footer__nav--external a::after {
+  content: ' \2197';
+  display: inline-block;
+  font-size: 0.8em;
+  opacity: 0.3;
+  transform: translate(0, 0);
+  transition:
+    opacity 0.3s var(--ease-out-expo),
+    transform 0.3s var(--ease-out-expo);
+}
+
+.section-footer__nav--external a:hover::after {
+  opacity: 1;
+  transform: translate(3px, -3px);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4. BOTTOM BAR
+   ═══════════════════════════════════════════════════════════════ */
+
 .section-footer__bottom {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: var(--space-4);
+  margin-top: clamp(4rem, 8vh, 8rem);
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--bg-subtle);
 }
 
-.section-footer__copy {
+.section-footer__bottom-item {
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  color: var(--color-text-tertiary);
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
   letter-spacing: 0.05em;
 }
 
-.section-footer__links {
-  display: flex;
-  gap: 2rem;
+.section-footer__bottom-separator {
+  font-size: var(--text-micro);
+  color: var(--text-disabled);
 }
 
-.section-footer__links a {
-  position: relative;
+.section-footer__clock {
   font-family: var(--font-mono);
   font-size: var(--text-caption);
-  color: var(--color-text-secondary);
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  text-decoration: none;
-  transition: color 0.3s var(--ease-expo);
+  color: var(--text-tertiary);
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Underline wipe on hover */
-.section-footer__links a::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background: var(--color-text-primary);
-  transform: scaleX(0);
-  transform-origin: right;
-  transition: transform 0.4s var(--ease-expo);
-}
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
 
-.section-footer__links a:hover {
-  color: var(--color-text-primary);
-}
-
-.section-footer__links a:hover::after {
-  transform: scaleX(1);
-  transform-origin: left;
-}
-
-/* Responsive */
 @media (max-width: 768px) {
+  .section-footer__grid {
+    grid-template-columns: 1fr;
+    gap: clamp(2rem, 5vh, 3rem);
+  }
+
   .section-footer__name {
-    font-size: clamp(2rem, 10vw, 4rem);
+    font-size: clamp(1.5rem, 6vw, 2.5rem);
+  }
+
+  .section-footer__monogram {
+    display: none;
   }
 
   .section-footer__bottom {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
 }
 
-/* Reduced Motion */
+/* ═══════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ═══════════════════════════════════════════════════════════════ */
+
 @media (prefers-reduced-motion: reduce) {
-  .section-footer__name {
-    font-variation-settings: 'wght' 700;
-    opacity: 1;
+  .section-footer__ticker-track {
+    animation: none;
   }
 
-  .section-footer__links a::after {
+  .section-footer__nav a {
     transition: none;
+  }
+
+  .section-footer__nav a:hover {
+    transform: none;
+  }
+
+  .section-footer__nav--external a::after {
+    transition: none;
+  }
+
+  .section-footer__nav--external a:hover::after {
+    transform: none;
+  }
+
+  .section-footer__name {
+    transition: none;
+  }
+
+  .section-footer__monogram path {
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
   }
 }
 </style>

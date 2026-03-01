@@ -33,7 +33,10 @@ onMounted(() => {
 
 <template>
   <div class="app">
-    <!-- Preloader: Text Scramble Assembly -->
+    <!-- Skip to content (a11y) -->
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <!-- Preloader: SVG Logo Stroke Draw + Counter -->
     <AppPreloader
       v-if="!isLoaded"
       @complete="onPreloaderComplete"
@@ -43,8 +46,12 @@ onMounted(() => {
     <!-- Navigation -->
     <AppNavigation v-if="showContent" />
 
-    <!-- Custom Cursor: Typing cursor (2px × 24px blink) -->
+    <!-- Custom Cursor: 3-layer (dot + circle + label) -->
     <AppCursor />
+
+    <!-- Atmospheric overlays -->
+    <div class="atmosphere-noise" aria-hidden="true" />
+    <div class="atmosphere-vignette" aria-hidden="true" />
 
     <!-- Main Content -->
     <NuxtLayout>

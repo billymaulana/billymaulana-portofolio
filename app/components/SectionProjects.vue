@@ -1,27 +1,57 @@
 <script setup lang="ts">
-import { featuredProjects } from '~/constants/projects'
-
 /**
- * Projects: "Type as Showcase"
- * Each project = full viewport, title at 15vw.
- * Horizontal scroll-snap via GSAP pin.
- * 5 distinct title treatments (no two alike).
- * Background color shifts subtly per project.
+ * SectionProjects: "The Evidence"
+ *
+ * Full-width stacked case studies. Each project is a horizontal
+ * composition with oversized index numbers, SVG-patterned image areas,
+ * corner brackets, and clip-path hover reveals.
+ *
+ * Entrance: clipPath inset(100% 0 0 0) → inset(0) per card
+ * Adjacent above: SectionAbout — diagonal clip-path reveal
+ * Adjacent below: SectionMarquee — elastic overshoot from offsets
+ *
+ * Visual objects:
+ *  - SVG dot-grid pattern overlay per image area
+ *  - Corner bracket L-shapes (architectural markup)
+ *  - Oversized stroke index numbers with inverse parallax
+ *  - Horizontal scroll-progress line
+ *  - clipPath "VIEW PROJECT" hover reveal
  */
 
-const PROJECT_COLORS = [
-  '#000000', // Pure black
-  '#020208', // Hint of blue-black
-  '#050200', // Hint of warm-black
-  '#000205', // Hint of deep navy
-  '#030003', // Hint of purple-black
-]
+import type { Project } from '~/constants/projects'
+import { featuredProjects } from '~/constants/projects'
 
-const containerRef = ref<HTMLElement>()
-const trackRef = ref<HTMLElement>()
-const projectCount = featuredProjects.length
+function getProjectUrl(project: Project): string | undefined {
+  return project.url || project.playStore || project.appStore
+}
 
-let scrollCtx: gsap.Context | null = null
+function formatIndex(i: number): string {
+  return String(i + 1).padStart(2, '0')
+}
+
+const { scramble, reset } = useTextScramble({ speed: 25, iterations: 4 })
+
+function handleLinkEnter(event: Event) {
+  const target = event.currentTarget as HTMLElement
+  const textEl = target.querySelector('.projects__link-text') as HTMLElement | null
+  if (textEl)
+    scramble(textEl)
+}
+
+function handleLinkLeave(event: Event) {
+  const target = event.currentTarget as HTMLElement
+  const textEl = target.querySelector('.projects__link-text') as HTMLElement | null
+  if (textEl)
+    reset(textEl)
+}
+
+// Template refs
+const sectionRef = ref<HTMLElement>()
+const progressRef = ref<HTMLElement>()
+const headerRef = ref<HTMLElement>()
+const cardRefs = ref<HTMLElement[]>([])
+
+let ctx: gsap.Context | null = null
 
 onMounted(async () => {
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -32,311 +62,766 @@ onMounted(async () => {
   const { ScrollTrigger } = await import('gsap/ScrollTrigger')
   gsap.registerPlugin(ScrollTrigger)
 
-  scrollCtx = gsap.context(() => {
-    if (!containerRef.value || !trackRef.value)
+  ctx = gsap.context(() => {
+    if (!sectionRef.value)
       return
 
-    // Horizontal scroll-snap
-    gsap.to(trackRef.value, {
-      xPercent: -100 * (projectCount - 1),
-      ease: 'none',
-      scrollTrigger: {
-        trigger: containerRef.value,
-        pin: true,
-        scrub: 1,
-        snap: 1 / (projectCount - 1),
-        end: () => `+=${window.innerWidth * projectCount}`,
-      },
+    // 1. Horizontal progress line — scrubbed to scroll across entire section
+    if (progressRef.value) {
+      gsap.fromTo(progressRef.value, {
+        scaleX: 0,
+      }, {
+        scaleX: 1,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: sectionRef.value,
+          start: 'top 80%',
+          end: 'bottom 20%',
+          scrub: 0.3,
+        },
+      })
+    }
+
+    // 2. Header: clip-path wipe from bottom
+    if (headerRef.value) {
+      const labelEl = headerRef.value.querySelector('.projects__label')
+      const titleEl = headerRef.value.querySelector('.projects__title')
+
+      if (labelEl) {
+        gsap.from(labelEl, {
+          y: 20,
+          opacity: 0,
+          duration: 0.8,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: headerRef.value,
+            start: 'top 85%',
+          },
+        })
+      }
+
+      if (titleEl) {
+        gsap.from(titleEl, {
+          clipPath: 'inset(100% 0 0 0)',
+          duration: 1.2,
+          ease: 'expo.inOut',
+          scrollTrigger: {
+            trigger: headerRef.value,
+            start: 'top 85%',
+          },
+        })
+      }
+    }
+
+    // 3. Per-card animations
+    cardRefs.value.forEach((card) => {
+      if (!card)
+        return
+
+      // Card reveal: clipPath from bottom
+      gsap.from(card, {
+        clipPath: 'inset(100% 0 0 0)',
+        duration: 1.4,
+        ease: 'expo.inOut',
+        scrollTrigger: {
+          trigger: card,
+          start: 'top 88%',
+        },
+      })
+
+      // Image area: slight parallax
+      const imageArea = card.querySelector('.projects__visual')
+      if (imageArea) {
+        gsap.to(imageArea, {
+          yPercent: -10,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: card,
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: 0.5,
+          },
+        })
+      }
+
+      // Index number: inverse parallax (moves opposite)
+      const indexNum = card.querySelector('.projects__index')
+      if (indexNum) {
+        gsap.to(indexNum, {
+          yPercent: 15,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: card,
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: 0.5,
+          },
+        })
+      }
+
+      // Info children: staggered blur-to-sharp reveal
+      const infoChildren = card.querySelectorAll('.projects__info > *')
+      if (infoChildren.length) {
+        gsap.from(infoChildren, {
+          x: -20,
+          opacity: 0,
+          filter: 'blur(3px)',
+          duration: 0.9,
+          stagger: 0.06,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: card,
+            start: 'top 80%',
+          },
+        })
+      }
+
+      // Tech tags: rapid stagger
+      const tags = card.querySelectorAll('.projects__tag')
+      if (tags.length) {
+        gsap.from(tags, {
+          scale: 0.8,
+          opacity: 0,
+          duration: 0.5,
+          stagger: 0.03,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: card,
+            start: 'top 75%',
+          },
+        })
+      }
+
+      // View link arrow
+      const arrow = card.querySelector('.projects__link-arrow')
+      if (arrow) {
+        gsap.from(arrow, {
+          x: -10,
+          opacity: 0,
+          duration: 0.6,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: card,
+            start: 'top 75%',
+          },
+        })
+      }
     })
   })
 })
 
 onUnmounted(() => {
-  scrollCtx?.revert()
+  ctx?.revert()
 })
-
-function getTreatmentClass(index: number): string {
-  const treatments = [
-    'condensed', // Project 1: Bold condensed uppercase
-    'outlined', // Project 2: Outlined with fill on hover
-    'italic', // Project 3: Mixed case, italic, wide tracking
-    'ultralight', // Project 4: Extra light, massive
-    'gradient', // Project 5: Gradient fill
-  ]
-  return treatments[index] ?? 'condensed'
-}
 </script>
 
 <template>
   <section
     id="work"
-    ref="containerRef"
-    class="section-projects"
-    aria-label="Selected Projects"
+    ref="sectionRef"
+    class="projects"
+    aria-label="Selected Work"
   >
-    <!-- Section label -->
-    <div class="section-projects__label page-margin">
-      <span class="section-projects__label-num">04</span>
-      <span class="section-projects__label-text">WORK</span>
-    </div>
+    <!-- Atmospheric gradient -->
+    <div class="projects__atmosphere" aria-hidden="true" />
 
-    <!-- Horizontal scroll track -->
-    <div ref="trackRef" class="section-projects__track">
+    <!-- Horizontal scroll-progress line -->
+    <div ref="progressRef" class="projects__progress" aria-hidden="true" />
+
+    <!-- Section header -->
+    <header ref="headerRef" class="projects__header">
+      <span class="projects__label">04</span>
+      <h2 class="projects__title">
+        SELECTED WORK
+      </h2>
+    </header>
+
+    <!-- Project entries -->
+    <div class="projects__list">
       <article
         v-for="(project, index) in featuredProjects"
         :key="project.id"
-        class="section-projects__slide"
-        :style="{ backgroundColor: PROJECT_COLORS[index] || '#000' }"
+        ref="cardRefs"
+        class="projects__card"
+        :class="{ 'projects__card--reversed': index % 2 !== 0 }"
       >
-        <!-- Project number -->
-        <span class="section-projects__number page-margin">
-          {{ String(index + 1).padStart(2, '0') }}
-        </span>
+        <!-- Separator rule -->
+        <div class="projects__rule" aria-hidden="true" />
 
-        <!-- Project title — distinct treatment per project -->
-        <div class="section-projects__title-wrap page-margin">
-          <h3
-            class="section-projects__title"
-            :class="`section-projects__title--${getTreatmentClass(index)}`"
-          >
-            {{ project.name }}
-          </h3>
-        </div>
+        <div class="projects__layout">
+          <!-- Visual area (image placeholder with SVG pattern + brackets) -->
+          <div class="projects__visual-wrap">
+            <div class="projects__visual">
+              <!-- SVG dot grid overlay -->
+              <svg
+                class="projects__dot-grid"
+                aria-hidden="true"
+                width="100%"
+                height="100%"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <defs>
+                  <pattern
+                    :id="`dot-pattern-${project.id}`"
+                    x="0"
+                    y="0"
+                    width="40"
+                    height="40"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <circle cx="20" cy="20" r="1" fill="var(--accent-primary)" opacity="0.06" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" :fill="`url(#dot-pattern-${project.id})`" />
+              </svg>
 
-        <!-- Project meta — bottom -->
-        <div class="section-projects__meta page-margin">
-          <div class="section-projects__meta-left">
-            <span class="section-projects__category">{{ project.category }}</span>
-            <span class="section-projects__year">{{ project.year }}</span>
+              <!-- Watermark project name -->
+              <span class="projects__watermark" aria-hidden="true">
+                {{ project.name }}
+              </span>
+
+              <!-- Corner brackets (architectural L-shapes) -->
+              <span class="projects__bracket projects__bracket--tl" aria-hidden="true" />
+              <span class="projects__bracket projects__bracket--tr" aria-hidden="true" />
+              <span class="projects__bracket projects__bracket--bl" aria-hidden="true" />
+              <span class="projects__bracket projects__bracket--br" aria-hidden="true" />
+
+              <!-- "VIEW PROJECT" hover overlay -->
+              <span class="projects__view-overlay" aria-hidden="true">
+                VIEW PROJECT
+              </span>
+            </div>
           </div>
-          <div class="section-projects__tech">
-            <span
-              v-for="tech in project.technologies"
-              :key="tech"
-              class="section-projects__tag"
-            >{{ tech }}</span>
-          </div>
-        </div>
 
-        <!-- Full-panel link -->
-        <a
-          v-if="project.url || project.playStore"
-          :href="project.url || project.playStore"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="section-projects__link"
-          :aria-label="`View ${project.name}`"
-          data-cursor-label="View"
-        />
+          <!-- Info column -->
+          <div class="projects__info">
+            <div class="projects__meta">
+              <span class="projects__category">{{ project.category }}</span>
+              <span class="projects__divider">/</span>
+              <span class="projects__year">{{ project.year }}</span>
+            </div>
+
+            <h3 class="projects__name">
+              {{ project.name }}
+            </h3>
+
+            <p class="projects__description">
+              {{ project.description }}
+            </p>
+
+            <!-- Tech tags -->
+            <div class="projects__tech">
+              <span
+                v-for="tech in project.technologies"
+                :key="tech"
+                class="projects__tag"
+              >{{ tech }}</span>
+            </div>
+
+            <!-- View link -->
+            <a
+              v-if="getProjectUrl(project)"
+              :href="getProjectUrl(project)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="projects__link"
+              :aria-label="`View ${project.name} project`"
+              data-cursor-label="View"
+              @mouseenter="handleLinkEnter"
+              @mouseleave="handleLinkLeave"
+            >
+              <span class="projects__link-text">View</span>
+              <span class="projects__link-arrow" aria-hidden="true">&rarr;</span>
+            </a>
+          </div>
+
+          <!-- Oversized index number -->
+          <span class="projects__index" aria-hidden="true">
+            {{ formatIndex(index) }}
+          </span>
+        </div>
       </article>
     </div>
+
+    <!-- Ghost section number -->
+    <span class="projects__ghost" aria-hidden="true">04</span>
   </section>
 </template>
 
 <style scoped>
-.section-projects {
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION PROJECTS: "The Evidence"
+   Full-width stacked case studies with architectural markup
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.projects {
   position: relative;
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  background: var(--color-bg);
+  padding: var(--section-gap) 0;
+  background: var(--bg-base);
   overflow: hidden;
 }
 
-/* Section label — fixed top-left during scroll */
-.section-projects__label {
-  position: absolute;
-  top: clamp(1.5rem, 3vh, 2.5rem);
-  left: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 1em;
-  z-index: 2;
-}
+/* ─── Atmospheric Gradient ─── */
 
-.section-projects__label-num {
-  font-family: var(--font-mono);
-  font-size: var(--text-caption);
-  color: var(--color-text-tertiary);
-  letter-spacing: 0.15em;
-}
-
-.section-projects__label-text {
-  font-family: var(--font-body);
-  font-size: var(--text-caption);
-  font-weight: 500;
-  letter-spacing: var(--tracking-mega);
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-}
-
-/* Horizontal track */
-.section-projects__track {
-  display: flex;
-  width: fit-content;
-  height: 100%;
-}
-
-/* Each project slide */
-.section-projects__slide {
-  position: relative;
-  width: 100vw;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  cursor: pointer;
-}
-
-/* Project number */
-.section-projects__number {
-  position: absolute;
-  top: clamp(4rem, 8vh, 6rem);
-  font-family: var(--font-mono);
-  font-size: var(--text-caption);
-  color: var(--color-text-tertiary);
-  letter-spacing: 0.15em;
-}
-
-/* Title wrapper */
-.section-projects__title-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-
-/* Base title */
-.section-projects__title {
-  font-family: var(--font-display);
-  font-size: var(--text-project);
-  line-height: var(--leading-crush);
-  color: var(--color-text-primary);
-  text-transform: uppercase;
-  user-select: none;
-}
-
-/* Treatment 1: Condensed bold */
-.section-projects__title--condensed {
-  font-variation-settings: 'wght' 700;
-  letter-spacing: var(--tracking-tight);
-}
-
-/* Treatment 2: Outlined — stroke only, fill on hover */
-.section-projects__title--outlined {
-  font-variation-settings: 'wght' 700;
-  -webkit-text-stroke: 2px var(--color-text-primary);
-  color: transparent;
-  letter-spacing: var(--tracking-tight);
-  transition: color 0.5s var(--ease-expo);
-}
-
-.section-projects__slide:hover .section-projects__title--outlined {
-  color: var(--color-text-primary);
-}
-
-/* Treatment 3: Italic wide tracking */
-.section-projects__title--italic {
-  font-variation-settings: 'wght' 500;
-  font-style: italic;
-  letter-spacing: var(--tracking-ultra);
-  text-transform: none;
-}
-
-/* Treatment 4: Ultra-light, massive scale */
-.section-projects__title--ultralight {
-  font-variation-settings: 'wght' 200;
-  font-size: calc(var(--text-project) * 1.3);
-  letter-spacing: var(--tracking-wide);
-}
-
-/* Treatment 5: Gradient fill */
-.section-projects__title--gradient {
-  font-variation-settings: 'wght' 700;
-  background: linear-gradient(90deg, #fff 0%, #666 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Project meta — bottom */
-.section-projects__meta {
-  position: absolute;
-  bottom: clamp(1.5rem, 3vh, 2.5rem);
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.section-projects__meta-left {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.section-projects__category {
-  font-family: var(--font-body);
-  font-size: var(--text-small);
-  color: var(--color-text-secondary);
-  letter-spacing: 0.02em;
-}
-
-.section-projects__year {
-  font-family: var(--font-mono);
-  font-size: var(--text-caption);
-  color: var(--color-text-tertiary);
-  letter-spacing: 0.05em;
-}
-
-.section-projects__tech {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.section-projects__tag {
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  color: var(--color-text-tertiary);
-  padding: 0.15rem 0.5rem;
-  border: 1px solid var(--color-text-ghost);
-  letter-spacing: 0.02em;
-}
-
-/* Full-panel link overlay */
-.section-projects__link {
+.projects__atmosphere {
   position: absolute;
   inset: 0;
+  z-index: var(--z-atmosphere);
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 50% 40% at 80% 60%,
+    rgba(0, 71, 255, 0.05) 0%,
+    transparent 70%
+  );
+}
+
+/* ─── Scroll Progress Line ─── */
+
+.projects__progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-primary);
+  transform-origin: left center;
+  transform: scaleX(0);
+  z-index: var(--z-content);
+  will-change: transform;
+}
+
+/* ─── Section Header ─── */
+
+.projects__header {
+  padding-inline: var(--page-margin);
+  margin-bottom: clamp(3rem, 6vh, 5rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.projects__label {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.projects__title {
+  font-family: var(--font-display);
+  font-size: var(--text-h1);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  line-height: var(--leading-heading);
+  will-change: clip-path;
+}
+
+/* ─── Project List ─── */
+
+.projects__list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6rem, 12vh, 10rem);
+  padding-inline: var(--page-margin);
+}
+
+/* ─── Project Card ─── */
+
+.projects__card {
+  position: relative;
+  will-change: clip-path;
+}
+
+.projects__rule {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--bg-subtle);
+}
+
+.projects__layout {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 4vw, 5rem);
+  align-items: start;
+  padding-top: var(--space-6);
+}
+
+/* Reversed layout for even-indexed cards */
+.projects__card--reversed .projects__layout {
+  direction: rtl;
+}
+
+.projects__card--reversed .projects__layout > * {
+  direction: ltr;
+}
+
+/* ─── Visual Area (Image Placeholder + Patterns) ─── */
+
+.projects__visual-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.projects__visual {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--bg-surface);
+  overflow: hidden;
+  will-change: transform;
+  cursor: pointer;
+  transition: filter 0.8s var(--ease-out-expo);
+}
+
+.projects__card:hover .projects__visual {
+  filter: brightness(1.1);
+}
+
+/* SVG dot grid overlay */
+.projects__dot-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 0.6s var(--ease-out-expo);
+}
+
+.projects__card:hover .projects__dot-grid {
+  opacity: 1;
+  filter: brightness(2);
+}
+
+/* Watermark project name */
+.projects__watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-5deg);
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-display);
+  color: var(--text-primary);
+  opacity: 0.04;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
   z-index: 1;
 }
 
-/* Responsive */
+/* ─── Corner Brackets (Architectural L-Shapes) ─── */
+
+.projects__bracket {
+  position: absolute;
+  width: clamp(16px, 2vw, 28px);
+  height: clamp(16px, 2vw, 28px);
+  z-index: 3;
+  pointer-events: none;
+  transition: opacity 0.6s var(--ease-out-expo),
+              width 0.6s var(--ease-out-expo),
+              height 0.6s var(--ease-out-expo);
+}
+
+.projects__bracket--tl {
+  top: clamp(8px, 1.5vw, 16px);
+  left: clamp(8px, 1.5vw, 16px);
+  border-top: 1.5px solid rgba(0, 71, 255, 0.3);
+  border-left: 1.5px solid rgba(0, 71, 255, 0.3);
+}
+
+.projects__bracket--tr {
+  top: clamp(8px, 1.5vw, 16px);
+  right: clamp(8px, 1.5vw, 16px);
+  border-top: 1.5px solid rgba(0, 71, 255, 0.3);
+  border-right: 1.5px solid rgba(0, 71, 255, 0.3);
+}
+
+.projects__bracket--bl {
+  bottom: clamp(8px, 1.5vw, 16px);
+  left: clamp(8px, 1.5vw, 16px);
+  border-bottom: 1.5px solid rgba(0, 71, 255, 0.3);
+  border-left: 1.5px solid rgba(0, 71, 255, 0.3);
+}
+
+.projects__bracket--br {
+  bottom: clamp(8px, 1.5vw, 16px);
+  right: clamp(8px, 1.5vw, 16px);
+  border-bottom: 1.5px solid rgba(0, 71, 255, 0.3);
+  border-right: 1.5px solid rgba(0, 71, 255, 0.3);
+}
+
+/* Brackets expand on hover */
+.projects__card:hover .projects__bracket {
+  width: clamp(22px, 3vw, 40px);
+  height: clamp(22px, 3vw, 40px);
+}
+
+.projects__card:hover .projects__bracket--tl,
+.projects__card:hover .projects__bracket--tr,
+.projects__card:hover .projects__bracket--bl,
+.projects__card:hover .projects__bracket--br {
+  border-color: rgba(0, 71, 255, 0.6);
+}
+
+/* ─── "VIEW PROJECT" Hover Overlay ─── */
+
+.projects__view-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.5);
+  clip-path: inset(50% 50% 50% 50%);
+  transition: clip-path 0.6s var(--ease-cinematic);
+  pointer-events: none;
+}
+
+.projects__card:hover .projects__view-overlay {
+  clip-path: inset(0 0 0 0);
+}
+
+/* ─── Oversized Index Number ─── */
+
+.projects__index {
+  position: absolute;
+  top: -0.15em;
+  right: -2%;
+  font-family: var(--font-display);
+  font-size: clamp(8rem, 20vw, 18rem);
+  font-weight: 600;
+  line-height: 0.85;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(0, 71, 255, 0.15);
+  pointer-events: none;
+  user-select: none;
+  mix-blend-mode: difference;
+  z-index: 0;
+  will-change: transform;
+}
+
+/* For reversed cards, index goes to the left */
+.projects__card--reversed .projects__index {
+  right: auto;
+  left: -2%;
+}
+
+/* ─── Info Column ─── */
+
+.projects__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  position: relative;
+  z-index: var(--z-content);
+}
+
+/* ─── Meta: Category / Year ─── */
+
+.projects__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.projects__category,
+.projects__year {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.projects__divider {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  color: var(--text-tertiary);
+}
+
+/* ─── Project Name ─── */
+
+.projects__name {
+  font-family: var(--font-display);
+  font-size: var(--text-h2);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-heading);
+  text-transform: uppercase;
+  transition: color 0.6s var(--ease-out-expo);
+}
+
+.projects__card:hover .projects__name {
+  color: var(--accent-light);
+}
+
+/* ─── Description ─── */
+
+.projects__description {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--text-body-color);
+  line-height: var(--leading-body);
+  max-width: 45ch;
+}
+
+/* ─── Tech Tags ─── */
+
+.projects__tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.projects__tag {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid var(--bg-subtle);
+  transition: border-color 0.4s var(--ease-out-expo),
+              color 0.4s var(--ease-out-expo);
+}
+
+.projects__card:hover .projects__tag {
+  border-color: var(--accent-primary);
+  color: var(--text-secondary);
+}
+
+/* ─── View Link ─── */
+
+.projects__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out-expo);
+  width: fit-content;
+}
+
+.projects__link:hover {
+  color: var(--text-primary);
+}
+
+.projects__link-text {
+  line-height: 1;
+}
+
+.projects__link-arrow {
+  font-size: 1.2em;
+  line-height: 1;
+  transition: transform var(--duration-fast) var(--ease-out-expo);
+  will-change: transform;
+}
+
+.projects__link:hover .projects__link-arrow {
+  transform: translateX(6px);
+}
+
+/* ─── Ghost Section Number ─── */
+
+.projects__ghost {
+  position: absolute;
+  bottom: clamp(2rem, 5vh, 4rem);
+  right: var(--page-margin);
+  font-family: var(--font-display);
+  font-size: clamp(6rem, 14vw, 14rem);
+  font-weight: 600;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+  user-select: none;
+  mix-blend-mode: difference;
+  z-index: var(--z-ghost);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
-  .section-projects__title {
-    font-size: clamp(2rem, 10vw, 4rem);
+  .projects__layout {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
   }
 
-  .section-projects__title--ultralight {
-    font-size: clamp(2.5rem, 12vw, 5rem);
+  /* Reset reversed direction on mobile */
+  .projects__card--reversed .projects__layout {
+    direction: ltr;
   }
 
-  .section-projects__meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+  .projects__index {
+    font-size: clamp(5rem, 25vw, 8rem);
+    right: 0;
+    top: -0.1em;
   }
 
-  .section-projects__tech {
-    justify-content: flex-start;
+  .projects__card--reversed .projects__index {
+    right: 0;
+    left: auto;
+  }
+
+  .projects__visual {
+    aspect-ratio: 16 / 10;
+  }
+
+  .projects__description {
+    max-width: none;
+  }
+
+  .projects__ghost {
+    font-size: clamp(4rem, 20vw, 8rem);
   }
 }
 
-/* Reduced Motion */
+/* ═══════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ═══════════════════════════════════════════════════════════════════════ */
+
 @media (prefers-reduced-motion: reduce) {
-  .section-projects__title--outlined {
-    transition: none;
+  .projects__card {
+    clip-path: none !important;
+  }
+
+  .projects__title {
+    clip-path: none !important;
+  }
+
+  .projects__progress {
+    transform: scaleX(1) !important;
+  }
+
+  .projects__visual,
+  .projects__link-arrow,
+  .projects__name,
+  .projects__tag,
+  .projects__bracket,
+  .projects__view-overlay,
+  .projects__dot-grid {
+    transition: none !important;
   }
 }
 </style>

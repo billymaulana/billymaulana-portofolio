@@ -8,26 +8,26 @@ useSeoMeta({
 </script>
 
 <template>
-  <main class="portfolio">
-    <!-- 01: Hero — Variable font proximity + WebGL displacement -->
+  <main id="main" class="portfolio">
+    <!-- 01: Hero — Massive type + fluid distortion -->
     <SectionHero />
 
-    <!-- 02: Manifesto — Scroll-scrub word reveal (blur-to-sharp) -->
+    <!-- 02: Manifesto — Scrubbed per-word reveal -->
     <SectionManifesto />
 
-    <!-- 03: About — Kinetic stats + text treatments -->
+    <!-- 03: About — Golden ratio 2-col + stats -->
     <SectionAbout />
 
-    <!-- 04: Projects — Horizontal scroll typography -->
+    <!-- 04: Projects — Staggered asymmetric grid -->
     <SectionProjects />
 
-    <!-- 05: Marquee — Infinite scroll ticker -->
+    <!-- 05: Marquee — Infinite kinetic ticker -->
     <SectionMarquee />
 
-    <!-- 06: Contact — CTA with blue accent moment -->
-    <SectionContact />
+    <!-- 06: CTA — Full-screen invitation -->
+    <SectionCTA />
 
-    <!-- 07: Footer — Mirror of hero (circular narrative) -->
+    <!-- 07: Footer — Closing credits -->
     <SectionFooter />
   </main>
 </template>

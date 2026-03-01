@@ -1,11 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   CONCEPT 3: TYPOGRAPHIC AVANT-GARDE — "Letters Are Alive"
-   Pure typography portfolio. Text IS the design material.
-   Variable font animation. Per-character interaction.
-   Black + White + ONE blue accent.
+   BILLY MAULANA — Portfolio: "Liquid Monograph"
+   Brutalist Expression + Premium Feel + Dark Cinematic + Liquid/Glass
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* ─── Font Face: Clash Display Variable (200-700) ─── */
+/* ─── Font Face: Clash Display Variable (200-700) — Display/Headlines ─── */
 
 @font-face {
   font-family: 'Clash Display';
@@ -15,7 +13,36 @@
   font-style: normal;
 }
 
-/* ─── Font Face: Satoshi Variable (300-900) ─── */
+/* ─── Font Face: PP Editorial New — Serif Accent / Italic ─── */
+
+@font-face {
+  font-family: 'PP Editorial New';
+  src: url('/assets/fonts/pp-editorial-new/PPEditorialNew-Regular.woff2') format('woff2'),
+       url('/assets/fonts/pp-editorial-new/PPEditorialNew-Regular.woff') format('woff');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'PP Editorial New';
+  src: url('/assets/fonts/pp-editorial-new/PPEditorialNew-Ultralight.woff2') format('woff2'),
+       url('/assets/fonts/pp-editorial-new/PPEditorialNew-Ultralight.woff') format('woff');
+  font-weight: 200;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'PP Editorial New';
+  src: url('/assets/fonts/pp-editorial-new/PPEditorialNew-Ultrabold.woff2') format('woff2'),
+       url('/assets/fonts/pp-editorial-new/PPEditorialNew-Ultrabold.woff') format('woff');
+  font-weight: 800;
+  font-display: swap;
+  font-style: normal;
+}
+
+/* ─── Font Face: Satoshi Variable (300-900) — Body ─── */
 
 @font-face {
   font-family: 'Satoshi';
@@ -33,9 +60,6 @@
   font-style: italic;
 }
 
-/* ─── Font Face: JetBrains Mono (monospace — loaded via Google Fonts CDN) ─── */
-/* See nuxt.config.ts <link> for CDN stylesheet */
-
 /* ─── Reset ─── */
 
 *,
@@ -52,15 +76,21 @@ html {
   text-rendering: optimizeLegibility;
   font-feature-settings: 'kern' 1, 'liga' 1;
   scroll-behavior: auto;
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 body {
   font-family: var(--font-body);
-  font-weight: 400;
+  font-weight: 500;
   font-size: var(--text-body);
   line-height: var(--leading-body);
-  color: var(--color-text-primary);
-  background-color: var(--color-bg);
+  color: var(--text-body-color);
+  background-color: var(--bg-base);
   overflow-x: hidden;
 }
 
@@ -86,78 +116,125 @@ ul, ol {
   list-style: none;
 }
 
-/* ─── Design Tokens ─── */
+/* ═══════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* === STARK MONOCHROME === */
-  --color-bg: #000000;
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #666666;
-  --color-text-tertiary: #333333;
-  --color-text-ghost: #1a1a1a;
+  /* ═══ BACKGROUND — Dark Depth Stack ═══ */
+  --bg-abyss:    #000000;
+  --bg-base:     #0a0a0a;
+  --bg-surface:  #111111;
+  --bg-elevated: #1a1a1a;
+  --bg-subtle:   #222222;
 
-  /* === THE ONE ACCENT === */
-  --color-accent: #0047FF;
-  --color-accent-glow: rgba(0, 71, 255, 0.25);
+  /* ═══ TEXT HIERARCHY ═══ */
+  --text-primary:    #ffffff;
+  --text-body-color: #e0e0e0;
+  --text-secondary:  #888888;
+  --text-tertiary:   #555555;
+  --text-disabled:   #333333;
 
-  /* === Grid Lines === */
-  --color-grid: rgba(255, 255, 255, 0.04);
+  /* ═══ ACCENT — Electric Blue Spectrum ═══ */
+  --accent-primary: #0047FF;
+  --accent-deep:    #0166c9;
+  --accent-light:   #00A3FF;
+  --accent-cyan:    #00F5FF;
+  --accent-indigo:  #0f0a72;
+  --accent-lcyan:   #a1e0e7;
+  --accent-glow:    rgba(0, 71, 255, 0.15);
 
-  /* === Font Stacks === */
+  /* ═══ FONT STACKS — 4 Personalities ═══ */
   --font-display: 'Clash Display', 'Inter', system-ui, sans-serif;
-  --font-body: 'Satoshi', 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-serif:   'PP Editorial New', 'Georgia', serif;
+  --font-body:    'Satoshi', 'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
 
-  /* === Type Scale (Extreme Range) === */
-  --text-hero: clamp(6rem, 22vw, 20rem);
-  --text-cta: clamp(8rem, 28vw, 26rem);
-  --text-project: clamp(3.5rem, 14vw, 12rem);
-  --text-display: clamp(3rem, 10vw, 9rem);
-  --text-word-stack: clamp(2.5rem, 8vw, 7rem);
-  --text-title: clamp(1.75rem, 4vw, 3.5rem);
-  --text-body: clamp(0.9375rem, 1.15vw, 1.125rem);
-  --text-small: clamp(0.8125rem, 0.9vw, 0.9375rem);
+  /* ═══ TYPE SCALE (Fluid) ═══ */
+  --text-hero:    clamp(4rem, 14vw, 13rem);
+  --text-display: clamp(3rem, 8vw, 8rem);
+  --text-h1:      clamp(2.25rem, 5vw, 5rem);
+  --text-h2:      clamp(1.75rem, 3vw, 3rem);
+  --text-h3:      clamp(1.25rem, 2vw, 2rem);
+  --text-body:    clamp(1rem, 1.125vw, 1.125rem);
+  --text-small:   clamp(0.8125rem, 0.9vw, 0.875rem);
   --text-caption: clamp(0.6875rem, 0.75vw, 0.75rem);
-  --text-micro: clamp(0.5625rem, 0.6vw, 0.625rem);
+  --text-micro:   clamp(0.5625rem, 0.65vw, 0.625rem);
 
-  /* === Letter Spacing === */
-  --tracking-tight: -0.04em;
-  --tracking-normal: 0em;
-  --tracking-wide: 0.05em;
-  --tracking-mega: 0.15em;
-  --tracking-ultra: 0.3em;
+  /* ═══ LETTER SPACING ═══ */
+  --tracking-hero:    -0.05em;
+  --tracking-tight:   -0.03em;
+  --tracking-display: -0.02em;
+  --tracking-heading: -0.015em;
+  --tracking-normal:  0em;
+  --tracking-body:    0.01em;
+  --tracking-label:   0.08em;
+  --tracking-wide:    0.12em;
 
-  /* === Line Height === */
-  --leading-crush: 0.85;
-  --leading-tight: 0.92;
-  --leading-normal: 1.1;
-  --leading-body: 1.55;
+  /* ═══ LINE HEIGHT ═══ */
+  --leading-hero:    0.85;
+  --leading-display: 0.9;
+  --leading-heading: 1.0;
+  --leading-body:    1.6;
+  --leading-caption: 1.4;
 
-  /* === Spacing === */
-  --page-margin: clamp(1.5rem, 4vw, 5rem);
-  --section-gap: clamp(6rem, 12vh, 12rem);
+  /* ═══ SPACING (Base-8 Fibonacci) ═══ */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.8125rem;
+  --space-4:  1rem;
+  --space-5:  1.3125rem;
+  --space-6:  2.125rem;
+  --space-7:  3.4375rem;
+  --space-8:  5.5625rem;
+  --space-9:  9rem;
 
-  /* === Grid === */
+  /* ═══ PAGE LAYOUT ═══ */
+  --page-margin:  clamp(1.5rem, 5vw, 7.5rem);
+  --section-gap:  clamp(5rem, 15vh, 12rem);
+  --content-gap:  clamp(2rem, 5vh, 4rem);
   --grid-columns: 12;
-  --grid-gutter: clamp(0.75rem, 1.5vw, 1.5rem);
+  --grid-gutter:  clamp(1rem, 2vw, 2rem);
 
-  /* === Z-Index === */
-  --z-bg: 0;
-  --z-grid: 1;
-  --z-content: 10;
-  --z-nav: 100;
-  --z-cursor: 200;
-  --z-preloader: 300;
+  /* ═══ ANIMATION TOKENS ═══ */
+  --duration-micro:     150ms;
+  --duration-fast:      300ms;
+  --duration-normal:    500ms;
+  --duration-slow:      800ms;
+  --duration-slower:    1200ms;
+  --duration-cinematic: 1800ms;
 
-  /* === Easing === */
-  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-expo-in: cubic-bezier(0.7, 0, 0.84, 0);
-  --ease-expo-inout: cubic-bezier(0.87, 0, 0.13, 1);
+  /* ═══ EASING ═══ */
+  --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-back:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out:    cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-cinematic: cubic-bezier(0.77, 0, 0.175, 1);
+
+  /* ═══ Z-INDEX LAYERS ═══ */
+  --z-bg:         0;
+  --z-atmosphere: 2;
+  --z-ghost:      4;
+  --z-content:    10;
+  --z-nav:        100;
+  --z-menu:       150;
+  --z-cursor:     200;
+  --z-preloader:  300;
+  --z-overlay:    400;
 }
 
-/* ─── Utilities ─── */
+/* ═══════════════════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════════════════ */
 
 .page-margin {
+  padding-inline: var(--page-margin);
+}
+
+.grid-base {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--grid-gutter);
   padding-inline: var(--page-margin);
 }
 
@@ -173,21 +250,106 @@ ul, ol {
   border-width: 0;
 }
 
-/* ─── Selection ─── */
+/* ═══ Typography Utilities ═══ */
+
+.text-stroke {
+  -webkit-text-stroke: 1.5px var(--text-primary);
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-invert {
+  mix-blend-mode: difference;
+  color: #ffffff;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ═══ Focus Visible (keyboard users only) ═══ */
+
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 4px;
+}
+
+/* ═══ Skip to Content ═══ */
+
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 1000;
+  padding: 1rem 1.5rem;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ATMOSPHERIC OVERLAYS (Global)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Noise Grain Overlay */
+.atmosphere-noise {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Vignette */
+.atmosphere-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-atmosphere);
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 50%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.12) 100%
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SELECTION
+   ═══════════════════════════════════════════════════════════════════════ */
 
 ::selection {
-  background: var(--color-accent);
-  color: var(--color-text-primary);
+  background: var(--accent-primary);
+  color: var(--text-primary);
 }
 
-/* ─── Hide Scrollbar ─── */
-
-::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-/* ─── Reduced Motion ─── */
+/* ═══════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ═══════════════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -144,9 +144,10 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
 
-        // Preload critical self-hosted fonts (Clash Display + Satoshi)
+        // Preload critical self-hosted fonts (Clash Display + Satoshi + PP Editorial New)
         { rel: 'preload', href: '/assets/fonts/clash-display/ClashDisplay-Variable.woff2', as: 'font', type: 'font/woff2', crossorigin: '' },
         { rel: 'preload', href: '/assets/fonts/satoshi/Satoshi-Variable.woff2', as: 'font', type: 'font/woff2', crossorigin: '' },
+        { rel: 'preload', href: '/assets/fonts/pp-editorial-new/PPEditorialNew-Regular.woff2', as: 'font', type: 'font/woff2', crossorigin: '' },
 
         // JetBrains Mono — monospace (used sparingly for counters/tags)
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap' },

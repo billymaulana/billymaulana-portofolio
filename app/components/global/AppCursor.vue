@@ -1,55 +1,120 @@
 <script setup lang="ts">
 /**
- * Concept 3 Cursor: "Typing Cursor"
- * 2px wide × 24px tall blinking bar.
- * On hover over interactive: stops blinking, shows label.
- * Pure CSS blink + JS lerp position.
+ * AppCursor — 3-state hologram cursor with inertia
+ *
+ * 3 layers:
+ * - Inner dot (6px, white, instant position)
+ * - Outer ring (40px, 1px border, lerp 0.15 inertia)
+ * - Label (text on hover states)
+ *
+ * States:
+ * - Default: dot + ring
+ * - Hover link/button: ring expands 64px, label shows
+ * - Hover text: ring shrinks 24px
+ * - Hidden: on input/textarea focus, cursor hides
+ *
+ * mix-blend-mode: difference on entire container
+ * Hidden on touch devices
  */
 
-const cursorRef = ref<HTMLElement>()
+type CursorState = 'default' | 'hover' | 'text' | 'hidden'
+
+const dotRef = ref<HTMLElement>()
+const ringRef = ref<HTMLElement>()
 const labelRef = ref<HTMLElement>()
-const label = ref('')
-const isHovering = ref(false)
+
+const cursorState = ref<CursorState>('default')
+const labelText = ref('')
+const isVisible = ref(false)
 const isTouch = ref(false)
 
+// Position tracking
 let targetX = 0
 let targetY = 0
-let currentX = 0
-let currentY = 0
-let labelCurrentX = 0
-let labelCurrentY = 0
+let dotX = 0
+let dotY = 0
+let ringX = 0
+let ringY = 0
 let animId = 0
 
-const CURSOR_LERP = 0.18
-const LABEL_LERP = 0.1
+const RING_LERP = 0.15
 
-onMounted(() => {
-  isTouch.value = 'ontouchstart' in window || navigator.maxTouchPoints > 0
-  if (isTouch.value)
-    return
+// ─── Ring sizes per state ───
+const RING_SIZES: Record<CursorState, number> = {
+  default: 40,
+  hover: 64,
+  text: 24,
+  hidden: 0,
+}
 
-  document.body.style.cursor = 'none'
+// ─── Label text mapping ───
+const CURSOR_LABELS: Record<string, string> = {
+  view: 'VIEW',
+  open: 'OPEN',
+  link: 'VIEW',
+  drag: 'DRAG',
+  play: 'PLAY',
+  close: 'CLOSE',
+}
 
-  window.addEventListener('mousemove', onMouseMove)
-  document.addEventListener('mouseenter', onElementEnter, true)
-  document.addEventListener('mouseleave', onElementLeave, true)
-
-  animate()
-})
-
-onUnmounted(() => {
-  if (isTouch.value)
-    return
-  document.body.style.cursor = ''
-  window.removeEventListener('mousemove', onMouseMove)
-  document.removeEventListener('mouseenter', onElementEnter, true)
-  document.removeEventListener('mouseleave', onElementLeave, true)
-  cancelAnimationFrame(animId)
-})
+// ─── Mouse tracking ───
 
 function onMouseMove(e: MouseEvent) {
   targetX = e.clientX
   targetY = e.clientY
+
+  if (!isVisible.value) {
+    isVisible.value = true
+    // Jump to position instantly on first move
+    dotX = targetX
+    dotY = targetY
+    ringX = targetX
+    ringY = targetY
+  }
+}
+
+function onViewportEnter() {
+  isVisible.value = true
+}
+
+function onViewportLeave() {
+  isVisible.value = false
+}
+
+// ─── State detection via event delegation ───
+
+function detectCursorState(target: HTMLElement): { state: CursorState, label: string } {
+  // Check for explicit data-cursor attribute first
+  const cursorEl = target.closest('[data-cursor]') as HTMLElement | null
+  if (cursorEl) {
+    const cursorType = cursorEl.getAttribute('data-cursor') || ''
+    if (cursorType === 'hide')
+      return { state: 'hidden', label: '' }
+    if (cursorType === 'text')
+      return { state: 'text', label: '' }
+    return { state: 'hover', label: CURSOR_LABELS[cursorType] || '' }
+  }
+
+  // Check for data-cursor-label (legacy attribute from existing components)
+  const labelEl = target.closest('[data-cursor-label]') as HTMLElement | null
+  if (labelEl) {
+    const cursorLabel = labelEl.getAttribute('data-cursor-label') || ''
+    return { state: 'hover', label: cursorLabel }
+  }
+
+  // Check for interactive elements (a, button)
+  const interactive = target.closest('a, button') as HTMLElement | null
+  if (interactive) {
+    return { state: 'hover', label: '' }
+  }
+
+  // Check for text inputs — hide cursor
+  const input = target.closest('input, textarea, select') as HTMLElement | null
+  if (input) {
+    return { state: 'hidden', label: '' }
+  }
+
+  return { state: 'default', label: '' }
 }
 
 function onElementEnter(e: Event) {
@@ -57,13 +122,9 @@ function onElementEnter(e: Event) {
   if (!target?.closest)
     return
 
-  const interactive = target.closest('a, button, [data-cursor-label]')
-  if (interactive) {
-    isHovering.value = true
-    const cursorLabel = interactive.getAttribute('data-cursor-label')
-    if (cursorLabel)
-      label.value = cursorLabel
-  }
+  const { state, label } = detectCursorState(target)
+  cursorState.value = state
+  labelText.value = label
 }
 
 function onElementLeave(e: Event) {
@@ -71,113 +132,215 @@ function onElementLeave(e: Event) {
   if (!target?.closest)
     return
 
-  const interactive = target.closest('a, button, [data-cursor-label]')
+  const interactive = target.closest('a, button, [data-cursor], [data-cursor-label], input, textarea, select')
   if (interactive) {
-    isHovering.value = false
-    label.value = ''
+    cursorState.value = 'default'
+    labelText.value = ''
   }
 }
 
-function animate() {
-  currentX += (targetX - currentX) * CURSOR_LERP
-  currentY += (targetY - currentY) * CURSOR_LERP
-  labelCurrentX += (targetX - labelCurrentX) * LABEL_LERP
-  labelCurrentY += (targetY - labelCurrentY) * LABEL_LERP
+// ─── Animation loop ───
 
-  if (cursorRef.value) {
-    cursorRef.value.style.transform = `translate(${currentX - 1}px, ${currentY - 12}px)`
+function animate() {
+  // Inner dot: direct follow (no lerp, instant)
+  dotX = targetX
+  dotY = targetY
+
+  // Outer ring: lerp for inertia feel
+  ringX += (targetX - ringX) * RING_LERP
+  ringY += (targetY - ringY) * RING_LERP
+
+  // Apply transforms
+  if (dotRef.value) {
+    dotRef.value.style.transform = `translate(${dotX - 3}px, ${dotY - 3}px)`
+  }
+
+  if (ringRef.value) {
+    const size = RING_SIZES[cursorState.value]
+    const offset = size / 2
+    ringRef.value.style.transform = `translate(${ringX - offset}px, ${ringY - offset}px)`
   }
 
   if (labelRef.value) {
-    labelRef.value.style.transform = `translate(${labelCurrentX + 16}px, ${labelCurrentY + 16}px)`
+    labelRef.value.style.transform = `translate(${ringX + 24}px, ${ringY + 24}px)`
   }
 
   animId = requestAnimationFrame(animate)
 }
+
+// ─── Lifecycle ───
+
+onMounted(() => {
+  isTouch.value = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+  if (isTouch.value)
+    return
+
+  window.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseenter', onElementEnter, true)
+  document.addEventListener('mouseleave', onElementLeave, true)
+  document.documentElement.addEventListener('mouseenter', onViewportEnter)
+  document.documentElement.addEventListener('mouseleave', onViewportLeave)
+
+  animate()
+})
+
+onUnmounted(() => {
+  if (isTouch.value)
+    return
+
+  window.removeEventListener('mousemove', onMouseMove)
+  document.removeEventListener('mouseenter', onElementEnter, true)
+  document.removeEventListener('mouseleave', onElementLeave, true)
+  document.documentElement.removeEventListener('mouseenter', onViewportEnter)
+  document.documentElement.removeEventListener('mouseleave', onViewportLeave)
+  cancelAnimationFrame(animId)
+})
 </script>
 
 <template>
-  <div v-if="!isTouch" class="cursor-wrapper" aria-hidden="true">
-    <!-- Typing cursor bar -->
+  <div
+    v-if="!isTouch"
+    class="cursor"
+    :class="{
+      'cursor--hidden': !isVisible || cursorState === 'hidden',
+    }"
+    aria-hidden="true"
+  >
+    <!-- Layer 1: Inner dot — 6px, instant position -->
     <div
-      ref="cursorRef"
-      class="typing-cursor"
+      ref="dotRef"
+      class="cursor__dot"
       :class="{
-        'typing-cursor--hover': isHovering,
-        'typing-cursor--blink': !isHovering,
+        'cursor__dot--hover': cursorState === 'hover',
+        'cursor__dot--text': cursorState === 'text',
       }"
     />
 
-    <!-- Label -->
+    <!-- Layer 2: Outer ring — 40px default, lerp inertia -->
+    <div
+      ref="ringRef"
+      class="cursor__ring"
+      :class="{
+        'cursor__ring--hover': cursorState === 'hover',
+        'cursor__ring--text': cursorState === 'text',
+      }"
+    />
+
+    <!-- Layer 3: Label — appears on hover states -->
     <div
       ref="labelRef"
-      class="cursor-label"
-      :class="{ 'cursor-label--visible': label }"
+      class="cursor__label"
+      :class="{ 'cursor__label--visible': labelText }"
     >
-      {{ label }}
+      {{ labelText }}
     </div>
   </div>
 </template>
 
 <style scoped>
-.cursor-wrapper {
+/* ═══ Hide default cursor globally (scoped to this component's existence) ═══ */
+:global(*) {
+  cursor: none;
+}
+
+/* ═══ Cursor Container ═══ */
+.cursor {
   position: fixed;
   top: 0;
   left: 0;
   z-index: var(--z-cursor);
   pointer-events: none;
   mix-blend-mode: difference;
+  transition: opacity 0.3s var(--ease-out-expo);
 }
 
-/* Typing cursor: 2px × 24px bar */
-.typing-cursor {
+.cursor--hidden {
+  opacity: 0;
+}
+
+/* ═══ Layer 1: Inner Dot — 6px circle ═══ */
+.cursor__dot {
   position: absolute;
   top: 0;
   left: 0;
-  width: 2px;
-  height: 24px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: white;
-  will-change: transform, opacity;
-  transition: height 0.2s var(--ease-expo),
-              width 0.2s var(--ease-expo);
+  will-change: transform;
+  transition:
+    width var(--duration-fast) var(--ease-out-expo),
+    height var(--duration-fast) var(--ease-out-expo),
+    opacity var(--duration-fast) var(--ease-out-expo);
 }
 
-/* Blink animation — 530ms is standard cursor blink rate */
-.typing-cursor--blink {
-  animation: cursor-blink 1.06s step-end infinite;
+.cursor__dot--hover {
+  width: 4px;
+  height: 4px;
+  opacity: 0.6;
 }
 
-@keyframes cursor-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+.cursor__dot--text {
+  width: 2px;
+  height: 2px;
+  opacity: 0.4;
 }
 
-/* Hover: stop blinking, expand slightly */
-.typing-cursor--hover {
-  width: 3px;
-  height: 28px;
-  animation: none;
-  opacity: 1;
+/* ═══ Layer 2: Outer Ring — 40px default ═══ */
+.cursor__ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  will-change: transform;
+  transition:
+    width 0.4s var(--ease-out-expo),
+    height 0.4s var(--ease-out-expo),
+    border-color var(--duration-fast) var(--ease-out-expo),
+    border-width var(--duration-fast) var(--ease-out-expo);
 }
 
-/* Label */
-.cursor-label {
+.cursor__ring--hover {
+  width: 64px;
+  height: 64px;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.cursor__ring--text {
+  width: 24px;
+  height: 24px;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ═══ Layer 3: Label ═══ */
+.cursor__label {
   position: absolute;
   top: 0;
   left: 0;
   font-family: var(--font-mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.1em;
+  font-size: 0.5625rem;
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   color: white;
   white-space: nowrap;
   opacity: 0;
-  transition: opacity 0.2s ease;
-  mix-blend-mode: normal;
   will-change: transform;
+  transition: opacity 0.25s var(--ease-out-expo);
 }
 
-.cursor-label--visible {
+.cursor__label--visible {
   opacity: 1;
+}
+
+/* ═══ Reduced Motion ═══ */
+@media (prefers-reduced-motion: reduce) {
+  .cursor__dot,
+  .cursor__ring,
+  .cursor__label {
+    transition: none;
+  }
 }
 </style>
