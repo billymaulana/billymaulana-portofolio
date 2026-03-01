@@ -68,10 +68,11 @@ onMounted(async () => {
       })
     })
 
-    // Velocity response: detect scroll speed and adjust animation duration
+    // Velocity response: scroll speed → animation speed + letter-spacing stretch
     const tracks = sectionRef.value.querySelectorAll('.marquee__track')
-    let lastScrollTop = 0
+    const allItems = sectionRef.value.querySelectorAll('.marquee__item')
     let velocityTimeout: ReturnType<typeof setTimeout> | null = null
+    let currentSpacing = 0 // smoothed letter-spacing in em
 
     ScrollTrigger.create({
       trigger: sectionRef.value,
@@ -79,8 +80,9 @@ onMounted(async () => {
       end: 'bottom top',
       onUpdate(self) {
         const velocity = Math.abs(self.getVelocity())
-        const speedFactor = Math.max(0.3, 1 - velocity / 5000)
 
+        // Animation speed: faster scroll → faster animation
+        const speedFactor = Math.max(0.3, 1 - velocity / 5000)
         tracks.forEach((track) => {
           const el = track as HTMLElement
           const baseDuration = el.dataset.baseDuration || '25'
@@ -88,22 +90,44 @@ onMounted(async () => {
           el.style.animationDuration = `${newDuration}s`
         })
 
-        // Reset speed after scroll stops
+        // Letter-spacing stretch: velocity → expanded tracking
+        // Max ~0.15em at high velocity (smooth lerp)
+        const targetSpacing = Math.min(0.15, velocity / 8000)
+        currentSpacing += (targetSpacing - currentSpacing) * 0.15
+        const spacingValue = `${currentSpacing.toFixed(4)}em`
+
+        allItems.forEach((item) => {
+          const el = item as HTMLElement
+          el.style.letterSpacing = spacingValue
+        })
+
+        // Reset after scroll stops
         if (velocityTimeout)
           clearTimeout(velocityTimeout)
 
         velocityTimeout = setTimeout(() => {
+          // Smooth return via GSAP
+          gsap.to({ val: currentSpacing }, {
+            val: 0,
+            duration: 0.8,
+            ease: 'power3.out',
+            onUpdate() {
+              currentSpacing = this.targets()[0].val
+              const resetVal = `${currentSpacing.toFixed(4)}em`
+              allItems.forEach((item) => {
+                ;(item as HTMLElement).style.letterSpacing = resetVal
+              })
+            },
+          })
+
           tracks.forEach((track) => {
             const el = track as HTMLElement
             const baseDuration = el.dataset.baseDuration || '25'
             el.style.animationDuration = `${baseDuration}s`
           })
-        }, 200)
+        }, 150)
       },
     })
-
-    void lastScrollTop // suppress unused warning
-    lastScrollTop = 0
   })
 })
 
@@ -207,9 +231,9 @@ onUnmounted(() => {
   width: 100%;
   overflow: hidden;
   padding: clamp(3rem, 6vh, 6rem) 0;
-  background: var(--bg-abyss);
-  border-top: 1px solid var(--bg-subtle);
-  border-bottom: 1px solid var(--bg-subtle);
+  background: var(--void);
+  border-top: 1px solid rgba(0, 71, 255, 0.12);
+  border-bottom: 1px solid rgba(0, 71, 255, 0.12);
 }
 
 /* ═══ Row ═══ */
@@ -249,17 +273,18 @@ onUnmounted(() => {
 /* ═══ Item base ═══ */
 
 .marquee__item {
-  font-family: var(--font-display);
+  font-family: var(--font-statement);
   line-height: 1;
   letter-spacing: var(--tracking-tight);
   text-transform: uppercase;
   flex-shrink: 0;
+  transition: letter-spacing 0.1s linear;
 }
 
 /* ═══ Bold filled (rows 1 & 3) ═══ */
 
 .marquee__item--bold {
-  font-weight: 700;
+  font-weight: 800;
   font-size: clamp(2.5rem, 5vw, 5rem);
   color: var(--text-primary);
 }
@@ -267,10 +292,10 @@ onUnmounted(() => {
 /* ═══ Stroke-only (row 2) ═══ */
 
 .marquee__item--stroke {
-  font-weight: 300;
+  font-weight: 200;
   font-size: clamp(1.5rem, 3vw, 3rem);
   color: transparent;
-  -webkit-text-stroke: 1px var(--text-primary);
+  -webkit-text-stroke: 1px rgba(0, 71, 255, 0.4);
   -webkit-text-fill-color: transparent;
 }
 
@@ -278,13 +303,15 @@ onUnmounted(() => {
 
 .marquee__diamond {
   flex-shrink: 0;
-  color: var(--accent-primary);
-  opacity: 0.8;
+  color: var(--event-blue);
+  opacity: 0.9;
+  filter: drop-shadow(0 0 4px rgba(0, 71, 255, 0.3));
 }
 
 .marquee__diamond--muted {
-  color: var(--text-tertiary);
-  opacity: 0.4;
+  color: rgba(0, 71, 255, 0.3);
+  opacity: 0.6;
+  filter: none;
 }
 
 /* ═══ Edge fade masks ═══ */
@@ -300,12 +327,12 @@ onUnmounted(() => {
 
 .marquee__edge--left {
   left: 0;
-  background: linear-gradient(90deg, var(--bg-abyss) 0%, transparent 100%);
+  background: linear-gradient(90deg, var(--void) 0%, transparent 100%);
 }
 
 .marquee__edge--right {
   right: 0;
-  background: linear-gradient(270deg, var(--bg-abyss) 0%, transparent 100%);
+  background: linear-gradient(270deg, var(--void) 0%, transparent 100%);
 }
 
 /* ═══ Atmospheric gradient ═══ */
@@ -315,13 +342,9 @@ onUnmounted(() => {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(0, 71, 255, 0.04) 30%,
-    rgba(0, 163, 255, 0.03) 50%,
-    transparent 100%
-  );
+  background:
+    radial-gradient(ellipse 60% 100% at 30% 50%, rgba(0, 71, 255, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 80% at 70% 50%, rgba(0, 163, 255, 0.06) 0%, transparent 60%);
 }
 
 /* ═══ Ghost section number ═══ */
@@ -330,12 +353,13 @@ onUnmounted(() => {
   position: absolute;
   bottom: clamp(1rem, 3vh, 2rem);
   right: var(--page-margin);
-  font-family: var(--font-mono);
-  font-size: clamp(3rem, 8vw, 8rem);
-  font-weight: 400;
+  font-family: var(--font-statement);
+  font-size: clamp(5rem, 12vw, 12rem);
+  font-weight: 800;
   line-height: 1;
-  color: var(--text-disabled);
-  opacity: 0.03;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(0, 71, 255, 0.08);
+  -webkit-text-fill-color: transparent;
   pointer-events: none;
   user-select: none;
   mix-blend-mode: difference;

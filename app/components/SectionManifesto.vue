@@ -27,11 +27,83 @@ function isKeyword(word: string): boolean {
 const sectionRef = ref<HTMLElement>()
 const statementRef = ref<HTMLElement>()
 const glowRef = ref<HTMLElement>()
+const noiseCanvasRef = ref<HTMLCanvasElement>()
 
 let ctx: gsap.Context | null = null
+let noiseAnimId = 0
+
+// ─── Hash-based noise (matches project pattern from useParticleAttraction) ───
+function noiseHash(x: number, y: number): number {
+  let h = x * 374761393 + y * 668265263
+  h = ((h ^ (h >> 13)) * 1274126177) | 0
+  return ((h ^ (h >> 16)) >>> 0) / 4294967296
+}
+
+function initNoiseCanvas() {
+  const canvas = noiseCanvasRef.value
+  const container = canvas?.parentElement
+  if (!canvas || !container)
+    return
+
+  const renderCtx = canvas.getContext('2d', { alpha: true })
+  if (!renderCtx)
+    return
+
+  // Use viewport size (canvas is position:fixed), lower res for performance
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const scale = 0.33
+  const w = Math.floor(vw * scale)
+  const h = Math.floor(vh * scale)
+  canvas.width = w
+  canvas.height = h
+
+  const imageData = renderCtx.createImageData(w, h)
+  const data = imageData.data
+  let time = Math.random() * 1000
+
+  function renderNoise() {
+    time += 0.008 // Slow evolution — darkroom grain drift
+    const t = time
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        // Layered noise at different scales for organic feel
+        const n1 = noiseHash(
+          Math.floor(x * 0.15 + t * 3),
+          Math.floor(y * 0.15 + t * 2),
+        )
+        const n2 = noiseHash(
+          Math.floor(x * 0.4 + t * 7),
+          Math.floor(y * 0.4 - t * 5),
+        )
+        // Mix: dominant low-freq + subtle high-freq detail
+        const val = (n1 * 0.7 + n2 * 0.3) * 255
+
+        const idx = (y * w + x) * 4
+        // Blue-tinted grain (matches palette #0047FF)
+        data[idx] = val * 0.1 // R — minimal
+        data[idx + 1] = val * 0.2 // G — slight
+        data[idx + 2] = val * 0.8 // B — dominant blue
+        data[idx + 3] = val * 0.35 // A — subtle alpha
+      }
+    }
+
+    renderCtx!.putImageData(imageData, 0, 0)
+    noiseAnimId = requestAnimationFrame(renderNoise)
+  }
+
+  noiseAnimId = requestAnimationFrame(renderNoise)
+}
 
 onMounted(async () => {
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  // Init noise canvas even with reduced motion (it's atmospheric, not motion)
+  if (!prefersReduced) {
+    initNoiseCanvas()
+  }
+
   if (prefersReduced)
     return
 
@@ -173,6 +245,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   ctx?.revert()
+  if (noiseAnimId)
+    cancelAnimationFrame(noiseAnimId)
 })
 </script>
 
@@ -207,6 +281,8 @@ onUnmounted(() => {
 
     <!-- Pin container: this is what gets pinned to viewport center -->
     <div class="manifesto__pin-container">
+      <!-- Noise canvas — darkroom developing grain (inside pin so it's only visible when pinned) -->
+      <canvas ref="noiseCanvasRef" class="manifesto__noise" aria-hidden="true" />
       <!-- Cloned text shadow (VISUAL OBJECT — chromatic depth layer) -->
       <p class="manifesto__shadow" aria-hidden="true">
         <span
@@ -244,6 +320,19 @@ onUnmounted(() => {
   height: 800vh;
   background: var(--bg-base);
   overflow: hidden;
+}
+
+/* ═══ Noise Canvas — darkroom developing grain ═══ */
+.manifesto__noise {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.10;
+  image-rendering: pixelated;
 }
 
 /* ═══ Pin Container — pinned to viewport center during scroll ═══ */
@@ -393,6 +482,10 @@ onUnmounted(() => {
 
   .manifesto__word--keyword {
     color: var(--accent-cyan) !important;
+  }
+
+  .manifesto__noise {
+    display: none;
   }
 
   .manifesto__shadow {

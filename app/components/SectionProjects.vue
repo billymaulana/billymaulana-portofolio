@@ -45,6 +45,40 @@ function handleLinkLeave(event: Event) {
     reset(textEl)
 }
 
+// 3D tilt + spotlight tracking on project visuals
+function handleVisualMouseMove(event: MouseEvent) {
+  const visual = event.currentTarget as HTMLElement
+  const rect = visual.getBoundingClientRect()
+  const x = (event.clientX - rect.left) / rect.width // 0-1
+  const y = (event.clientY - rect.top) / rect.height // 0-1
+  visual.style.setProperty('--mx', `${x}`)
+  visual.style.setProperty('--my', `${y}`)
+}
+
+function handleVisualTouchMove(event: TouchEvent) {
+  const touch = event.touches[0]
+  if (!touch)
+    return
+  const visual = event.currentTarget as HTMLElement
+  const rect = visual.getBoundingClientRect()
+  const x = (touch.clientX - rect.left) / rect.width
+  const y = (touch.clientY - rect.top) / rect.height
+  visual.style.setProperty('--mx', `${Math.max(0, Math.min(1, x))}`)
+  visual.style.setProperty('--my', `${Math.max(0, Math.min(1, y))}`)
+}
+
+function handleVisualTouchEnd(event: Event) {
+  const visual = event.currentTarget as HTMLElement
+  visual.style.setProperty('--mx', '0.5')
+  visual.style.setProperty('--my', '0.5')
+}
+
+function handleVisualMouseLeave(event: MouseEvent) {
+  const visual = event.currentTarget as HTMLElement
+  visual.style.setProperty('--mx', '0.5')
+  visual.style.setProperty('--my', '0.5')
+}
+
 // Template refs
 const sectionRef = ref<HTMLElement>()
 const progressRef = ref<HTMLElement>()
@@ -251,7 +285,16 @@ onUnmounted(() => {
         <div class="projects__layout">
           <!-- Visual area (image placeholder with SVG pattern + brackets) -->
           <div class="projects__visual-wrap">
-            <div class="projects__visual">
+            <div
+              class="projects__visual"
+              @mousemove="handleVisualMouseMove"
+              @mouseleave="handleVisualMouseLeave"
+              @touchmove.passive="handleVisualTouchMove"
+              @touchend="handleVisualTouchEnd"
+            >
+              <!-- Mouse-tracking spotlight -->
+              <div class="projects__spotlight" aria-hidden="true" />
+
               <!-- SVG dot grid overlay -->
               <svg
                 class="projects__dot-grid"
@@ -269,7 +312,7 @@ onUnmounted(() => {
                     height="40"
                     patternUnits="userSpaceOnUse"
                   >
-                    <circle cx="20" cy="20" r="1" fill="var(--accent-primary)" opacity="0.06" />
+                    <circle cx="20" cy="20" r="1" fill="var(--accent-primary)" opacity="0.12" />
                   </pattern>
                 </defs>
                 <rect width="100%" height="100%" :fill="`url(#dot-pattern-${project.id})`" />
@@ -358,7 +401,7 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   padding: var(--section-gap) 0;
-  background: var(--bg-base);
+  background: var(--void-warm);
   overflow: hidden;
 }
 
@@ -369,11 +412,17 @@ onUnmounted(() => {
   inset: 0;
   z-index: var(--z-atmosphere);
   pointer-events: none;
-  background: radial-gradient(
-    ellipse 50% 40% at 80% 60%,
-    rgba(0, 71, 255, 0.05) 0%,
-    transparent 70%
-  );
+  background:
+    radial-gradient(
+      ellipse 50% 40% at 80% 30%,
+      rgba(0, 71, 255, 0.08) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 50% at 20% 70%,
+      rgba(15, 10, 114, 0.06) 0%,
+      transparent 60%
+    );
 }
 
 /* ─── Scroll Progress Line ─── */
@@ -385,6 +434,7 @@ onUnmounted(() => {
   right: 0;
   height: 2px;
   background: var(--accent-primary);
+  box-shadow: 0 0 12px rgba(0, 71, 255, 0.3), 0 2px 20px rgba(0, 71, 255, 0.1);
   transform-origin: left center;
   transform: scaleX(0);
   z-index: var(--z-content);
@@ -410,13 +460,13 @@ onUnmounted(() => {
 }
 
 .projects__title {
-  font-family: var(--font-display);
-  font-size: var(--text-h1);
-  font-weight: 600;
+  font-family: var(--font-statement);
+  font-size: clamp(3rem, 7vw, 6rem);
+  font-weight: 800;
   color: var(--text-primary);
-  letter-spacing: var(--tracking-display);
+  letter-spacing: var(--tracking-tight);
   text-transform: uppercase;
-  line-height: var(--leading-heading);
+  line-height: 0.9;
   will-change: clip-path;
 }
 
@@ -442,7 +492,12 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--bg-subtle);
+  background: linear-gradient(
+    90deg,
+    rgba(0, 71, 255, 0.2) 0%,
+    rgba(0, 71, 255, 0.08) 50%,
+    transparent 100%
+  );
 }
 
 .projects__layout {
@@ -471,17 +526,129 @@ onUnmounted(() => {
 }
 
 .projects__visual {
+  --mx: 0.5;
+  --my: 0.5;
   position: relative;
   aspect-ratio: 16 / 10;
-  background: var(--bg-surface);
+  background: var(--surface-1);
+  border: 1px solid rgba(0, 71, 255, 0.12);
   overflow: hidden;
   will-change: transform;
   cursor: pointer;
-  transition: filter 0.8s var(--ease-out-expo);
+  transition: filter 0.8s var(--ease-out-expo),
+              border-color 0.6s var(--ease-out-expo),
+              transform 0.6s var(--ease-out-expo);
+  transform-style: preserve-3d;
+  perspective: 800px;
 }
 
+/* 3D tilt on hover — subtle perspective shift driven by --mx/--my */
 .projects__card:hover .projects__visual {
-  filter: brightness(1.1);
+  filter: brightness(1.15);
+  border-color: rgba(0, 71, 255, 0.3);
+  transform:
+    rotateY(calc((var(--mx) - 0.5) * 6deg))
+    rotateX(calc((var(--my) - 0.5) * -4deg))
+    scale(1.02);
+}
+
+/* Mouse-tracking spotlight — radial glow follows cursor */
+.projects__spotlight {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle 200px at calc(var(--mx) * 100%) calc(var(--my) * 100%),
+    rgba(0, 71, 255, 0.15) 0%,
+    transparent 70%
+  );
+  transition: opacity 0.4s var(--ease-out-expo);
+}
+
+.projects__card:hover .projects__spotlight {
+  opacity: 1;
+}
+
+/* Per-project unique gradient backgrounds — each case study has distinct visual DNA */
+.projects__card:nth-child(1) .projects__visual {
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(0, 71, 255, 0.08) 0%, transparent 70%),
+    linear-gradient(135deg, rgba(0, 71, 255, 0.03) 0%, transparent 50%),
+    var(--surface-1);
+}
+
+.projects__card:nth-child(2) .projects__visual {
+  background:
+    radial-gradient(ellipse 50% 60% at 70% 60%, rgba(15, 10, 114, 0.1) 0%, transparent 70%),
+    linear-gradient(225deg, rgba(0, 71, 255, 0.04) 0%, transparent 50%),
+    var(--surface-1);
+}
+
+.projects__card:nth-child(3) .projects__visual {
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 35%, rgba(0, 163, 255, 0.06) 0%, transparent 70%),
+    linear-gradient(180deg, rgba(0, 71, 255, 0.03) 0%, transparent 40%),
+    var(--surface-1);
+}
+
+.projects__card:nth-child(4) .projects__visual {
+  background:
+    radial-gradient(ellipse 40% 55% at 25% 65%, rgba(0, 71, 255, 0.07) 0%, transparent 70%),
+    linear-gradient(315deg, rgba(15, 10, 114, 0.05) 0%, transparent 50%),
+    var(--surface-1);
+}
+
+.projects__card:nth-child(5) .projects__visual {
+  background:
+    radial-gradient(ellipse 65% 40% at 60% 50%, rgba(161, 224, 231, 0.04) 0%, transparent 70%),
+    linear-gradient(90deg, rgba(0, 71, 255, 0.03) 0%, transparent 40%),
+    var(--surface-1);
+}
+
+/* Scanline overlay on all visual areas */
+.projects__visual::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 71, 255, 0.012) 3px,
+    rgba(0, 71, 255, 0.012) 4px
+  );
+}
+
+/* Sweep scan beam (slower, more subtle than About) */
+.projects__visual::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 71, 255, 0.25) 30%,
+    rgba(0, 163, 255, 0.35) 50%,
+    rgba(0, 71, 255, 0.25) 70%,
+    transparent 100%
+  );
+  animation: projects-sweep 8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  opacity: 0.6;
+}
+
+@keyframes projects-sweep {
+  0%, 100% { top: -1px; opacity: 0; }
+  5% { opacity: 0.6; }
+  50% { top: 100%; opacity: 0.4; }
+  55% { opacity: 0; }
 }
 
 /* SVG dot grid overlay */
@@ -498,23 +665,28 @@ onUnmounted(() => {
   filter: brightness(2);
 }
 
-/* Watermark project name */
+/* Watermark project name — visible as design element */
 .projects__watermark {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) rotate(-5deg);
-  font-family: var(--font-display);
+  transform: translate(-50%, -50%);
+  font-family: var(--font-statement);
   font-size: clamp(3rem, 8vw, 7rem);
-  font-weight: 600;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: var(--tracking-display);
-  color: var(--text-primary);
-  opacity: 0.04;
+  letter-spacing: var(--tracking-tight);
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(0, 71, 255, 0.1);
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
   z-index: 1;
+  transition: -webkit-text-stroke-color 0.8s var(--ease-out-expo);
+}
+
+.projects__card:hover .projects__watermark {
+  -webkit-text-stroke-color: rgba(0, 71, 255, 0.2);
 }
 
 /* ─── Corner Brackets (Architectural L-Shapes) ─── */
@@ -601,17 +773,22 @@ onUnmounted(() => {
   position: absolute;
   top: -0.15em;
   right: -2%;
-  font-family: var(--font-display);
+  font-family: var(--font-statement);
   font-size: clamp(8rem, 20vw, 18rem);
-  font-weight: 600;
+  font-weight: 800;
   line-height: 0.85;
   color: transparent;
-  -webkit-text-stroke: 1.5px rgba(0, 71, 255, 0.15);
+  -webkit-text-stroke: 1.5px rgba(0, 71, 255, 0.12);
   pointer-events: none;
   user-select: none;
   mix-blend-mode: difference;
   z-index: 0;
   will-change: transform;
+  transition: -webkit-text-stroke-color 0.8s var(--ease-out-expo);
+}
+
+.projects__card:hover .projects__index {
+  -webkit-text-stroke-color: rgba(0, 71, 255, 0.25);
 }
 
 /* For reversed cards, index goes to the left */
@@ -657,18 +834,20 @@ onUnmounted(() => {
 /* ─── Project Name ─── */
 
 .projects__name {
-  font-family: var(--font-display);
+  font-family: var(--font-statement);
   font-size: var(--text-h2);
-  font-weight: 600;
+  font-weight: 800;
   color: var(--text-primary);
-  letter-spacing: var(--tracking-display);
+  letter-spacing: var(--tracking-tight);
   line-height: var(--leading-heading);
   text-transform: uppercase;
-  transition: color 0.6s var(--ease-out-expo);
+  transition: color 0.6s var(--ease-out-expo),
+              text-shadow 0.6s var(--ease-out-expo);
 }
 
 .projects__card:hover .projects__name {
-  color: var(--accent-light);
+  color: var(--text-primary);
+  text-shadow: 0 0 40px rgba(0, 71, 255, 0.3);
 }
 
 /* ─── Description ─── */
@@ -746,12 +925,12 @@ onUnmounted(() => {
   position: absolute;
   bottom: clamp(2rem, 5vh, 4rem);
   right: var(--page-margin);
-  font-family: var(--font-display);
-  font-size: clamp(6rem, 14vw, 14rem);
-  font-weight: 600;
-  line-height: 1;
+  font-family: var(--font-statement);
+  font-size: clamp(8rem, 20vw, 20rem);
+  font-weight: 800;
+  line-height: 0.85;
   color: transparent;
-  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.04);
+  -webkit-text-stroke: 1.5px rgba(0, 71, 255, 0.06);
   pointer-events: none;
   user-select: none;
   mix-blend-mode: difference;
@@ -822,6 +1001,24 @@ onUnmounted(() => {
   .projects__view-overlay,
   .projects__dot-grid {
     transition: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TOUCH-ONLY — prevent sticky hover states on touch devices
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (hover: none) {
+  /* Reduce 3D tilt intensity on touch */
+  .projects__card:hover .projects__visual {
+    transform:
+      rotateY(calc((var(--mx) - 0.5) * 3deg))
+      rotateX(calc((var(--my) - 0.5) * -2deg))
+      scale(1.01);
+  }
+
+  /* Disable view overlay on touch — it blocks scrolling */
+  .projects__view-overlay {
+    display: none;
   }
 }
 </style>

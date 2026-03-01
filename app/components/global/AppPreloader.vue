@@ -17,6 +17,7 @@ const emit = defineEmits<{
 const logoRef = ref<SVGSVGElement>()
 const counterRef = ref<HTMLElement>()
 const curtainRef = ref<HTMLElement>()
+const cornersRef = ref<HTMLElement>()
 const progress = ref(0)
 
 const formattedCounter = computed(() =>
@@ -69,6 +70,33 @@ async function runCinematic() {
   const logoPaths = logoRef.value?.querySelectorAll('path')
   if (!logoPaths?.length)
     return
+
+  // Corner labels — per-char blur-to-sharp stagger
+  if (cornersRef.value) {
+    const labels = cornersRef.value.querySelectorAll('.preloader__corner')
+    labels.forEach((label) => {
+      const text = label.textContent || ''
+      label.textContent = ''
+      for (const char of text) {
+        const span = document.createElement('span')
+        span.textContent = char
+        span.classList.add('preloader__corner-char')
+        label.appendChild(span)
+      }
+    })
+
+    const allChars = cornersRef.value.querySelectorAll('.preloader__corner-char')
+    gsap.set(allChars, { opacity: 0, filter: 'blur(6px)' })
+
+    // Stagger entrance at timeline start
+    tl.to(allChars, {
+      opacity: 0.5,
+      filter: 'blur(0px)',
+      duration: 0.8,
+      stagger: 0.02,
+      ease: 'power3.out',
+    }, 0.3)
+  }
 
   // Measure path lengths and set initial stroke-dash state
   logoPaths.forEach((path) => {
@@ -153,6 +181,18 @@ async function runCinematic() {
     })
   }
 
+  // Corner labels fade out
+  if (cornersRef.value) {
+    const allChars = cornersRef.value.querySelectorAll('.preloader__corner-char')
+    tl.to(allChars, {
+      opacity: 0,
+      filter: 'blur(4px)',
+      duration: 0.3,
+      stagger: 0.01,
+      ease: 'power2.in',
+    }, '-=0.2')
+  }
+
   // Emit complete → hero can start preparing
   tl.add(() => {
     emit('complete')
@@ -179,6 +219,14 @@ async function runCinematic() {
   >
     <!-- Atmospheric indigo gradient -->
     <div class="preloader__atmosphere" aria-hidden="true" />
+
+    <!-- Corner coordinate labels — exhibition plate framing -->
+    <div ref="cornersRef" class="preloader__corners" aria-hidden="true">
+      <span class="preloader__corner preloader__corner--tl">MONOGRAPH NO. 001</span>
+      <span class="preloader__corner preloader__corner--tr">BILLY MAULANA</span>
+      <span class="preloader__corner preloader__corner--bl">BANDUNG, ID</span>
+      <span class="preloader__corner preloader__corner--br">MMXXVI</span>
+    </div>
 
     <!-- BM Monogram SVG — stroke draw animation -->
     <svg
@@ -248,6 +296,50 @@ async function runCinematic() {
   letter-spacing: var(--tracking-wide);
   opacity: 0;
   will-change: opacity, filter, transform;
+}
+
+/* ─── Corner Labels — Exhibition Plate ─── */
+.preloader__corners {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.preloader__corner {
+  position: absolute;
+  font-family: var(--font-system);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--chrome-dark);
+  opacity: 0;
+  white-space: nowrap;
+}
+
+.preloader__corner--tl {
+  top: clamp(1.5rem, 3vh, 2.5rem);
+  left: var(--page-margin);
+}
+
+.preloader__corner--tr {
+  top: clamp(1.5rem, 3vh, 2.5rem);
+  right: var(--page-margin);
+}
+
+.preloader__corner--bl {
+  bottom: clamp(2rem, 4vh, 3rem);
+  left: var(--page-margin);
+}
+
+.preloader__corner--br {
+  bottom: clamp(2rem, 4vh, 3rem);
+  right: var(--page-margin);
+}
+
+.preloader__corner-char {
+  display: inline-block;
+  will-change: opacity, filter;
 }
 
 .preloader__curtain {

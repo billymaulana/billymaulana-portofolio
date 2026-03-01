@@ -16,6 +16,7 @@
  * Adjacent above: SectionManifesto — scroll-scrubbed pin word reveal
  * Adjacent below: SectionProjects — clipPath inset per card
  */
+import { useNoisePortrait } from '~/composables/useNoisePortrait'
 import { experiences, profile } from '~/constants/profile'
 
 const STATS = [
@@ -24,6 +25,28 @@ const STATS = [
   { value: '80M+', label: 'Users Impacted' },
   { value: '4', label: 'Companies' },
 ]
+
+// Parse stat values into odometer-friendly character arrays
+interface OdoChar {
+  char: string
+  isDigit: boolean
+  digit: number // 0-9 if isDigit, 0 otherwise
+}
+
+function parseStatValue(value: string): OdoChar[] {
+  return value.split('').map(char => ({
+    char,
+    isDigit: /\d/.test(char),
+    digit: /\d/.test(char) ? Number.parseInt(char, 10) : 0,
+  }))
+}
+
+const parsedStats = computed(() =>
+  STATS.map(stat => ({
+    ...stat,
+    chars: parseStatValue(stat.value),
+  })),
+)
 
 const TECH = ['Vue.js', 'Nuxt', 'TypeScript', 'GSAP', 'WebGL', 'Three.js', 'Figma']
 
@@ -45,6 +68,15 @@ const statsRef = ref<HTMLElement>()
 const techRef = ref<HTMLElement>()
 const svgGridRef = ref<SVGElement>()
 const blueprintRef = ref<SVGElement>()
+const noiseCanvasRef = ref<HTMLCanvasElement>()
+
+// Generative noise portrait — particle flow field forming head silhouette
+useNoisePortrait(noiseCanvasRef, photoRef, {
+  particleCount: 1600,
+  frequency: 0.004,
+  speed: 0.7,
+  trailAlpha: 0.035,
+})
 
 let ctx: gsap.Context | null = null
 
@@ -227,30 +259,39 @@ onMounted(async () => {
       })
     }
 
-    // 7. Stats counter animation
+    // 7. Stats odometer animation — translateY per digit column
     if (statsRef.value) {
-      const numbers = statsRef.value.querySelectorAll('.about__stat-value')
-      numbers.forEach((numEl) => {
-        const el = numEl as HTMLElement
-        const finalText = el.dataset.value || '0'
-        const numericPart = Number.parseInt(finalText.replace(/\D/g, ''), 10)
-        const suffix = finalText.replace(/\d/g, '')
-
-        el.textContent = `0${suffix}`
-        const proxy = { val: 0 }
-        gsap.to(proxy, {
-          val: numericPart,
-          duration: 2.4,
-          ease: 'power3.out',
-          snap: { val: 1 },
+      const columns = statsRef.value.querySelectorAll('.odo__column')
+      columns.forEach((col, i) => {
+        const el = col as HTMLElement
+        const target = Number.parseInt(el.dataset.target || '0', 10)
+        // Each digit is 1em tall; move up by target * 1em
+        gsap.fromTo(el, {
+          yPercent: 0,
+        }, {
+          yPercent: -target * 10, // -10% per digit (10 digits = 100%)
+          duration: 1.8 + (i * 0.15),
+          ease: 'expo.out',
           scrollTrigger: {
             trigger: statsRef.value,
             start: 'top 85%',
           },
-          onUpdate() {
-            el.textContent = `${Math.round(proxy.val)}${suffix}`
-          },
         })
+      })
+
+      // Static chars (M, +) — fade in with stagger
+      const statics = statsRef.value.querySelectorAll('.odo__static')
+      gsap.from(statics, {
+        opacity: 0,
+        yPercent: 30,
+        duration: 0.5,
+        ease: 'power3.out',
+        stagger: 0.05,
+        delay: 0.6,
+        scrollTrigger: {
+          trigger: statsRef.value,
+          start: 'top 85%',
+        },
       })
 
       // Stats labels stagger
@@ -300,7 +341,7 @@ onUnmounted(() => {
     class="about"
     aria-label="About"
   >
-    <!-- SVG Ruled-Line Accent System (VISUAL OBJECT 2) -->
+    <!-- SVG Ruled-Line Accent System (VISUAL OBJECT 2) — Swiss grid overlay -->
     <svg
       ref="svgGridRef"
       class="about__svg-grid"
@@ -308,20 +349,39 @@ onUnmounted(() => {
       viewBox="0 0 1000 1000"
       preserveAspectRatio="none"
     >
-      <!-- Horizontal ruled lines behind bio — "ruled paper" effect -->
-      <line class="about__grid-line" x1="0" y1="180" x2="550" y2="180" />
-      <line class="about__grid-line" x1="0" y1="280" x2="500" y2="280" />
-      <line class="about__grid-line" x1="0" y1="380" x2="480" y2="380" />
-      <line class="about__grid-line" x1="0" y1="480" x2="520" y2="480" />
-      <line class="about__grid-line" x1="0" y1="580" x2="450" y2="580" />
-      <line class="about__grid-line" x1="0" y1="680" x2="500" y2="680" />
-      <!-- Accent line — stronger color -->
-      <line class="about__grid-accent" x1="0" y1="330" x2="580" y2="330" />
+      <!-- Horizontal ruled lines — "ruled paper" effect -->
+      <line class="about__grid-line" x1="0" y1="140" x2="580" y2="140" />
+      <line class="about__grid-line" x1="0" y1="220" x2="550" y2="220" />
+      <line class="about__grid-line" x1="0" y1="300" x2="520" y2="300" />
+      <line class="about__grid-line" x1="0" y1="380" x2="540" y2="380" />
+      <line class="about__grid-line" x1="0" y1="460" x2="500" y2="460" />
+      <line class="about__grid-line" x1="0" y1="540" x2="530" y2="540" />
+      <line class="about__grid-line" x1="0" y1="620" x2="480" y2="620" />
+      <line class="about__grid-line" x1="0" y1="700" x2="510" y2="700" />
+      <line class="about__grid-line" x1="0" y1="780" x2="460" y2="780" />
+      <!-- Vertical column markers for Swiss grid structure -->
+      <line class="about__grid-line about__grid-line--vert" x1="60" y1="100" x2="60" y2="850" />
+      <line class="about__grid-line about__grid-line--vert" x1="540" y1="100" x2="540" y2="850" />
+      <!-- Accent lines — stronger color, marking key grid divisions -->
+      <line class="about__grid-accent" x1="0" y1="300" x2="620" y2="300" />
+      <line class="about__grid-accent" x1="0" y1="620" x2="560" y2="620" />
       <!-- Cross marks at intersections -->
-      <g class="about__grid-cross" transform="translate(20, 330)">
-        <line x1="-5" y1="0" x2="5" y2="0" />
-        <line x1="0" y1="-5" x2="0" y2="5" />
+      <g class="about__grid-cross" transform="translate(60, 300)">
+        <line x1="-6" y1="0" x2="6" y2="0" />
+        <line x1="0" y1="-6" x2="0" y2="6" />
       </g>
+      <g class="about__grid-cross" transform="translate(540, 300)">
+        <line x1="-6" y1="0" x2="6" y2="0" />
+        <line x1="0" y1="-6" x2="0" y2="6" />
+      </g>
+      <g class="about__grid-cross" transform="translate(60, 620)">
+        <line x1="-6" y1="0" x2="6" y2="0" />
+        <line x1="0" y1="-6" x2="0" y2="6" />
+      </g>
+      <!-- Small circle markers at key nodes -->
+      <circle class="about__grid-node" cx="60" cy="140" r="2.5" />
+      <circle class="about__grid-node" cx="540" cy="140" r="2.5" />
+      <circle class="about__grid-node" cx="60" cy="780" r="2.5" />
     </svg>
 
     <!-- Atmospheric glow -->
@@ -387,8 +447,15 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Right: Photo Placeholder (VISUAL OBJECT 1) -->
+        <!-- Right: Generative Noise Portrait (VISUAL OBJECT 1) -->
         <div ref="photoRef" class="about__photo-frame">
+          <!-- Noise portrait canvas — particle flow field forming head silhouette -->
+          <canvas
+            ref="noiseCanvasRef"
+            class="about__noise-canvas"
+            aria-hidden="true"
+          />
+
           <!-- Blueprint grid SVG -->
           <svg
             ref="blueprintRef"
@@ -417,8 +484,11 @@ onUnmounted(() => {
           <div class="about__bracket about__bracket--bl" aria-hidden="true" />
           <div class="about__bracket about__bracket--br" aria-hidden="true" />
 
-          <!-- Center label -->
-          <span class="about__photo-label" aria-hidden="true">PROFILE</span>
+          <!-- Center label with cursor blink -->
+          <span class="about__photo-label" aria-hidden="true">
+            <span class="about__photo-label-text">SCANNING</span>
+            <span class="about__photo-cursor" />
+          </span>
 
           <!-- Coordinate labels -->
           <span class="about__coord about__coord--tl" aria-hidden="true">X:0 Y:0</span>
@@ -426,20 +496,29 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Stats horizontal strip -->
+      <!-- Stats horizontal strip — odometer digits -->
       <div ref="statsRef" class="about__stats">
         <div class="about__stats-line" aria-hidden="true" />
         <div class="about__stats-row">
           <div
-            v-for="(stat, i) in STATS"
-            :key="i"
+            v-for="(stat, si) in parsedStats"
+            :key="si"
             class="about__stat"
           >
-            <span
-              class="about__stat-value"
-              :data-value="stat.value"
-            >
-              {{ stat.value }}
+            <span class="about__stat-value" :data-value="stat.value">
+              <span
+                v-for="(ch, ci) in stat.chars"
+                :key="`${si}-${ci}`"
+                class="odo__char"
+                :class="{ 'odo__char--digit': ch.isDigit }"
+              >
+                <!-- Digit: vertical column 0-9, animated via translateY -->
+                <span v-if="ch.isDigit" class="odo__column" :data-target="ch.digit">
+                  <span v-for="d in 10" :key="d" class="odo__digit" aria-hidden="true">{{ d - 1 }}</span>
+                </span>
+                <!-- Non-digit: static character (M, +, etc.) -->
+                <span v-else class="odo__static">{{ ch.char }}</span>
+              </span>
             </span>
             <span class="about__stat-label">{{ stat.label }}</span>
           </div>
@@ -473,7 +552,7 @@ onUnmounted(() => {
   width: 100%;
   min-height: 100vh;
   padding: var(--section-gap) 0;
-  background: var(--bg-abyss);
+  background: var(--void);
   overflow: hidden;
 }
 
@@ -484,11 +563,17 @@ onUnmounted(() => {
   inset: 0;
   z-index: var(--z-atmosphere);
   pointer-events: none;
-  background: radial-gradient(
-    ellipse 45% 55% at 25% 40%,
-    rgba(0, 71, 255, 0.06) 0%,
-    transparent 70%
-  );
+  background:
+    radial-gradient(
+      ellipse 45% 55% at 25% 40%,
+      rgba(0, 71, 255, 0.09) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 30% 40% at 75% 70%,
+      rgba(15, 10, 114, 0.06) 0%,
+      transparent 60%
+    );
 }
 
 /* ─── Ghost section number ─── */
@@ -497,17 +582,17 @@ onUnmounted(() => {
   position: absolute;
   bottom: clamp(2rem, 5vh, 4rem);
   right: var(--page-margin);
-  font-family: var(--font-mono);
-  font-size: clamp(6rem, 15vw, 14rem);
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  font-family: var(--font-statement);
+  font-size: clamp(8rem, 20vw, 20rem);
+  font-weight: 800;
+  line-height: 0.85;
+  letter-spacing: -0.04em;
   color: var(--text-primary);
-  opacity: 0.04;
+  opacity: 0.03;
   pointer-events: none;
   user-select: none;
   mix-blend-mode: difference;
-  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.06);
+  -webkit-text-stroke: 1.5px rgba(0, 71, 255, 0.08);
   -webkit-text-fill-color: transparent;
 }
 
@@ -523,20 +608,30 @@ onUnmounted(() => {
 }
 
 .about__grid-line {
-  stroke: rgba(0, 71, 255, 0.08);
+  stroke: rgba(0, 71, 255, 0.15);
   stroke-width: 0.5;
   fill: none;
 }
 
+.about__grid-line--vert {
+  stroke: rgba(0, 71, 255, 0.08);
+  stroke-dasharray: 6 8;
+}
+
 .about__grid-accent {
-  stroke: rgba(0, 71, 255, 0.2);
-  stroke-width: 0.5;
+  stroke: rgba(0, 71, 255, 0.25);
+  stroke-width: 0.7;
   fill: none;
 }
 
 .about__grid-cross line {
-  stroke: rgba(0, 163, 255, 0.2);
-  stroke-width: 0.5;
+  stroke: rgba(0, 163, 255, 0.35);
+  stroke-width: 0.8;
+}
+
+.about__grid-node {
+  fill: rgba(0, 71, 255, 0.3);
+  stroke: none;
 }
 
 /* ─── Content (clip-path entrance) ─── */
@@ -564,13 +659,13 @@ onUnmounted(() => {
 }
 
 .about__title {
-  font-family: var(--font-display);
-  font-size: var(--text-h1);
-  font-weight: 600;
+  font-family: var(--font-statement);
+  font-size: clamp(3rem, 7vw, 6rem);
+  font-weight: 800;
   color: var(--text-primary);
-  letter-spacing: var(--tracking-display);
+  letter-spacing: var(--tracking-tight);
   text-transform: uppercase;
-  line-height: var(--leading-heading);
+  line-height: 0.9;
 }
 
 /* ─── Asymmetric Grid (60 / 40) ─── */
@@ -703,18 +798,97 @@ onUnmounted(() => {
   letter-spacing: var(--tracking-body);
 }
 
-/* ─── Photo Placeholder (VISUAL OBJECT 1) ─── */
+/* ─── Photo Placeholder — "Signal Monitor" (VISUAL OBJECT 1) ─── */
 
 .about__photo-frame {
   position: relative;
   aspect-ratio: 3 / 4;
-  border: 1px solid rgba(0, 71, 255, 0.15);
-  background: var(--bg-surface);
+  border: 1px solid rgba(0, 71, 255, 0.2);
+  /* Topographic contour map — concentric rings like terrain scan */
+  background:
+    repeating-radial-gradient(
+      circle at 35% 38%,
+      transparent 0px, transparent 18px,
+      rgba(0, 71, 255, 0.05) 18px, rgba(0, 71, 255, 0.05) 19px
+    ),
+    repeating-radial-gradient(
+      circle at 65% 55%,
+      transparent 0px, transparent 24px,
+      rgba(0, 71, 255, 0.035) 24px, rgba(0, 71, 255, 0.035) 25px
+    ),
+    repeating-radial-gradient(
+      circle at 50% 48%,
+      transparent 0px, transparent 32px,
+      rgba(0, 71, 255, 0.025) 32px, rgba(0, 71, 255, 0.025) 33px
+    ),
+    var(--surface-1);
   overflow: hidden;
   will-change: transform, filter, opacity;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Noise portrait canvas */
+.about__noise-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* Animated scanlines overlay */
+.about__photo-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 71, 255, 0.02) 2px,
+    rgba(0, 71, 255, 0.02) 4px
+  );
+  background-size: 100% 4px;
+  animation: about-scanlines 12s linear infinite;
+}
+
+/* Sweeping scan beam */
+.about__photo-frame::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 71, 255, 0.4) 20%,
+    rgba(0, 163, 255, 0.6) 50%,
+    rgba(0, 71, 255, 0.4) 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 20px rgba(0, 71, 255, 0.3), 0 0 60px rgba(0, 71, 255, 0.1);
+  animation: about-sweep 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes about-scanlines {
+  from { background-position: 0 0; }
+  to { background-position: 0 200px; }
+}
+
+@keyframes about-sweep {
+  0%, 100% { top: -2px; opacity: 0; }
+  5% { opacity: 1; }
+  50% { top: 100%; opacity: 0.8; }
+  55% { opacity: 0; }
 }
 
 /* Blueprint grid SVG inside photo frame */
@@ -723,71 +897,101 @@ onUnmounted(() => {
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.15;
+  opacity: 0.25;
 }
 
 .about__blueprint line {
-  stroke: rgba(0, 71, 255, 0.2);
+  stroke: rgba(0, 71, 255, 0.25);
   stroke-width: 0.5;
 }
 
 .about__blueprint-center {
-  stroke: rgba(0, 163, 255, 0.4);
-  stroke-width: 1;
+  stroke: rgba(0, 163, 255, 0.6);
+  stroke-width: 1.5;
 }
 
 .about__blueprint-diag {
-  stroke: rgba(0, 71, 255, 0.12);
-  stroke-width: 0.3;
+  stroke: rgba(0, 71, 255, 0.18);
+  stroke-width: 0.4;
   stroke-dasharray: 4 4;
 }
 
-/* Corner brackets — viewfinder / architectural marks */
+/* Corner brackets — viewfinder / architectural marks with glow pulse */
 .about__bracket {
   position: absolute;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   z-index: 5;
+  animation: about-bracket-pulse 3s ease-in-out infinite;
 }
 
 .about__bracket--tl {
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
   border-top: 1.5px solid var(--accent-primary);
   border-left: 1.5px solid var(--accent-primary);
+  animation-delay: 0s;
 }
 
 .about__bracket--tr {
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
   border-top: 1.5px solid var(--accent-primary);
   border-right: 1.5px solid var(--accent-primary);
+  animation-delay: 0.75s;
 }
 
 .about__bracket--bl {
-  bottom: 12px;
-  left: 12px;
+  bottom: 10px;
+  left: 10px;
   border-bottom: 1.5px solid var(--accent-primary);
   border-left: 1.5px solid var(--accent-primary);
+  animation-delay: 1.5s;
 }
 
 .about__bracket--br {
-  bottom: 12px;
-  right: 12px;
+  bottom: 10px;
+  right: 10px;
   border-bottom: 1.5px solid var(--accent-primary);
   border-right: 1.5px solid var(--accent-primary);
+  animation-delay: 2.25s;
 }
 
-/* Center "PROFILE" label */
+@keyframes about-bracket-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; filter: drop-shadow(0 0 6px rgba(0, 71, 255, 0.4)); }
+}
+
+/* Center "SIGNAL PENDING" label with blinking cursor */
 .about__photo-label {
   position: relative;
   z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.about__photo-label-text {
   font-family: var(--font-mono);
-  font-size: var(--text-small);
-  color: var(--text-primary);
-  opacity: 0.3;
+  font-size: var(--text-caption);
+  color: var(--accent-primary);
+  opacity: 0.5;
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
+}
+
+.about__photo-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: var(--accent-primary);
+  opacity: 0.6;
+  animation: about-cursor-blink 1s step-end infinite;
+}
+
+@keyframes about-cursor-blink {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0; }
 }
 
 /* Coordinate labels */
@@ -828,9 +1032,11 @@ onUnmounted(() => {
   background: linear-gradient(
     90deg,
     var(--accent-primary) 0%,
-    rgba(0, 71, 255, 0.15) 40%,
-    rgba(0, 71, 255, 0.05) 100%
+    rgba(0, 71, 255, 0.25) 30%,
+    rgba(0, 71, 255, 0.08) 70%,
+    transparent 100%
   );
+  box-shadow: 0 0 12px rgba(0, 71, 255, 0.15);
 }
 
 .about__stats-row {
@@ -845,12 +1051,45 @@ onUnmounted(() => {
 }
 
 .about__stat-value {
+  display: flex;
+  align-items: flex-start;
   font-family: var(--font-display);
   font-size: var(--text-h2);
   font-weight: 600;
-  color: var(--accent-primary);
-  line-height: var(--leading-heading);
+  color: var(--text-primary);
+  line-height: 1;
   letter-spacing: var(--tracking-tight);
+  text-shadow: 0 0 30px rgba(0, 71, 255, 0.3);
+}
+
+/* ─── Odometer System ─── */
+
+.odo__char {
+  display: inline-block;
+  position: relative;
+}
+
+.odo__char--digit {
+  height: 1em;
+  overflow: hidden;
+}
+
+.odo__column {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+.odo__digit {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  text-align: center;
+}
+
+.odo__static {
+  display: inline-block;
+  line-height: 1;
 }
 
 .about__stat-label {

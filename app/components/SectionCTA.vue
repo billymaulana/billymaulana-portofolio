@@ -9,6 +9,7 @@
  * Hover: Text-scramble on email, animated underline on socials
  */
 
+import { useParticleAttraction } from '~/composables/useParticleAttraction'
 import { profile } from '~/constants/profile'
 
 const { scramble } = useTextScramble({ speed: 25, iterations: 4 })
@@ -19,6 +20,16 @@ const workRef = ref<HTMLElement>()
 const emailRef = ref<HTMLElement>()
 const emailTextRef = ref<HTMLElement>()
 const socialsRef = ref<HTMLElement>()
+const particleCanvasRef = ref<HTMLCanvasElement>()
+
+// Particle attraction field — ambient dots with cursor gravity
+useParticleAttraction(particleCanvasRef, sectionRef, {
+  count: 100,
+  attractRadius: 250,
+  attractStrength: 0.04,
+  driftSpeed: 0.25,
+  trailAlpha: 0.06,
+})
 
 // Magnetic hover on email
 useMagnetic(emailRef, { strength: 0.15, ease: 0.08 })
@@ -127,6 +138,9 @@ onUnmounted(() => {
     class="cta"
     aria-label="Get in Touch"
   >
+    <!-- Particle attraction field — ambient dots with cursor gravity -->
+    <canvas ref="particleCanvasRef" class="cta__particles" aria-hidden="true" />
+
     <!-- Animated radial glow — breathing CSS animation -->
     <div class="cta__glow" aria-hidden="true" />
 
@@ -188,8 +202,20 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-base);
+  background: var(--void-warm);
   overflow: hidden;
+}
+
+/* ═══ Particle attraction canvas ═══ */
+
+.cta__particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
 }
 
 /* ═══ Animated radial glow — breathing ═══ */
@@ -215,11 +241,11 @@ onUnmounted(() => {
 
 @keyframes cta-breathe {
   0%, 100% {
-    opacity: 0.05;
+    opacity: 0.15;
     transform: translate(-50%, -50%) scale(0.95);
   }
   50% {
-    opacity: 0.12;
+    opacity: 0.3;
     transform: translate(-50%, -50%) scale(1.05);
   }
 }
@@ -239,7 +265,7 @@ onUnmounted(() => {
 .cta__ring {
   position: absolute;
   border-radius: 50%;
-  border: 1px solid rgba(0, 71, 255, 0.12);
+  border: 1px solid rgba(0, 71, 255, 0.15);
   animation: cta-ring-pulse 6s ease-in-out infinite;
 }
 
@@ -253,21 +279,21 @@ onUnmounted(() => {
   width: 400px;
   height: 400px;
   animation-delay: -1.5s;
-  border-color: rgba(0, 71, 255, 0.08);
+  border-color: rgba(0, 71, 255, 0.1);
 }
 
 .cta__ring:nth-child(3) {
   width: 600px;
   height: 600px;
   animation-delay: -3s;
-  border-color: rgba(0, 163, 255, 0.06);
+  border-color: rgba(0, 163, 255, 0.08);
 }
 
 .cta__ring:nth-child(4) {
   width: 800px;
   height: 800px;
   animation-delay: -4.5s;
-  border-color: rgba(0, 245, 255, 0.04);
+  border-color: rgba(0, 245, 255, 0.06);
 }
 
 @keyframes cta-ring-pulse {
@@ -305,9 +331,9 @@ onUnmounted(() => {
 
 .cta__heading-line {
   display: block;
-  font-family: var(--font-display);
+  font-family: var(--font-statement);
   font-size: clamp(4rem, 12vw, 12rem);
-  font-weight: 700;
+  font-weight: 800;
   line-height: var(--leading-hero);
   letter-spacing: var(--tracking-hero);
   text-transform: uppercase;
@@ -316,7 +342,7 @@ onUnmounted(() => {
 
 .cta__heading-line--stroke {
   color: transparent;
-  -webkit-text-stroke: 2px var(--text-primary);
+  -webkit-text-stroke: 2px rgba(0, 71, 255, 0.6);
   -webkit-text-fill-color: transparent;
 }
 
@@ -329,10 +355,11 @@ onUnmounted(() => {
 .cta__email {
   position: relative;
   display: inline-block;
-  font-family: var(--font-body);
+  font-family: var(--font-interface);
   font-size: clamp(1rem, 2vw, 2rem);
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--chrome-mid);
+  letter-spacing: var(--tracking-label);
   text-decoration: none;
   transition: color 0.4s var(--ease-out-expo);
   will-change: transform;
@@ -350,7 +377,8 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 1px;
-  background: var(--accent-primary);
+  background: linear-gradient(90deg, var(--event-blue), var(--event-cyan));
+  box-shadow: 0 0 8px rgba(0, 71, 255, 0.3);
   transform: scaleX(0);
   transform-origin: right;
   transition: transform 0.5s var(--ease-out-expo);
@@ -371,11 +399,11 @@ onUnmounted(() => {
 
 .cta__social-link {
   position: relative;
-  font-family: var(--font-mono);
+  font-family: var(--font-system);
   font-size: var(--text-small);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--chrome-dark);
   text-decoration: none;
   transition: color 0.3s var(--ease-out-expo);
 }
@@ -402,9 +430,10 @@ onUnmounted(() => {
 }
 
 .cta__social-sep {
-  font-family: var(--font-mono);
+  font-family: var(--font-system);
   font-size: var(--text-small);
-  color: var(--text-disabled);
+  color: var(--chrome-dark);
+  opacity: 0.4;
   user-select: none;
 }
 
@@ -414,13 +443,14 @@ onUnmounted(() => {
   position: absolute;
   bottom: clamp(2rem, 5vh, 4rem);
   right: var(--page-margin);
-  font-family: var(--font-mono);
+  font-family: var(--font-statement);
   font-size: clamp(5rem, 12vw, 12rem);
-  font-weight: 400;
+  font-weight: 800;
   line-height: 1;
   letter-spacing: -0.02em;
-  color: var(--text-disabled);
-  opacity: 0.03;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(0, 71, 255, 0.08);
+  -webkit-text-fill-color: transparent;
   pointer-events: none;
   user-select: none;
   mix-blend-mode: difference;

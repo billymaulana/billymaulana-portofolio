@@ -53,6 +53,20 @@ export function useCharProximity(options: CharProximityOptions = {}) {
     updateTargetWeights()
   }
 
+  function onTouchMove(e: TouchEvent) {
+    const touch = e.touches[0]
+    if (!touch)
+      return
+    mouseX = touch.clientX
+    mouseY = touch.clientY
+    updateTargetWeights()
+  }
+
+  function onTouchEnd() {
+    // Reset weights when finger lifts
+    targetWeights = targetWeights.map(() => minWeight)
+  }
+
   function onMouseLeave() {
     // Reset all to min weight when cursor leaves
     targetWeights = targetWeights.map(() => minWeight)
@@ -120,12 +134,16 @@ export function useCharProximity(options: CharProximityOptions = {}) {
 
   function start() {
     window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('touchmove', onTouchMove, { passive: true })
+    window.addEventListener('touchend', onTouchEnd)
     document.addEventListener('mouseleave', onMouseLeave)
     animate()
   }
 
   function stop() {
     window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('touchmove', onTouchMove)
+    window.removeEventListener('touchend', onTouchEnd)
     document.removeEventListener('mouseleave', onMouseLeave)
     cancelAnimationFrame(animId)
   }

@@ -1,21 +1,22 @@
 <script setup lang="ts">
 /**
- * SectionHero — 8-layer composition with WebGL fluid text-mask
+ * SectionHero — "The Statement"
+ * Atmospheric Fluid x Bold Typography
  *
  * Layer Stack (bottom → top):
- * 0. Section bg: radial gradient atmosphere (CSS)
- * 1. .hero__atmosphere: multi-gradient depth (0.15+ opacity)
- * 2. .hero__canvas: WebGL fluid sim (ambient glow + text-mask)
- * 3. .hero__grain: noise texture overlay (mix-blend-mode: overlay)
- * 4. .hero__accents: SVG brackets + grid rules (animated entrance)
- * 5. .hero__content: invisible DOM text (a11y) + subtitle
- * 6. .hero__corners: Swiss-grid corner labels
- * 7. .hero__ghost: oversized "01" section number
- * 8. .hero__scroll: scroll indicator
+ * 0. Section bg: void-blue with subtle atmospheric gradients
+ * 1. .hero__canvas: WebGL fluid sim as full-viewport atmospheric background (mix-blend-mode: screen)
+ * 2. .hero__grain: noise texture overlay (mix-blend-mode: overlay)
+ * 3. .hero__content: massive visible h1 + visible subtitle
+ * 4. .hero__scroll: vertical line scroll indicator + "Explore"
  *
- * WOW MOMENT: Fluid simulation visible as ambient glow across ENTIRE
- * viewport + concentrated brightness through letter shapes. Background
- * is NEVER flat black — always alive with color.
+ * WOW MOMENT: Full-viewport fluid simulation that reacts to mouse
+ * movement with chromatic aberration. Text is massive serif (PP Editorial
+ * New Ultrabold) with velocity-driven RGB split. Fluid is VISIBLE
+ * across entire viewport — NOT masked to text.
+ *
+ * Reference: daspritam.in — fluid distorts/warps on mouse movement,
+ * visible as atmospheric background layer blended via screen mode.
  */
 
 import { useFluidSimulation } from '~/composables/useFluidSimulation'
@@ -24,85 +25,75 @@ const sectionRef = ref<HTMLElement>()
 const canvasRef = ref<HTMLCanvasElement>()
 const contentRef = ref<HTMLElement>()
 const subtitleRef = ref<HTMLElement>()
-const accentsRef = ref<HTMLElement>()
-const cornerTLRef = ref<HTMLElement>()
-const cornerTRRef = ref<HTMLElement>()
-const ghostRef = ref<HTMLElement>()
-const scrollIndicatorRef = ref<HTMLElement>()
+const scrollRef = ref<HTMLElement>()
+const scrollLineRef = ref<HTMLElement>()
+const coordsRef = ref<HTMLElement>()
+const gridRef = ref<SVGSVGElement>()
 
 const fluid = useFluidSimulation()
 let gsapCtx: gsap.Context | null = null
 let resizeObserver: ResizeObserver | null = null
 
-function getComputedFontSize(): number {
-  const probe = document.createElement('span')
-  probe.style.cssText = `
-    font-size: clamp(4rem, 14vw, 13rem);
-    position: absolute;
-    visibility: hidden;
-    pointer-events: none;
-  `
-  document.body.appendChild(probe)
-  const size = Number.parseFloat(getComputedStyle(probe).fontSize)
-  document.body.removeChild(probe)
-  return size
+/* ─── Chromatic Aberration (mouse velocity → RGB split) ─── */
+let lastMouseX = 0
+let lastMouseY = 0
+let lastMouseTime = 0
+let chromaRaf = 0
+const chromaX = ref(0)
+const chromaY = ref(0)
+
+function updateChromaFromPosition(cx: number, cy: number) {
+  const now = performance.now()
+  const dt = now - lastMouseTime
+  if (dt > 0 && lastMouseTime > 0) {
+    const dx = cx - lastMouseX
+    const dy = cy - lastMouseY
+    const speed = Math.sqrt(dx * dx + dy * dy) / dt // px/ms
+    // Clamp to 0-4px offset based on velocity
+    const intensity = Math.min(4, speed * 3)
+    const dirX = dx === 0 ? 0 : dx / Math.abs(dx)
+    const dirY = dy === 0 ? 0 : dy / Math.abs(dy)
+    chromaX.value = dirX * intensity
+    chromaY.value = dirY * intensity
+  }
+  lastMouseX = cx
+  lastMouseY = cy
+  lastMouseTime = now
 }
 
-function renderTextMask() {
-  if (!canvasRef.value)
-    return
-
-  const dpr = Math.min(window.devicePixelRatio, 2)
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-
-  const maskCanvas = document.createElement('canvas')
-  maskCanvas.width = vw * dpr
-  maskCanvas.height = vh * dpr
-
-  const ctx = maskCanvas.getContext('2d')
-  if (!ctx)
-    return
-
-  ctx.scale(dpr, dpr)
-  ctx.clearRect(0, 0, vw, vh)
-
-  const fontSize = getComputedFontSize()
-  const lineHeight = 0.85
-  const letterSpacing = -0.05 * fontSize
-
-  const centerX = vw / 2
-  const totalTextHeight = fontSize * 2 * lineHeight
-  const baseY = vh / 2 - totalTextHeight / 2 + fontSize * lineHeight
-
-  ctx.fillStyle = '#ffffff'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'alphabetic'
-  ctx.font = `700 ${fontSize}px "Clash Display", sans-serif`
-
-  drawTextWithTracking(ctx, 'BILLY', centerX, baseY, letterSpacing)
-  drawTextWithTracking(ctx, 'MAULANA', centerX, baseY + fontSize * lineHeight, letterSpacing)
-
-  fluid.setTextMask(maskCanvas)
+function handleHeroMouseMove(e: MouseEvent) {
+  updateChromaFromPosition(e.clientX, e.clientY)
 }
 
-function drawTextWithTracking(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  centerX: number,
-  y: number,
-  tracking: number,
-) {
-  const chars = text.split('')
-  const charWidths = chars.map(c => ctx.measureText(c).width)
-  const totalWidth = charWidths.reduce((sum, w) => sum + w, 0) + tracking * (chars.length - 1)
+function handleHeroTouchMove(e: TouchEvent) {
+  const touch = e.touches[0]
+  if (touch)
+    updateChromaFromPosition(touch.clientX, touch.clientY)
+}
 
-  let x = centerX - totalWidth / 2
-  for (let i = 0; i < chars.length; i++) {
-    ctx.fillText(chars[i]!, x + charWidths[i]! / 2, y)
-    x += charWidths[i]! + tracking
+function decayChroma() {
+  chromaX.value *= 0.92
+  chromaY.value *= 0.92
+  if (Math.abs(chromaX.value) > 0.01 || Math.abs(chromaY.value) > 0.01) {
+    chromaRaf = requestAnimationFrame(decayChroma)
+  }
+  else {
+    chromaX.value = 0
+    chromaY.value = 0
   }
 }
+
+function startChromaDecay() {
+  cancelAnimationFrame(chromaRaf)
+  chromaRaf = requestAnimationFrame(decayChroma)
+}
+
+const chromaStyle = computed(() => ({
+  '--chroma-x': `${chromaX.value}px`,
+  '--chroma-y': `${chromaY.value}px`,
+}))
+
+/* ─── Lifecycle ─── */
 
 onMounted(async () => {
   if (!canvasRef.value)
@@ -112,18 +103,13 @@ onMounted(async () => {
   if (!success)
     return
 
-  await nextTick()
-  if (document.fonts)
-    await document.fonts.ready
-
-  renderTextMask()
-
+  // Resize handling — fluid auto-adapts to viewport
   resizeObserver = new ResizeObserver(() => {
     fluid.resize()
-    renderTextMask()
   })
   resizeObserver.observe(canvasRef.value)
 
+  // Skip animations for reduced motion
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   if (prefersReduced)
     return
@@ -134,46 +120,70 @@ onMounted(async () => {
 
   gsapCtx = gsap.context(() => {
     // ══════════════════════════════════════════════════════════
-    // CINEMATIC ENTRANCE SEQUENCE — staggered layer reveals
+    // ENTRANCE SEQUENCE — minimal, confident
     // ══════════════════════════════════════════════════════════
 
     const tl = gsap.timeline({ defaults: { ease: 'expo.out' } })
 
-    // 1. Corner brackets — clip-path reveal from corner origins
-    if (accentsRef.value) {
-      const brackets = accentsRef.value.querySelectorAll('.hero__bracket')
-      tl.from(brackets, {
-        scale: 0,
+    // Corner coordinate labels: per-char blur-to-sharp stagger
+    if (coordsRef.value) {
+      const labels = coordsRef.value.querySelectorAll('.hero__coord')
+      labels.forEach((label) => {
+        const text = label.textContent || ''
+        label.textContent = ''
+        text.split('').forEach((char) => {
+          const span = document.createElement('span')
+          span.textContent = char === ' ' ? '\u00A0' : char
+          span.style.display = 'inline-block'
+          span.classList.add('hero__coord-char')
+          label.appendChild(span)
+        })
+      })
+      const allCoordChars = coordsRef.value.querySelectorAll('.hero__coord-char')
+      tl.from(allCoordChars, {
+        filter: 'blur(6px)',
         opacity: 0,
-        duration: 0.9,
-        stagger: 0.08,
-        ease: 'back.out(1.4)',
-      }, 0.2)
+        duration: 0.4,
+        stagger: 0.015,
+        ease: 'power3.out',
+      }, 0.3)
+    }
 
-      // Grid rules — draw in from center
-      const rules = accentsRef.value.querySelectorAll('.hero__rule')
-      tl.from(rules, {
-        scaleX: 0,
-        scaleY: 0,
-        opacity: 0,
-        duration: 1,
-        stagger: 0.06,
-        ease: 'expo.inOut',
-      }, 0.4)
+    // SVG accent grid: lines scale in, crosshairs pop
+    if (gridRef.value) {
+      const hLines = gridRef.value.querySelectorAll('.hero__grid-h')
+      const vLines = gridRef.value.querySelectorAll('.hero__grid-v')
+      const crosses = gridRef.value.querySelectorAll('.hero__grid-cross')
 
-      // Center dot — pop in
-      const dot = accentsRef.value.querySelector('.hero__dot')
-      if (dot) {
-        tl.from(dot, {
+      if (hLines.length) {
+        tl.from(hLines, {
+          scaleX: 0,
+          duration: 1.2,
+          stagger: 0.15,
+          ease: 'expo.out',
+        }, 0.5)
+      }
+      if (vLines.length) {
+        tl.from(vLines, {
+          scaleY: 0,
+          duration: 1.2,
+          stagger: 0.15,
+          ease: 'expo.out',
+        }, 0.55)
+      }
+      if (crosses.length) {
+        tl.from(crosses, {
           scale: 0,
+          rotation: 90,
           opacity: 0,
-          duration: 0.5,
-          ease: 'back.out(2)',
+          duration: 0.6,
+          stagger: 0.08,
+          ease: 'elastic.out(1, 0.5)',
         }, 0.7)
       }
     }
 
-    // 2. Subtitle — per-character blur-to-sharp
+    // Subtitle: per-character blur-to-sharp reveal
     if (subtitleRef.value) {
       const text = subtitleRef.value.textContent || ''
       subtitleRef.value.textContent = ''
@@ -183,62 +193,40 @@ onMounted(async () => {
         const span = document.createElement('span')
         span.textContent = char === ' ' ? '\u00A0' : char
         span.style.display = 'inline-block'
-        span.classList.add('hero__subtitle-char')
+        span.classList.add('hero__char')
         subtitleRef.value!.appendChild(span)
       })
 
-      const chars = subtitleRef.value.querySelectorAll('.hero__subtitle-char')
+      const chars = subtitleRef.value.querySelectorAll('.hero__char')
       tl.from(chars, {
-        filter: 'blur(12px)',
+        filter: 'blur(8px)',
         opacity: 0,
-        y: 10,
-        duration: 0.7,
-        stagger: 0.025,
+        y: 8,
+        duration: 0.6,
+        stagger: 0.02,
         ease: 'power3.out',
-      }, 0.6)
-    }
-
-    // 3. Corner labels — slide + fade
-    const corners = [cornerTLRef.value, cornerTRRef.value].filter(Boolean)
-    if (corners.length) {
-      tl.from(corners, {
-        opacity: 0,
-        yPercent: 50,
-        duration: 0.8,
-        stagger: 0.1,
-        ease: 'power4.out',
       }, 0.8)
     }
 
-    // 4. Ghost number — scale + blur reveal
-    if (ghostRef.value) {
-      tl.from(ghostRef.value, {
-        scale: 1.3,
-        filter: 'blur(20px)',
-        opacity: 0,
-        duration: 1.2,
-        ease: 'expo.out',
-      }, 0.5)
+    // Scroll indicator: line extends + text appears
+    if (scrollLineRef.value) {
+      tl.fromTo(scrollLineRef.value, {
+        scaleY: 0,
+      }, {
+        scaleY: 1,
+        duration: 1,
+        ease: 'expo.inOut',
+      }, 1.2)
     }
 
-    // 5. Scroll indicator — fade up
-    if (scrollIndicatorRef.value) {
-      tl.from(scrollIndicatorRef.value, {
-        opacity: 0,
-        y: 20,
-        duration: 0.6,
-        ease: 'power3.out',
-      }, 1.2)
-
-      const arrow = scrollIndicatorRef.value.querySelector('.hero__scroll-arrow')
-      if (arrow) {
-        gsap.to(arrow, {
-          y: 6,
-          duration: 1.2,
-          repeat: -1,
-          yoyo: true,
-          ease: 'power2.inOut',
-        })
+    if (scrollRef.value) {
+      const scrollText = scrollRef.value.querySelector('.hero__scroll-text')
+      if (scrollText) {
+        tl.from(scrollText, {
+          opacity: 0,
+          duration: 0.6,
+          ease: 'power3.out',
+        }, 1.6)
       }
     }
 
@@ -247,8 +235,9 @@ onMounted(async () => {
     // ══════════════════════════════════════════════════════════
 
     if (sectionRef.value && contentRef.value) {
+      // Content parallax
       gsap.to(contentRef.value, {
-        yPercent: -30,
+        yPercent: -25,
         ease: 'none',
         scrollTrigger: {
           trigger: sectionRef.value,
@@ -258,6 +247,7 @@ onMounted(async () => {
         },
       })
 
+      // Content fade
       gsap.to(contentRef.value, {
         opacity: 0,
         ease: 'none',
@@ -270,10 +260,10 @@ onMounted(async () => {
       })
     }
 
-    // Canvas parallax (slower rate)
+    // Canvas parallax (slower — creates depth)
     if (sectionRef.value && canvasRef.value) {
       gsap.to(canvasRef.value, {
-        yPercent: -15,
+        yPercent: -12,
         ease: 'none',
         scrollTrigger: {
           trigger: sectionRef.value,
@@ -284,30 +274,44 @@ onMounted(async () => {
       })
     }
 
-    // Accents parallax (medium rate)
-    if (sectionRef.value && accentsRef.value) {
-      gsap.to(accentsRef.value, {
-        yPercent: -20,
+    // Corner labels + grid fade on scroll
+    if (sectionRef.value && coordsRef.value) {
+      gsap.to(coordsRef.value, {
+        opacity: 0,
         ease: 'none',
         scrollTrigger: {
           trigger: sectionRef.value,
           start: 'top top',
-          end: 'bottom top',
-          scrub: 0.5,
+          end: '40% top',
+          scrub: true,
         },
       })
     }
 
-    // Ghost number parallax (fastest — creates depth separation)
-    if (sectionRef.value && ghostRef.value) {
-      gsap.to(ghostRef.value, {
-        yPercent: -50,
+    if (sectionRef.value && gridRef.value) {
+      gsap.to(gridRef.value, {
+        opacity: 0,
         ease: 'none',
         scrollTrigger: {
           trigger: sectionRef.value,
           start: 'top top',
-          end: 'bottom top',
-          scrub: 0.5,
+          end: '40% top',
+          scrub: true,
+        },
+      })
+    }
+
+    // Scroll indicator fades on scroll
+    if (sectionRef.value && scrollRef.value) {
+      gsap.to(scrollRef.value, {
+        opacity: 0,
+        y: -20,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: sectionRef.value,
+          start: 'top top',
+          end: '15% top',
+          scrub: true,
         },
       })
     }
@@ -318,6 +322,7 @@ onUnmounted(() => {
   gsapCtx?.revert()
   fluid.destroy()
   resizeObserver?.disconnect()
+  cancelAnimationFrame(chromaRaf)
 })
 </script>
 
@@ -325,69 +330,87 @@ onUnmounted(() => {
   <section
     ref="sectionRef"
     class="hero"
-    aria-label="Billy Maulana — Frontend Architect"
+    aria-label="Billy Maulana — Frontend Architect & Creative Developer"
+    @mousemove="handleHeroMouseMove"
+    @mouseleave="startChromaDecay"
+    @touchmove.passive="handleHeroTouchMove"
+    @touchend="startChromaDecay"
   >
-    <!-- Layer 1: Multi-gradient atmospheric depth -->
-    <div class="hero__atmosphere" aria-hidden="true" />
-
-    <!-- Layer 2: WebGL fluid simulation (ambient glow + text-mask) -->
+    <!-- Layer 1: WebGL fluid simulation (atmospheric background, blended via screen) -->
     <canvas
       ref="canvasRef"
       class="hero__canvas"
       aria-hidden="true"
     />
 
+    <!-- Layer 2: SVG accent grid — Swiss registration marks -->
+    <svg
+      ref="gridRef"
+      class="hero__grid"
+      aria-hidden="true"
+      viewBox="0 0 1440 900"
+      preserveAspectRatio="none"
+    >
+      <!-- Horizontal hairlines at 20% and 80% -->
+      <line class="hero__grid-h" x1="0" y1="180" x2="1440" y2="180" />
+      <line class="hero__grid-h" x1="0" y1="720" x2="1440" y2="720" />
+      <!-- Vertical hairlines at page margins -->
+      <line class="hero__grid-v" x1="72" y1="0" x2="72" y2="900" />
+      <line class="hero__grid-v" x1="1368" y1="0" x2="1368" y2="900" />
+      <!-- Crosshair marks at intersections -->
+      <g class="hero__grid-cross" transform="translate(72, 180)">
+        <line x1="-6" y1="0" x2="6" y2="0" />
+        <line x1="0" y1="-6" x2="0" y2="6" />
+      </g>
+      <g class="hero__grid-cross" transform="translate(1368, 180)">
+        <line x1="-6" y1="0" x2="6" y2="0" />
+        <line x1="0" y1="-6" x2="0" y2="6" />
+      </g>
+      <g class="hero__grid-cross" transform="translate(72, 720)">
+        <line x1="-6" y1="0" x2="6" y2="0" />
+        <line x1="0" y1="-6" x2="0" y2="6" />
+      </g>
+      <g class="hero__grid-cross" transform="translate(1368, 720)">
+        <line x1="-6" y1="0" x2="6" y2="0" />
+        <line x1="0" y1="-6" x2="0" y2="6" />
+      </g>
+    </svg>
+
     <!-- Layer 3: Film grain overlay -->
     <div class="hero__grain" aria-hidden="true" />
 
-    <!-- Layer 4: Geometric accent system — brackets + grid rules -->
-    <div ref="accentsRef" class="hero__accents" aria-hidden="true">
-      <!-- Corner brackets — architectural registration marks -->
-      <span class="hero__bracket hero__bracket--tl" />
-      <span class="hero__bracket hero__bracket--tr" />
-      <span class="hero__bracket hero__bracket--bl" />
-      <span class="hero__bracket hero__bracket--br" />
-      <!-- Grid rules — thin lines at 1/3 positions -->
-      <span class="hero__rule hero__rule--h-top" />
-      <span class="hero__rule hero__rule--h-bot" />
-      <span class="hero__rule hero__rule--v-left" />
-      <span class="hero__rule hero__rule--v-right" />
-      <!-- Center crosshair dot -->
-      <span class="hero__dot" />
+    <!-- Layer 4: Corner coordinate labels (museum plate) -->
+    <div ref="coordsRef" class="hero__coords" aria-hidden="true">
+      <span class="hero__coord hero__coord--tl">PLATE I</span>
+      <span class="hero__coord hero__coord--tr">51.5074 N, 0.1278 W</span>
+      <span class="hero__coord hero__coord--bl">MMXXVI</span>
+      <span class="hero__coord hero__coord--br">FRONTEND ARCHITECT</span>
     </div>
 
-    <!-- Layer 5: Content (invisible text for a11y + subtitle) -->
-    <div ref="contentRef" class="hero__content">
+    <!-- Layer 5: Content — visible h1 + subtitle + velocity chromatic aberration -->
+    <div ref="contentRef" class="hero__content" :style="chromaStyle">
       <h1 class="hero__name" aria-label="Billy Maulana">
-        <span class="hero__name-line">Billy</span>
-        <span class="hero__name-line">Maulana</span>
+        <span class="hero__name-line hero__name-first">Billy</span>
+        <span class="hero__name-line hero__name-second">Maulana</span>
       </h1>
       <p ref="subtitleRef" class="hero__subtitle">
-        Frontend Architect
+        Frontend Architect / Creative Developer
       </p>
     </div>
 
-    <!-- Layer 6: Corner labels — Swiss-grid metadata -->
-    <div class="hero__corners" aria-hidden="true">
-      <span ref="cornerTLRef" class="hero__corner hero__corner--tl">Bandung, ID</span>
-      <span ref="cornerTRRef" class="hero__corner hero__corner--tr">2017&mdash;Present</span>
-    </div>
-
-    <!-- Layer 7: Ghost section number -->
-    <span ref="ghostRef" class="hero__ghost" aria-hidden="true">01</span>
-
-    <!-- Layer 8: Scroll indicator -->
-    <div ref="scrollIndicatorRef" class="hero__scroll" aria-hidden="true">
-      <span class="hero__scroll-arrow">&darr;</span>
-      <span class="hero__scroll-label">Scroll</span>
+    <!-- Layer 6: Scroll indicator — vertical line + "Explore" -->
+    <div ref="scrollRef" class="hero__scroll" aria-hidden="true">
+      <span ref="scrollLineRef" class="hero__scroll-line" />
+      <span class="hero__scroll-text">Explore</span>
     </div>
   </section>
 </template>
 
 <style scoped>
 /* ═══════════════════════════════════════════════════════════════════════
-   HERO — 8-layer composition with WebGL fluid text-mask
-   NEVER flat black. Always alive. Always atmospheric.
+   HERO — "The Statement"
+   Atmospheric fluid background (mix-blend-mode: screen) with
+   massive serif typography visible on top. Reference: daspritam.in.
    ═══════════════════════════════════════════════════════════════════════ */
 
 .hero {
@@ -396,50 +419,13 @@ onUnmounted(() => {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  /* Layer 0: base with subtle radial warmth — NOT flat black */
+  /* Void-blue base — NOT flat black, slight depth */
   background:
-    radial-gradient(ellipse 80% 60% at 50% 45%, rgba(0, 20, 80, 0.18) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 40% at 20% 70%, rgba(15, 10, 114, 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse 40% 35% at 85% 25%, rgba(0, 100, 200, 0.08) 0%, transparent 45%),
-    #060610;
+    radial-gradient(ellipse 70% 50% at 50% 50%, rgba(6, 6, 16, 0.6) 0%, transparent 70%),
+    var(--void-blue, #060610);
 }
 
-/* ─── Layer 1: Multi-gradient atmospheric depth ─── */
-.hero__atmosphere {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      ellipse 60% 50% at 50% 50%,
-      rgba(0, 71, 255, 0.15) 0%,
-      rgba(0, 71, 255, 0.04) 50%,
-      transparent 75%
-    ),
-    radial-gradient(
-      ellipse 40% 35% at 30% 65%,
-      rgba(15, 10, 114, 0.12) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse 35% 30% at 75% 35%,
-      rgba(0, 163, 255, 0.08) 0%,
-      transparent 55%
-    ),
-    conic-gradient(
-      from 200deg at 50% 50%,
-      rgba(0, 71, 255, 0.04) 0deg,
-      transparent 60deg,
-      rgba(0, 245, 255, 0.03) 120deg,
-      transparent 180deg,
-      rgba(15, 10, 114, 0.05) 240deg,
-      transparent 360deg
-    );
-  mix-blend-mode: screen;
-}
-
-/* ─── Layer 2: WebGL Canvas ─── */
+/* ─── Layer 1: WebGL Canvas (atmospheric fluid, blended via screen) ─── */
 .hero__canvas {
   position: absolute;
   inset: 0;
@@ -447,273 +433,234 @@ onUnmounted(() => {
   height: 100%;
   z-index: 2;
   pointer-events: auto;
+  mix-blend-mode: screen;
 }
 
 /* ─── Layer 3: Film grain overlay ─── */
 .hero__grain {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 4;
   pointer-events: none;
-  opacity: 0.06;
+  opacity: 0.05;
   mix-blend-mode: overlay;
   background-image: url('/assets/textures/grain.png');
   background-size: 200px 200px;
   background-repeat: repeat;
 }
 
-/* ─── Layer 4: Geometric accent system ─── */
-.hero__accents {
+/* ─── Layer 2: SVG Accent Grid (Swiss Registration Marks) ─── */
+.hero__grid {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
   pointer-events: none;
 }
 
-/* Corner brackets — architectural registration marks */
-.hero__bracket {
-  position: absolute;
-  width: clamp(24px, 3.5vw, 50px);
-  height: clamp(24px, 3.5vw, 50px);
-  will-change: transform, opacity;
+.hero__grid-h {
+  stroke: rgba(0, 71, 255, 0.12);
+  stroke-width: 0.5;
+  transform-origin: left center;
 }
 
-.hero__bracket--tl {
-  top: 18%;
-  left: 6%;
-  border-top: 1px solid rgba(0, 71, 255, 0.3);
-  border-left: 1px solid rgba(0, 71, 255, 0.3);
+.hero__grid-v {
+  stroke: rgba(0, 71, 255, 0.12);
+  stroke-width: 0.5;
+  transform-origin: center top;
 }
 
-.hero__bracket--tr {
-  top: 18%;
-  right: 6%;
-  border-top: 1px solid rgba(0, 71, 255, 0.3);
-  border-right: 1px solid rgba(0, 71, 255, 0.3);
+.hero__grid-cross line {
+  stroke: rgba(0, 71, 255, 0.2);
+  stroke-width: 0.75;
 }
 
-.hero__bracket--bl {
-  bottom: 22%;
-  left: 6%;
-  border-bottom: 1px solid rgba(0, 71, 255, 0.3);
-  border-left: 1px solid rgba(0, 71, 255, 0.3);
-}
-
-.hero__bracket--br {
-  bottom: 22%;
-  right: 6%;
-  border-bottom: 1px solid rgba(0, 71, 255, 0.3);
-  border-right: 1px solid rgba(0, 71, 255, 0.3);
-}
-
-/* Grid rules — thin lines at grid positions */
-.hero__rule {
-  position: absolute;
-  background: rgba(0, 71, 255, 0.1);
-  will-change: transform, opacity;
-}
-
-.hero__rule--h-top {
-  top: 30%;
-  left: 8%;
-  right: 8%;
-  height: 1px;
-  transform-origin: center;
-}
-
-.hero__rule--h-bot {
-  bottom: 28%;
-  left: 8%;
-  right: 8%;
-  height: 1px;
-  transform-origin: center;
-}
-
-.hero__rule--v-left {
-  top: 20%;
-  bottom: 25%;
-  left: 33.33%;
-  width: 1px;
-  transform-origin: center;
-}
-
-.hero__rule--v-right {
-  top: 20%;
-  bottom: 25%;
-  right: 33.33%;
-  width: 1px;
-  transform-origin: center;
-}
-
-/* Center crosshair dot */
-.hero__dot {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(0, 163, 255, 0.4);
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 12px rgba(0, 163, 255, 0.3);
-  will-change: transform, opacity;
-}
-
-/* ─── Layer 5: Content wrapper ─── */
-.hero__content {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  pointer-events: none;
-}
-
-/* Invisible text — fluid renders through mask, this is a11y only */
-.hero__name {
-  font-family: var(--font-display);
-  font-size: var(--text-hero);
-  font-weight: 700;
-  letter-spacing: var(--tracking-hero);
-  line-height: var(--leading-hero);
-  text-transform: uppercase;
-  text-align: center;
-  margin: 0;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-}
-
-.hero__name-line {
-  display: block;
-}
-
-/* Subtitle */
-.hero__subtitle {
-  margin-top: clamp(1.5rem, 3vh, 2.5rem);
-  font-family: var(--font-serif);
-  font-size: clamp(1rem, 1.5vw, 1.5rem);
-  font-weight: 400;
-  font-style: italic;
-  letter-spacing: var(--tracking-body);
-  line-height: var(--leading-body);
-  color: var(--accent-light);
-  text-align: center;
-}
-
-.hero__subtitle :deep(.hero__subtitle-char) {
-  display: inline-block;
-  will-change: transform, filter, opacity;
-}
-
-/* ─── Layer 6: Corner labels ─── */
-.hero__corners {
+/* ─── Layer 4: Corner Coordinate Labels ─── */
+.hero__coords {
   position: absolute;
   inset: 0;
   z-index: 6;
   pointer-events: none;
 }
 
-.hero__corner {
+.hero__coord {
   position: absolute;
-  font-family: var(--font-mono);
+  font-family: var(--font-system);
   font-size: var(--text-micro);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  color: var(--text-secondary);
-  opacity: 0.6;
+  color: var(--chrome-dark);
+  opacity: 0.5;
+  white-space: nowrap;
 }
 
-.hero__corner--tl {
-  top: var(--page-margin);
+.hero__coord--tl {
+  top: clamp(1.5rem, 3vh, 2.5rem);
   left: var(--page-margin);
 }
 
-.hero__corner--tr {
-  top: var(--page-margin);
+.hero__coord--tr {
+  top: clamp(1.5rem, 3vh, 2.5rem);
   right: var(--page-margin);
-  text-align: right;
 }
 
-/* ─── Layer 7: Ghost section number ─── */
-.hero__ghost {
-  position: absolute;
-  bottom: clamp(3rem, 8vh, 6rem);
+.hero__coord--bl {
+  bottom: clamp(2rem, 4vh, 3rem);
   left: var(--page-margin);
+}
+
+.hero__coord--br {
+  bottom: clamp(2rem, 4vh, 3rem);
+  right: var(--page-margin);
+}
+
+.hero__coord-char {
+  display: inline-block;
+  will-change: opacity, filter;
+}
+
+/* ─── Layer 5: Content ─── */
+.hero__content {
+  position: absolute;
+  inset: 0;
   z-index: 7;
-  font-family: var(--font-display);
-  font-size: clamp(6rem, 15vw, 14rem);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  color: transparent;
-  -webkit-text-stroke: 1px rgba(0, 71, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: var(--page-margin);
   pointer-events: none;
-  user-select: none;
-  mix-blend-mode: difference;
+}
+
+/* Massive visible name — primary visual statement */
+.hero__name {
+  font-family: var(--font-statement);
+  font-size: var(--text-hero);
+  font-weight: 800;
+  letter-spacing: var(--tracking-hero);
+  line-height: var(--leading-hero);
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.hero__name-line {
+  display: block;
+}
+
+/* Counter-position: MAULANA indented → creates diagonal reading line */
+.hero__name-second {
+  padding-left: clamp(3rem, 12vw, 15rem);
+}
+
+/* Subtitle — visible text, not masked */
+.hero__subtitle {
+  margin-top: clamp(2rem, 4vh, 3rem);
+  font-family: var(--font-interface);
+  font-size: clamp(0.75rem, 0.9vw, 0.9rem);
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--chrome-mid);
+  pointer-events: none;
+}
+
+.hero__subtitle :deep(.hero__char) {
+  display: inline-block;
   will-change: transform, filter, opacity;
 }
 
-/* ─── Layer 8: Scroll indicator ─── */
+/* ─── Chromatic Aberration (velocity-driven RGB split) ─── */
+.hero__content {
+  --chroma-x: 0px;
+  --chroma-y: 0px;
+}
+
+.hero__name {
+  text-shadow:
+    var(--chroma-x) var(--chroma-y) 0 rgba(0, 71, 255, 0.4),
+    calc(var(--chroma-x) * -0.7) calc(var(--chroma-y) * -0.7) 0 rgba(161, 224, 231, 0.3);
+}
+
+.hero__subtitle {
+  text-shadow:
+    var(--chroma-x) var(--chroma-y) 0 rgba(255, 50, 50, 0.6),
+    calc(var(--chroma-x) * -1) calc(var(--chroma-y) * -1) 0 rgba(50, 100, 255, 0.6);
+}
+
+/* ─── Layer 6: Scroll indicator ─── */
 .hero__scroll {
   position: absolute;
-  bottom: clamp(1.5rem, 3vh, 2.5rem);
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: clamp(2rem, 4vh, 3rem);
+  right: var(--page-margin);
   z-index: 8;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.75rem;
   pointer-events: none;
 }
 
-.hero__scroll-label {
-  font-family: var(--font-mono);
+.hero__scroll-line {
+  display: block;
+  width: 1px;
+  height: 48px;
+  background: var(--chrome-dark);
+  transform-origin: top;
+}
+
+.hero__scroll-text {
+  font-family: var(--font-system);
   font-size: var(--text-micro);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-
-.hero__scroll-arrow {
-  font-size: var(--text-small);
-  color: var(--text-tertiary);
-  will-change: transform;
+  color: var(--text-muted);
+  writing-mode: vertical-rl;
 }
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
-  .hero__corners {
-    display: none;
-  }
-
-  .hero__subtitle {
-    font-size: clamp(0.875rem, 3.5vw, 1.125rem);
+  .hero__content {
     padding-inline: var(--page-margin);
   }
 
-  .hero__bracket {
-    width: 20px;
-    height: 20px;
+  .hero__name-second {
+    padding-left: clamp(1.5rem, 8vw, 4rem);
   }
 
-  .hero__rule--v-left,
-  .hero__rule--v-right {
+  .hero__subtitle {
+    font-size: clamp(0.625rem, 2.5vw, 0.8rem);
+  }
+
+  .hero__scroll {
+    right: var(--page-margin);
+    bottom: 1.5rem;
+  }
+
+  .hero__scroll-line {
+    height: 32px;
+  }
+
+  /* Hide coordinate labels on mobile — too cluttered */
+  .hero__coord--tr,
+  .hero__coord--bl {
     display: none;
   }
 
-  .hero__ghost {
-    font-size: clamp(4rem, 20vw, 8rem);
-    -webkit-text-stroke-width: 0.5px;
+  .hero__coord {
+    font-size: 0.5rem;
+  }
+
+  /* Simplify grid on mobile */
+  .hero__grid-cross {
+    display: none;
   }
 }
 
 /* ─── Reduced motion ─── */
 @media (prefers-reduced-motion: reduce) {
-  .hero__scroll-arrow {
-    animation: none;
+  .hero__canvas {
+    display: none;
   }
 }
 </style>

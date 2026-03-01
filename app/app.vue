@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useFaviconPulse } from '~/composables/useFaviconPulse'
 import { useSmoothScroll } from '~/composables/useSmoothScroll'
 
 const isLoaded = ref(false)
 const showContent = ref(false)
 const { init: initScroll } = useSmoothScroll()
+useFaviconPulse()
 
 async function onPreloaderComplete() {
   showContent.value = true

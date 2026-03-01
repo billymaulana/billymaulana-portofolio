@@ -85,12 +85,12 @@ html {
 }
 
 body {
-  font-family: var(--font-body);
+  font-family: var(--font-interface);
   font-weight: 500;
   font-size: var(--text-body);
   line-height: var(--leading-body);
   color: var(--text-body-color);
-  background-color: var(--bg-base);
+  background-color: var(--void-warm);
   overflow-x: hidden;
 }
 
@@ -121,42 +121,72 @@ ul, ol {
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ═══ BACKGROUND — Dark Depth Stack ═══ */
-  --bg-abyss:    #000000;
-  --bg-base:     #0a0a0a;
-  --bg-surface:  #111111;
-  --bg-elevated: #1a1a1a;
-  --bg-subtle:   #222222;
+  /* ═══ VOID — The Canvas (70% of visual) ═══ */
+  --void:          #000000;
+  --void-warm:     #0a0a0a;
+  --void-blue:     #060610;
+
+  /* ═══ SURFACE — Layered Blacks ═══ */
+  --surface-1:     #0c0c0c;
+  --surface-2:     #141414;
+  --surface-3:     #1a1a1a;
 
   /* ═══ TEXT HIERARCHY ═══ */
-  --text-primary:    #ffffff;
-  --text-body-color: #e0e0e0;
-  --text-secondary:  #888888;
-  --text-tertiary:   #555555;
-  --text-disabled:   #333333;
+  --text-primary:  #ffffff;
+  --text-body-color: #d4d4d4;
+  --text-muted:    #737373;
+  --text-ghost:    #404040;
 
-  /* ═══ ACCENT — Electric Blue Spectrum ═══ */
-  --accent-primary: #0047FF;
+  /* ═══ CHROME — Material (20% of visual) ═══ */
+  --chrome-light:  #e8e8e8;
+  --chrome-mid:    #a3a3a3;
+  --chrome-dark:   #525252;
+
+  /* ═══ CHROMATIC EVENT — Interaction Only (10% of visual) ═══ */
+  --event-blue:    #0047FF;
+  --event-cyan:    #a1e0e7;
+  --event-indigo:  #0f0a72;
+  --event-violet:  #6b21a8;
+
+  /* ═══ FUNCTIONAL ═══ */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-hover:  rgba(255, 255, 255, 0.12);
+  --border-active: rgba(0, 71, 255, 0.3);
+
+  /* ═══ LEGACY ALIASES (backward compat — remove as sections rewrite) ═══ */
+  --bg-abyss:    var(--void);
+  --bg-base:     var(--void-warm);
+  --bg-surface:  var(--surface-1);
+  --bg-elevated: var(--surface-2);
+  --bg-subtle:   var(--surface-3);
+  --text-secondary: var(--text-muted);
+  --text-tertiary:  var(--text-ghost);
+  --text-disabled:  #333333;
+  --accent-primary: var(--event-blue);
   --accent-deep:    #0166c9;
   --accent-light:   #00A3FF;
   --accent-cyan:    #00F5FF;
-  --accent-indigo:  #0f0a72;
-  --accent-lcyan:   #a1e0e7;
+  --accent-indigo:  var(--event-indigo);
+  --accent-lcyan:   var(--event-cyan);
   --accent-glow:    rgba(0, 71, 255, 0.15);
 
-  /* ═══ FONT STACKS — 4 Personalities ═══ */
-  --font-display: 'Clash Display', 'Inter', system-ui, sans-serif;
-  --font-serif:   'PP Editorial New', 'Georgia', serif;
-  --font-body:    'Satoshi', 'Inter', system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+  /* ═══ FONT STACKS — 3 Roles + 1 Display ═══ */
+  --font-statement: 'PP Editorial New', 'Georgia', serif;
+  --font-interface: 'Satoshi', 'Inter', system-ui, sans-serif;
+  --font-system:    'JetBrains Mono', 'Fira Code', monospace;
+  --font-display:   'Clash Display', 'Inter', system-ui, sans-serif;
+  /* Legacy aliases */
+  --font-serif: var(--font-statement);
+  --font-body:  var(--font-interface);
+  --font-mono:  var(--font-system);
 
   /* ═══ TYPE SCALE (Fluid) ═══ */
-  --text-hero:    clamp(4rem, 14vw, 13rem);
+  --text-hero:    clamp(5rem, 15vw, 18rem);
   --text-display: clamp(3rem, 8vw, 8rem);
   --text-h1:      clamp(2.25rem, 5vw, 5rem);
   --text-h2:      clamp(1.75rem, 3vw, 3rem);
   --text-h3:      clamp(1.25rem, 2vw, 2rem);
-  --text-body:    clamp(1rem, 1.125vw, 1.125rem);
+  --text-body:    clamp(1rem, 1.2vw, 1.125rem);
   --text-small:   clamp(0.8125rem, 0.9vw, 0.875rem);
   --text-caption: clamp(0.6875rem, 0.75vw, 0.75rem);
   --text-micro:   clamp(0.5625rem, 0.65vw, 0.625rem);

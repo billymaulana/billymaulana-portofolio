@@ -201,21 +201,95 @@ function closeMenu() {
 
 // ─── Navigation ───
 
-function navigateToSection(target: string) {
+async function navigateToSection(target: string) {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
   closeMenu()
 
-  // Delay scroll until menu close animation finishes
-  const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 650
+  if (prefersReduced) {
+    setTimeout(() => {
+      const el = document.querySelector(target)
+      if (el)
+        scrollTo(el as HTMLElement, { duration: 2.0 })
+    }, 0)
+    return
+  }
+
+  if (!gsapModule)
+    gsapModule = (await import('gsap')).default
+
+  // Target the main content area for blur (not the nav itself)
+  const mainContent = document.querySelector('.app') as HTMLElement
+  if (!mainContent)
+    return
+
+  // Phase 1: Progressive blur-in while menu closes
+  gsapModule.to(mainContent, {
+    filter: 'blur(12px)',
+    scale: 0.985,
+    opacity: 0.6,
+    duration: 0.45,
+    ease: 'power3.in',
+  })
+
+  // Phase 2: Scroll to target after menu mostly closed
   setTimeout(() => {
     const el = document.querySelector(target)
-    if (el) {
-      scrollTo(el as HTMLElement, { duration: 2.0 })
-    }
-  }, delay)
+    if (el)
+      scrollTo(el as HTMLElement, { duration: 1.4 })
+
+    // Phase 3: Unblur after scroll is underway — cinematic refocus
+    setTimeout(() => {
+      gsapModule!.to(mainContent, {
+        filter: 'blur(0px)',
+        scale: 1,
+        opacity: 1,
+        duration: 0.7,
+        ease: 'expo.out',
+      })
+    }, 900)
+  }, 500)
 }
 
-function scrollToTop() {
-  scrollTo(0, { duration: 2.0 })
+async function scrollToTop() {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  if (prefersReduced) {
+    scrollTo(0, { duration: 2.0 })
+    return
+  }
+
+  if (!gsapModule)
+    gsapModule = (await import('gsap')).default
+
+  const mainContent = document.querySelector('.app') as HTMLElement
+  if (!mainContent) {
+    scrollTo(0, { duration: 2.0 })
+    return
+  }
+
+  // Blur-in → scroll → unblur
+  gsapModule.to(mainContent, {
+    filter: 'blur(12px)',
+    scale: 0.985,
+    opacity: 0.6,
+    duration: 0.45,
+    ease: 'power3.in',
+  })
+
+  setTimeout(() => {
+    scrollTo(0, { duration: 1.4 })
+
+    setTimeout(() => {
+      gsapModule!.to(mainContent, {
+        filter: 'blur(0px)',
+        scale: 1,
+        opacity: 1,
+        duration: 0.7,
+        ease: 'expo.out',
+      })
+    }, 900)
+  }, 300)
 }
 
 // ─── Text scramble on hover ───
