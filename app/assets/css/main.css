@@ -42,6 +42,16 @@
   font-style: normal;
 }
 
+/* ─── Font Face: Switzer Variable (100-900) — Hero Display ─── */
+
+@font-face {
+  font-family: 'Switzer';
+  src: url('/assets/fonts/switzer/Switzer-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
+}
+
 /* ─── Font Face: Satoshi Variable (300-900) — Body ─── */
 
 @font-face {
@@ -170,7 +180,8 @@ ul, ol {
   --accent-lcyan:   var(--event-cyan);
   --accent-glow:    rgba(0, 71, 255, 0.15);
 
-  /* ═══ FONT STACKS — 3 Roles + 1 Display ═══ */
+  /* ═══ FONT STACKS — 4 Roles + 1 Display ═══ */
+  --font-hero:      'Switzer', 'Helvetica Neue', 'Helvetica', sans-serif;
   --font-statement: 'PP Editorial New', 'Georgia', serif;
   --font-interface: 'Satoshi', 'Inter', system-ui, sans-serif;
   --font-system:    'JetBrains Mono', 'Fira Code', monospace;
