@@ -32,6 +32,7 @@ interface LiquidBlobsAPI {
   setStrength: (v: number) => void
   setFill: (v: number) => void
   setFadeToBlack: (v: number) => void
+  setTint: (r: number, g: number, b: number) => void
   setLimit: (limit: number) => void
   setOpacity: (opacity: number) => void
   destroy: () => void
@@ -56,6 +57,8 @@ uniform float uExplode;
 uniform float uStrength;
 uniform vec2 uCenter;
 uniform float uFadeToBlack;
+uniform vec3 uTint;
+uniform vec3 uBgColor;
 
 varying vec2 vUv;
 
@@ -168,11 +171,15 @@ void main() {
   float brightness = max(col.r, max(col.g, col.b));
   if (brightness < 0.05) {
     col = texture2D(inputBuffer, uv);
-    col.rgb = vec3(0.0);
+    col.rgb = uBgColor;
   }
 
+  // Tint goo fragments — colored when scattered, clean white when resolved
+  float tintMix = clamp(te * 1.5, 0.0, 0.65);
+  col.rgb = mix(col.rgb, col.rgb * uTint, tintMix);
+
   float fade = sCurve(uFadeToBlack);
-  col.rgb = mix(col.rgb, vec3(0.0), fade);
+  col.rgb = mix(col.rgb, uBgColor, fade);
   col.a *= (1.0 - fade);
 
   gl_FragColor = col;
@@ -229,7 +236,7 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
 
     // Pass 1: Render logo to renderTarget
     renderer.setRenderTarget(renderTarget)
-    renderer.setClearColor(0x000000, 1)
+    renderer.setClearColor(0x060610, 1)
     renderer.clear()
     renderer.render(logoScene, logoCamera)
 
@@ -311,6 +318,8 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
           uStrength: { value: 1.2 },
           uCenter: { value: new THREE.Vector2(0.5, 0.5) },
           uFadeToBlack: { value: 0 },
+          uTint: { value: new THREE.Vector3(1, 1, 1) },
+          uBgColor: { value: new THREE.Vector3(0.024, 0.024, 0.063) }, // #060610
         },
         vertexShader: VERT,
         fragmentShader: GOO_FRAG,
@@ -358,6 +367,15 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
       gooMaterial.uniforms.uFadeToBlack!.value = v
   }
 
+  function setTint(r: number, g: number, b: number) {
+    if (gooMaterial) {
+      const v = gooMaterial.uniforms.uTint!.value as { x: number, y: number, z: number }
+      v.x = r
+      v.y = g
+      v.z = b
+    }
+  }
+
   // Legacy API compatibility
   function setLimit(_limit: number) {
     // No-op: goo shader doesn't use uLimit
@@ -398,5 +416,5 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
     canvas = null
   }
 
-  return { init, start, setExplode, setStrength, setFill, setFadeToBlack, setLimit, setOpacity, destroy }
+  return { init, start, setExplode, setStrength, setFill, setFadeToBlack, setTint, setLimit, setOpacity, destroy }
 }

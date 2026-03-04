@@ -60,6 +60,8 @@ async function runCinematic() {
   blob.setFill(0.04)
   blob.setFadeToBlack(0)
   blob.setOpacity(0)
+  // Identity blue tint — goo fragments echo hero fluid palette
+  blob.setTint(0.45, 0.65, 1.0)
 
   if (canvasRef.value)
     gsap.set(canvasRef.value, { scale: 1.15, transformOrigin: '50% 50%', filter: 'blur(0px)' })
@@ -255,8 +257,14 @@ async function runCinematic() {
     aria-label="Loading portfolio"
     role="status"
   >
+    <!-- Atmospheric depth — matches hero void-blue -->
+    <div class="preloader__atmosphere" aria-hidden="true" />
+
     <!-- WebGL goo/metaball canvas (CRZ.STUDIO pipeline) -->
     <canvas ref="canvasRef" class="preloader__canvas" aria-hidden="true" />
+
+    <!-- Film grain — matches hero grain overlay -->
+    <div class="preloader__grain" aria-hidden="true" />
 
     <!-- Corner coordinate labels -->
     <div ref="cornersRef" class="preloader__corners" aria-hidden="true">
@@ -279,8 +287,18 @@ async function runCinematic() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: var(--void-blue, #060610);
   overflow: hidden;
+}
+
+.preloader__atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(0, 71, 255, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 30% 60%, rgba(6, 6, 16, 0.8) 0%, transparent 60%);
+  pointer-events: none;
 }
 
 .preloader__canvas {
@@ -288,8 +306,19 @@ async function runCinematic() {
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
+  z-index: 1;
   will-change: transform;
+}
+
+.preloader__grain {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 128px;
+  mix-blend-mode: overlay;
+  opacity: 0.04;
+  pointer-events: none;
 }
 
 /* ─── Corner Labels — Exhibition Plate ─── */
@@ -339,7 +368,7 @@ async function runCinematic() {
 .preloader__curtain {
   position: absolute;
   inset: 0;
-  background: var(--bg-abyss);
+  background: var(--void-blue, #060610);
   z-index: -1;
   pointer-events: none;
   will-change: transform;
