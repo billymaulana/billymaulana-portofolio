@@ -35,6 +35,7 @@ const fluid = useFluidSimulation()
 const { scramble: scrambleText } = useTextScramble({ speed: 25, iterations: 4 })
 let gsapCtx: gsap.Context | null = null
 let resizeObserver: ResizeObserver | null = null
+let fluidActivated = false
 
 /* ─── Text Distortion (WebGL) ─── */
 let textDistortion: ReturnType<typeof import('~/composables/useTextDistortion').useTextDistortion> | null = null
@@ -65,9 +66,12 @@ onMounted(async () => {
   if (!canvasRef.value)
     return
 
-  const success = fluid.init(canvasRef.value)
+  const success = fluid.init(canvasRef.value, { skipInitialSplats: true })
   if (!success)
     return
+
+  // Start with canvas invisible — fluid activates on first mouse move
+  canvasRef.value.style.opacity = '0'
 
   // Resize handling — fluid auto-adapts to viewport
   resizeObserver = new ResizeObserver(() => {
@@ -110,6 +114,21 @@ onMounted(async () => {
       }, 300)
     }
   }
+
+  // ── First mouse move → activate fluid ──
+  function onFirstPointerMove() {
+    if (fluidActivated || !canvasRef.value)
+      return
+    fluidActivated = true
+    import('gsap').then(({ default: g }) => {
+      g.to(canvasRef.value!, {
+        opacity: 1,
+        duration: 1.2,
+        ease: 'power2.out',
+      })
+    })
+  }
+  sectionRef.value?.addEventListener('pointermove', onFirstPointerMove)
 
   // ── GSAP setup ──
   const gsapModule = await import('gsap')

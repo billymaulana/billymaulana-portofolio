@@ -158,6 +158,12 @@ ul, ol {
   --event-indigo:  #0f0a72;
   --event-violet:  #6b21a8;
 
+  /* ═══ SILVER / FAIRY TALE (preloader only) ═══ */
+  --moonlit-void: #070708;
+  --moonlit-surface: #1e1e22;
+  --moonlit-deep: #141418;
+  --moonlit-text: #c8c8cc;
+
   /* ═══ FUNCTIONAL ═══ */
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-hover:  rgba(255, 255, 255, 0.12);

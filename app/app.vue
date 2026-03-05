@@ -8,12 +8,14 @@ const { init: initScroll } = useSmoothScroll()
 useFaviconPulse()
 
 async function onPreloaderComplete() {
+  // Hero mounts behind preloader (preloader still visible, fading out)
   showContent.value = true
   await nextTick()
   await initScroll()
 }
 
 function onPreloaderDone() {
+  // Preloader fully dissolved — remove from DOM, unlock scroll
   isLoaded.value = true
   document.body.style.overflow = ''
 }

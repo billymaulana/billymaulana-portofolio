@@ -33,8 +33,10 @@ interface LiquidBlobsAPI {
   setFill: (v: number) => void
   setFadeToBlack: (v: number) => void
   setTint: (r: number, g: number, b: number) => void
+  setConverge: (v: number) => void
   setLimit: (limit: number) => void
   setOpacity: (opacity: number) => void
+  setFlowIntensity: (v: number) => void
   destroy: () => void
 }
 
@@ -46,8 +48,11 @@ void main() {
 }
 `
 
-// CRZ.STUDIO exact goo/metaball postprocessing shader
-// Extracted from layout-45a9952a0e614c84.js
+// CRZ.STUDIO goo/metaball postprocessing shader (enhanced)
+// Based on layout-45a9952a0e614c84.js with:
+//   - 5 metaballs (varied radius, satellite orbits)
+//   - uConverge: metaballs gather to center before logo reveal
+//   - Vibrant additive tint + emissive glow on goo fragments
 const GOO_FRAG = /* glsl */ `
 precision highp float;
 
@@ -59,6 +64,9 @@ uniform vec2 uCenter;
 uniform float uFadeToBlack;
 uniform vec3 uTint;
 uniform vec3 uBgColor;
+uniform float uConverge;
+uniform float uAspect;
+uniform float uFlowIntensity;
 
 varying vec2 vUv;
 
@@ -74,22 +82,36 @@ float hash12(vec2 p) {
 }
 
 vec2 cheapFlow(vec2 uv, float t) {
-  float sx = sin(t * 0.4);
-  float cx = cos(t * 0.4);
+  float sx = sin(t * 0.28);
+  float cx = cos(t * 0.28);
+  float s1 = sin(t * 0.18);
   return vec2(
-    sin(uv.y * 8.0 + t * 0.5) + sin(uv.x * 10.0 - sx),
-    cos(uv.x * 7.0 + cx) - cos(uv.y * 9.0 - t * 0.3)
-  ) * 0.08;
+    sin(uv.y * 8.0 + t * 0.5) + sin(uv.x * 10.0 - sx) + 0.3 * sin(uv.y * 14.0 + s1),
+    cos(uv.x * 7.0 + cx) - cos(uv.y * 9.0 - t * 0.3) + 0.3 * cos(uv.x * 12.0 - s1)
+  ) * uFlowIntensity;
 }
 
 float metaballs(vec2 uv, float t) {
   float f = 0.0;
   float wsum = 0.0;
 
-  float t1 = t * 0.55;
-  float t2 = t * 0.43;
+  float t1 = t * 0.38;
+  float t2 = t * 0.30;
 
-  for (int i = 0; i < 3; i++) {
+  // 8 metaballs: 3 large, 2 medium, 3 small — flowing tendrils
+  float radii[8];
+  radii[0] = 0.24;  // large core
+  radii[1] = 0.22;  // large core
+  radii[2] = 0.20;  // large tendril
+  radii[3] = 0.14;  // medium bridge
+  radii[4] = 0.12;  // medium bridge
+  radii[5] = 0.09;  // small tendril tip
+  radii[6] = 0.08;  // small tendril tip
+  radii[7] = 0.07;  // small satellite
+
+  float conv = sCurve(uConverge);
+
+  for (int i = 0; i < 8; i++) {
     float fi = float(i);
     vec2 id = vec2(fi, fi * 1.37);
 
@@ -99,18 +121,40 @@ float metaballs(vec2 uv, float t) {
     float a = t1 + 0.18 * h2 * t + fi * 1.7 + h1 * 6.0;
     float b = t2 + 0.22 * h2 * t + fi * 1.2 + h1 * 6.0;
 
-    vec2 c = vec2(
-      0.5 + 0.42 * sin(a),
-      0.5 + 0.40 * cos(b)
+    vec2 scattered = vec2(
+      0.5 + 0.38 * sin(a),
+      0.5 + 0.36 * cos(b)
     );
+    scattered.y += 0.10 * sin(t * 0.30 + fi) - 0.14 * (0.5 - uv.y);
 
-    c.y += 0.12 * sin(t * 0.35 + fi) - 0.18 * (0.5 - uv.y);
+    // Medium/small (i>=3) orbit near large blobs — creates tendrils
+    if (i >= 3) {
+      float parentIdx = mod(fi - 3.0, 3.0);
+      vec2 pid = vec2(parentIdx, parentIdx * 1.37);
+      float pa = t1 + 0.18 * hash12(pid + 2.1) * t + parentIdx * 1.7 + (hash12(pid + 7.3) - 0.5) * 6.0;
+      float pb = t2 + 0.22 * hash12(pid + 2.1) * t + parentIdx * 1.2 + (hash12(pid + 7.3) - 0.5) * 6.0;
+      vec2 parent = vec2(0.5 + 0.38 * sin(pa), 0.5 + 0.36 * cos(pb));
+      float orbitDist = 0.14 + 0.08 * sin(fi * 1.9);
+      float orbitAngle = t * (0.8 + fi * 0.25) + fi * 2.4;
+      scattered = parent + orbitDist * vec2(cos(orbitAngle), sin(orbitAngle));
+    }
 
-    float r = 0.11 + 0.06 * hash12(id + 4.8);
+    // Converge: mix between scattered position and center
+    vec2 c = mix(scattered, uCenter, conv);
+
+    float r = radii[i];
     vec2 d = uv - c;
-    d.x *= 1.12;
+    d.x *= uAspect;
 
-    float inv = 1.0 / (dot(d, d) + 0.005);
+    // Per-blob elongation — creates tendril shapes instead of circles
+    float stretch = 1.0 + 0.5 * sin(fi * 2.3 + t * 0.22);
+    float angle = fi * 0.78 + t * 0.15;
+    float ca = cos(angle), sa = sin(angle);
+    vec2 dRot = vec2(ca * d.x + sa * d.y, -sa * d.x + ca * d.y);
+    dRot.x *= stretch;
+    float dist = dot(dRot, dRot);
+
+    float inv = 1.0 / (dist + 0.004);
     f += r * inv;
     wsum += inv;
   }
@@ -122,7 +166,7 @@ void main() {
   vec2 uv = vUv;
   float t = clamp(uExplode, 0.0, 1.0);
 
-  if (t < 0.001) {
+  if (t < 0.001 && uConverge < 0.001) {
     gl_FragColor = texture2D(inputBuffer, uv);
     return;
   }
@@ -137,8 +181,8 @@ void main() {
 
   float T = uTime * 0.75;
 
-  float F = metaballs(uv + cheapFlow(uv, T) * 0.35, T);
-  float blob = sCurve(clamp((F - 0.72) / 0.18, 0.0, 1.0));
+  float F = metaballs(uv + cheapFlow(uv, T) * 0.50, T);
+  float blob = sCurve(clamp((F - 0.50) / 0.22, 0.0, 1.0));
 
   float revealDelay = mix(0.06, 0.92, sCurve(1.0 - blob));
   float revealWidth = mix(0.25, 0.55, clamp(0.5 + 0.5 * sin((uv.x + uv.y) * 6.0 + T), 0.0, 1.0));
@@ -174,9 +218,10 @@ void main() {
     col.rgb = uBgColor;
   }
 
-  // Tint goo fragments — colored when scattered, clean white when resolved
-  float tintMix = clamp(te * 1.5, 0.0, 0.65);
-  col.rgb = mix(col.rgb, col.rgb * uTint, tintMix);
+  // Tint goo fragments — additive blend for vibrant color + emissive glow
+  float tintMix = clamp(te * 1.5, 0.0, 0.85);
+  float emissive = smoothstep(0.10, 0.5, brightness) * tintMix * 0.35;
+  col.rgb = mix(col.rgb, col.rgb * uTint + uTint * emissive, tintMix);
 
   float fade = sCurve(uFadeToBlack);
   col.rgb = mix(col.rgb, uBgColor, fade);
@@ -219,6 +264,7 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
     renderer.setPixelRatio(dpr)
     renderer.setSize(w, h, false)
     renderTarget.setSize(Math.floor(w * dpr), Math.floor(h * dpr))
+    gooMaterial.uniforms.uAspect!.value = w / h
   }
 
   function render() {
@@ -319,7 +365,10 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
           uCenter: { value: new THREE.Vector2(0.5, 0.5) },
           uFadeToBlack: { value: 0 },
           uTint: { value: new THREE.Vector3(1, 1, 1) },
-          uBgColor: { value: new THREE.Vector3(0.024, 0.024, 0.063) }, // #060610
+          uBgColor: { value: new THREE.Vector3(0.024, 0.024, 0.063) }, // void-blue #060610
+          uConverge: { value: 0 },
+          uAspect: { value: w / h },
+          uFlowIntensity: { value: 0.12 },
         },
         vertexShader: VERT,
         fragmentShader: GOO_FRAG,
@@ -376,6 +425,11 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
     }
   }
 
+  function setConverge(v: number) {
+    if (gooMaterial)
+      gooMaterial.uniforms.uConverge!.value = v
+  }
+
   // Legacy API compatibility
   function setLimit(_limit: number) {
     // No-op: goo shader doesn't use uLimit
@@ -384,6 +438,11 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
   function setOpacity(o: number) {
     if (canvas)
       canvas.style.opacity = String(o)
+  }
+
+  function setFlowIntensity(v: number) {
+    if (gooMaterial)
+      gooMaterial.uniforms.uFlowIntensity!.value = v
   }
 
   function destroy() {
@@ -416,5 +475,5 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
     canvas = null
   }
 
-  return { init, start, setExplode, setStrength, setFill, setFadeToBlack, setTint, setLimit, setOpacity, destroy }
+  return { init, start, setExplode, setStrength, setFill, setFadeToBlack, setTint, setConverge, setLimit, setOpacity, setFlowIntensity, destroy }
 }

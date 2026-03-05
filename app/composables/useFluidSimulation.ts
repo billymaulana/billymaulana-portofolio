@@ -1521,7 +1521,7 @@ export function useFluidSimulation() {
   // PUBLIC API
   // ══════════════════════════════════════════════════════════════════════
 
-  function init(canvasEl: HTMLCanvasElement): boolean {
+  function init(canvasEl: HTMLCanvasElement, options?: { skipInitialSplats?: boolean }): boolean {
     canvas = canvasEl
 
     const ctx = getWebGLContext(canvas)
@@ -1602,8 +1602,9 @@ export function useFluidSimulation() {
     updateKeywords()
     initFramebuffers()
 
-    // Initial splats
-    multipleSplats(Math.floor(Math.random() * 20) + 5)
+    // Initial splats (skip if hero wants black-first activation)
+    if (!options?.skipInitialSplats)
+      multipleSplats(Math.floor(Math.random() * 20) + 5)
 
     setupEventListeners()
 
