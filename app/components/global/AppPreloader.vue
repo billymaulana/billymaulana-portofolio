@@ -1,14 +1,9 @@
 <script setup lang="ts">
 /**
- * AppPreloader — "The Still Surface" (v2)
+ * AppPreloader — Liquid Blob Cinematic (v5)
  *
- * Silver monochrome fairy tale preloader.
- * Narrative: "Every creation begins in the dark."
- * Per-word stagger, organic lake-scale metaballs, ~12s contemplative pace.
- *
- * 4 Acts:
- *   Prologue (void) → Narrative (word-by-word) →
- *   Awakening (silver water breathes) → Convergence (logo) → Departure
+ * Liquid blobs emerge from darkness, come alive, then cinematic zoom exit.
+ * No SVG logo phase — single cohesive animation.
  */
 import { useLiquidBlobs } from '~/composables/useLiquidBlobs'
 
@@ -20,7 +15,7 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLElement>()
 const canvasRef = ref<HTMLCanvasElement>()
 const cornersRef = ref<HTMLElement>()
-const narrativeRef = ref<HTMLElement>()
+const vignetteRef = ref<HTMLElement>()
 
 const blob = useLiquidBlobs()
 
@@ -42,33 +37,36 @@ onBeforeUnmount(() => {
 async function runCinematic() {
   const gsap = (await import('gsap')).default
 
-  // Init goo/metaball postprocessing pipeline
+  // Init canvas liquid (hidden, running in background)
   if (canvasRef.value) {
     const ok = await blob.init(canvasRef.value)
     if (ok)
       blob.start()
   }
 
-  // Debug: expose blob API + pause on ?debug
   const isDebug = new URLSearchParams(window.location.search).has('debug')
   if (isDebug)
     (window as any).__blob = blob
 
-  // ─── Initial state: darkness, silver still water ───
-  blob.setExplode(1.0)
-  blob.setStrength(1.5)
-  blob.setFill(0.06)
+  // ━━━ INITIAL STATE: CRZ-style — full goo, abstract liquid ━━━
+  // Shader designed for this direction: liquid → logo (resolve)
+  blob.setExplode(3.0)
+  blob.setStrength(1.2)
+  blob.setFill(0.85)
   blob.setFadeToBlack(0)
   blob.setConverge(0)
-  blob.setFlowIntensity(0.05)
+  blob.setFlowIntensity(0.12)
+  blob.setMelt(0)
   blob.setOpacity(0)
-  // Identity blue — deep indigo start
-  blob.setTint(0.05, 0.12, 0.45)
+  blob.setTint(1.0, 1.0, 1.0)
 
   if (canvasRef.value)
-    gsap.set(canvasRef.value, { scale: 1.12, transformOrigin: '50% 50%', filter: 'blur(0px)' })
+    gsap.set(canvasRef.value, { scale: 1, transformOrigin: '50% 50%', filter: 'blur(0px)' })
 
-  // Corner labels — per-char split for stagger
+  if (vignetteRef.value)
+    gsap.set(vignetteRef.value, { opacity: 0 })
+
+  // Corner labels — per-char split
   if (cornersRef.value) {
     const labels = cornersRef.value.querySelectorAll('.preloader__corner')
     labels.forEach((label) => {
@@ -85,275 +83,128 @@ async function runCinematic() {
     gsap.set(allChars, { opacity: 0, filter: 'blur(6px)' })
   }
 
-  // Narrative words — setup
-  const words = narrativeRef.value?.querySelectorAll('.preloader__word')
-  if (words?.length)
-    gsap.set(words, { opacity: 0, y: 14, filter: 'blur(5px)' })
-
   const tl = gsap.timeline({
     onComplete: () => { emit('done') },
   })
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PROLOGUE (0s → 1.5s) — Extended darkness. Stillness.
+  // PHASE 1: ABSTRACT LIQUID FADES IN (0 → 1.2s)
+  // Heavy goo — mysterious, abstract liquid blobs.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  tl.to({}, { duration: 1.5 })
+  tl.to({}, { duration: 0.2 })
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // ACT 1: THE NARRATIVE (1.5s → 5.5s)
-  // Words rise from depth one by one.
-  // Silver water barely visible behind — still surface.
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  // Words stagger in: opacity, y, blur — each word rises from depth
-  if (words?.length) {
-    tl.to(words, {
-      opacity: 0.7,
-      y: 0,
-      filter: 'blur(0px)',
-      duration: 0.8,
-      stagger: 0.25,
-      ease: 'power3.out',
-    })
-  }
-
-  // Canvas opacity: 0 → 0.6 (silver tendrils clearly visible)
+  // Canvas fades in — abstract liquid visible
   tl.to({}, {
-    duration: 3.0,
-    ease: 'power2.out',
+    duration: 1.0,
+    ease: 'power3.out',
     onUpdate() {
-      blob.setOpacity(0.6 * this.progress())
-    },
-  }, '<+0.5')
-
-  // Fill: 0.06 → 0.22 (tendrils become substance)
-  tl.to({}, {
-    duration: 3.0,
-    ease: 'expo.out',
-    onUpdate() {
-      blob.setFill(0.06 + 0.16 * this.progress())
-    },
-  }, '<')
-
-  // Camera settles slowly
-  if (canvasRef.value) {
-    tl.to(canvasRef.value, {
-      scale: 1.04,
-      duration: 3.5,
-      ease: 'power2.out',
-    }, '<')
-  }
-
-  // Narrative hold — let words breathe
-  tl.to({}, { duration: 1.0 })
-
-  // Debug: pause at end of Act 1
-  if (isDebug) {
-    tl.add(() => {
-      tl.pause()
-      // eslint-disable-next-line no-console
-      console.log('[preloader debug] Paused at Act 1 end. window.__blob available.')
-    })
-  }
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // ACT 2: AWAKENING (5.5s → 8.5s)
-  // Words dissolve. Silver water breathes.
-  // Flow intensity rises. Liquid becomes prominent.
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  // Narrative words dissolve upward
-  if (words?.length) {
-    tl.to(words, {
-      opacity: 0,
-      y: -8,
-      filter: 'blur(4px)',
-      duration: 1.2,
-      stagger: 0.08,
-      ease: 'power2.in',
-    })
-  }
-
-  // Flow intensity: 0.05 → 0.14 (tendrils stretch and flow)
-  tl.to({}, {
-    duration: 3.0,
-    ease: 'power2.inOut',
-    onUpdate() {
-      blob.setFlowIntensity(0.05 + 0.09 * this.progress())
-    },
-  }, '<')
-
-  // Canvas opacity: 0.6 → 0.9 (silver tendrils become dominant)
-  tl.to({}, {
-    duration: 2.5,
-    ease: 'power2.out',
-    onUpdate() {
-      blob.setOpacity(0.6 + 0.3 * this.progress())
-    },
-  }, '<+0.5')
-
-  // Fill: 0.22 → 0.35 (substance materializes)
-  tl.to({}, {
-    duration: 2.5,
-    ease: 'power2.out',
-    onUpdate() {
-      blob.setFill(0.22 + 0.13 * this.progress())
-    },
-  }, '<')
-
-  // Tint: deep indigo → electric blue
-  tl.to({}, {
-    duration: 2.5,
-    ease: 'power2.inOut',
-    onUpdate() {
-      const p = this.progress()
-      blob.setTint(
-        0.05 + 0.05 * p, // r: 0.05 → 0.10
-        0.12 + 0.18 * p, // g: 0.12 → 0.30
-        0.45 + 0.40 * p, // b: 0.45 → 0.85
-      )
-    },
-  }, '<')
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // ACT 3: CONVERGENCE (8.5s → 11.5s)
-  // Metaballs gather gradually. Logo forms from silver water.
-  // Smooth, extended transition — like reflection becoming sharp.
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  // Converge: 0 → 1 (metaballs gather — extended duration for smoothness)
-  tl.to({}, {
-    duration: 2.0,
-    ease: 'expo.inOut',
-    onUpdate() {
-      blob.setConverge(this.progress())
+      blob.setOpacity(this.progress())
     },
   })
 
-  // Explode: 1.0 → 0 (goo dissolves — slow, overlapping)
-  tl.to({}, {
-    duration: 2.5,
-    ease: 'expo.inOut',
-    onUpdate() {
-      blob.setExplode(1.0 * (1 - this.progress()))
-    },
-  }, '<+0.3')
-
-  // Strength: 1.5 → 0 (distortion fades — trailing)
-  tl.to({}, {
-    duration: 2.2,
-    ease: 'expo.inOut',
-    onUpdate() {
-      blob.setStrength(1.5 * (1 - this.progress()))
-    },
-  }, '<+0.3')
-
-  // Fill: 0.35 → 1.0 (logo sharpens from liquid — gradual)
-  tl.to({}, {
-    duration: 2.0,
-    ease: 'power3.out',
-    onUpdate() {
-      blob.setFill(0.35 + 0.65 * this.progress())
-    },
-  }, '<+0.5')
-
-  // Canvas full opacity
-  tl.to({}, {
-    duration: 1.5,
-    ease: 'power2.out',
-    onUpdate() {
-      blob.setOpacity(0.9 + 0.1 * this.progress())
-    },
-  }, '<')
-
-  // Tint: electric blue → bright cyan-blue (logo moment)
-  tl.to({}, {
-    duration: 2.0,
-    ease: 'power2.out',
-    onUpdate() {
-      const p = this.progress()
-      blob.setTint(
-        0.10 + 0.10 * p, // r: 0.10 → 0.20
-        0.30 + 0.20 * p, // g: 0.30 → 0.50
-        0.85 + 0.15 * p, // b: 0.85 → 1.00
-      )
-    },
-  }, '<')
-
-  // Flow intensity settles: 0.12 → 0.12 (stays)
-  // Camera settles to 1.0
-  if (canvasRef.value) {
-    tl.to(canvasRef.value, {
-      scale: 1.0,
-      duration: 2.0,
-      ease: 'power3.out',
-    }, '<')
-  }
-
-  // Corner labels stagger in (branding moment)
+  // Corner labels reveal alongside
   if (cornersRef.value) {
     const allChars = cornersRef.value.querySelectorAll('.preloader__corner-char')
     tl.to(allChars, {
       opacity: 0.5,
       filter: 'blur(0px)',
       duration: 0.6,
-      stagger: 0.015,
+      stagger: 0.012,
       ease: 'power3.out',
-    }, '-=0.6')
+    }, '<+0.3')
   }
 
-  // Brief hold — branding breathes
-  tl.to({}, { duration: 0.4 })
+  if (isDebug) {
+    tl.add(() => {
+      tl.pause()
+      // eslint-disable-next-line no-console
+      console.log('[preloader debug] Paused after liquid fade in.')
+    })
+  }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // ACT 4: DEPARTURE (11.5s → 13.0s)
-  // Fade to black. Container dissolve. Exit.
+  // PHASE 2: GOO RESOLVE — LOGO EMERGES (1.2s → 4.2s)
+  // CRZ-style: explode 3→0, strength 1.2→0.
+  // Liquid resolves into clear BM logo. Shader designed for this.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  // Emit complete → hero starts mounting behind preloader
+  tl.to({}, {
+    duration: 3.0,
+    ease: 'power3.inOut',
+    onUpdate() {
+      const p = this.progress()
+      // Explode: 3.0 → 0 (goo resolves)
+      blob.setExplode(3.0 * (1.0 - p))
+      // Strength: 1.2 → 0 (distortion clears)
+      blob.setStrength(1.2 * (1.0 - p))
+      // Flow: 0.12 → 0.02 (motion calms)
+      blob.setFlowIntensity(0.12 - 0.10 * p)
+    },
+  })
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // PHASE 3: LOGO HOLDS — RECOGNITION (4.2s → 4.8s)
+  // Clear BM logo, brief cinematic pause.
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  tl.to({}, { duration: 0.6 })
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // PHASE 5: CINEMATIC ZOOM EXIT (5.8s → 7.8s)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
   tl.add(() => {
     emit('complete')
   })
 
-  // Shader fade to black
-  tl.to({}, {
-    duration: 1.2,
-    ease: 'power3.in',
-    onUpdate() {
-      blob.setFadeToBlack(this.progress())
-    },
-  })
-
-  // Camera pulls away + blur
+  // Zoom: 1 → 6
   if (canvasRef.value) {
     tl.to(canvasRef.value, {
-      scale: 1.15,
-      filter: 'blur(4px)',
-      duration: 1.2,
-      ease: 'power3.in',
+      scale: 6,
+      filter: 'blur(8px)',
+      duration: 2.0,
+      ease: 'expo.in',
+    })
+  }
+
+  // Tunnel vignette
+  if (vignetteRef.value) {
+    tl.to(vignetteRef.value, {
+      opacity: 1,
+      duration: 2.0,
+      ease: 'power2.in',
     }, '<')
   }
 
-  // Corner labels fade out
+  // Flow spikes during zoom
+  tl.to({}, {
+    duration: 2.0,
+    ease: 'expo.in',
+    onUpdate() {
+      blob.setFlowIntensity(0.24 + 0.50 * this.progress())
+    },
+  }, '<')
+
+  // Corner labels fade
   if (cornersRef.value) {
     const allChars = cornersRef.value.querySelectorAll('.preloader__corner-char')
     tl.to(allChars, {
       opacity: 0,
-      filter: 'blur(6px)',
+      filter: 'blur(8px)',
       duration: 0.6,
       stagger: 0.01,
       ease: 'power2.in',
     }, '<')
   }
 
-  // Container dissolve — preloader fades out revealing hero behind
+  // Container dissolves
   if (containerRef.value) {
     tl.to(containerRef.value, {
       opacity: 0,
-      duration: 0.5,
-      ease: 'power2.in',
-    }, '-=0.4')
+      duration: 1.0,
+      ease: 'power3.in',
+    }, '-=1.0')
   }
 }
 </script>
@@ -366,30 +217,19 @@ async function runCinematic() {
     aria-label="Loading portfolio"
     role="status"
   >
-    <!-- Atmospheric depth — silver void -->
+    <!-- Atmospheric depth -->
     <div class="preloader__atmosphere" aria-hidden="true" />
 
-    <!-- WebGL goo/metaball canvas -->
+    <!-- Canvas liquid (hidden, revealed during melt) -->
     <canvas ref="canvasRef" class="preloader__canvas" aria-hidden="true" />
 
     <!-- Film grain -->
     <div class="preloader__grain" aria-hidden="true" />
 
-    <!-- Narrative text — per-word stagger -->
-    <div ref="narrativeRef" class="preloader__narrative" aria-hidden="true">
-      <span class="preloader__line">
-        <span class="preloader__word">Every</span>
-        <span class="preloader__word">creation</span>
-      </span>
-      <span class="preloader__line">
-        <span class="preloader__word">begins</span>
-        <span class="preloader__word">in</span>
-        <span class="preloader__word">the</span>
-        <span class="preloader__word">dark.</span>
-      </span>
-    </div>
+    <!-- Zoom tunnel vignette -->
+    <div ref="vignetteRef" class="preloader__zoom-vignette" aria-hidden="true" />
 
-    <!-- Corner coordinate labels -->
+    <!-- Corner labels -->
     <div ref="cornersRef" class="preloader__corners" aria-hidden="true">
       <span class="preloader__corner preloader__corner--tl">MONOGRAPH NO. 001</span>
       <span class="preloader__corner preloader__corner--tr">BILLY MAULANA</span>
@@ -428,7 +268,7 @@ async function runCinematic() {
   width: 100%;
   height: 100%;
   z-index: 1;
-  will-change: transform;
+  will-change: transform, filter;
 }
 
 .preloader__grain {
@@ -442,40 +282,25 @@ async function runCinematic() {
   pointer-events: none;
 }
 
-/* ─── Narrative Text — Per-Word Stagger ─── */
-.preloader__narrative {
+.preloader__zoom-vignette {
   position: absolute;
   inset: 0;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3em;
-  pointer-events: none;
-}
-
-.preloader__line {
-  display: flex;
-  gap: 0.35em;
-}
-
-.preloader__word {
-  display: inline-block;
-  font-family: var(--font-statement);
-  font-style: italic;
-  font-size: clamp(1.125rem, 2vw, 1.75rem);
-  letter-spacing: 0.03em;
-  color: var(--moonlit-text, #c8c8cc);
+  z-index: 4;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 10%,
+    rgba(6, 6, 16, 0.4) 40%,
+    rgba(6, 6, 16, 0.9) 75%
+  );
   opacity: 0;
-  will-change: opacity, transform, filter;
+  pointer-events: none;
+  will-change: opacity;
 }
 
-/* ─── Corner Labels — Exhibition Plate ─── */
 .preloader__corners {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 5;
   pointer-events: none;
 }
 

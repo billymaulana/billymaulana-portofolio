@@ -37,6 +37,7 @@ interface LiquidBlobsAPI {
   setLimit: (limit: number) => void
   setOpacity: (opacity: number) => void
   setFlowIntensity: (v: number) => void
+  setMelt: (v: number) => void
   destroy: () => void
 }
 
@@ -67,6 +68,7 @@ uniform vec3 uBgColor;
 uniform float uConverge;
 uniform float uAspect;
 uniform float uFlowIntensity;
+uniform float uMelt;
 
 varying vec2 vUv;
 
@@ -109,8 +111,6 @@ float metaballs(vec2 uv, float t) {
   radii[6] = 0.08;  // small tendril tip
   radii[7] = 0.07;  // small satellite
 
-  float conv = sCurve(uConverge);
-
   for (int i = 0; i < 8; i++) {
     float fi = float(i);
     vec2 id = vec2(fi, fi * 1.37);
@@ -139,8 +139,10 @@ float metaballs(vec2 uv, float t) {
       scattered = parent + orbitDist * vec2(cos(orbitAngle), sin(orbitAngle));
     }
 
-    // Converge: mix between scattered position and center
-    vec2 c = mix(scattered, uCenter, conv);
+    // Per-blob staggered convergence — large blobs first, tendrils trail behind
+    float blobDelay = fi * 0.055;
+    float localConv = sCurve(clamp((uConverge - blobDelay) / max(1.0 - blobDelay, 0.01), 0.0, 1.0));
+    vec2 c = mix(scattered, uCenter, localConv);
 
     float r = radii[i];
     vec2 d = uv - c;
@@ -165,9 +167,21 @@ float metaballs(vec2 uv, float t) {
 void main() {
   vec2 uv = vUv;
   float t = clamp(uExplode, 0.0, 1.0);
+  float T = uTime * 0.75;
+
+  // Smooth organic warp — bridges clean logo → goo transition
+  // Multi-octave noise for fluid complexity + edge-first + gravity
+  float meltEdge = 0.4 + length(uv - uCenter) * 1.6;
+  vec2 meltWarp = (
+    cheapFlow(uv * 1.5, T * 0.9) * 0.50
+    + cheapFlow(uv * 2.8, T * 0.55 + 3.0) * 0.30
+    + cheapFlow(uv * 0.7, T * 0.3 + 7.0) * 0.20
+  ) * uMelt * meltEdge * 0.22;
+  // Gravity: top drips down, accelerates with melt^2
+  meltWarp.y -= uMelt * uMelt * 0.07 * (1.0 - uv.y);
 
   if (t < 0.001 && uConverge < 0.001) {
-    gl_FragColor = texture2D(inputBuffer, uv);
+    gl_FragColor = texture2D(inputBuffer, clamp(uv + meltWarp, vec2(0.0), vec2(1.0)));
     return;
   }
 
@@ -178,8 +192,6 @@ void main() {
   vec2 p = uv - uCenter;
   float rSq = dot(p, p);
   float centerMask = 1.0 - sCurve(clamp(sqrt(rSq) / 0.95, 0.0, 1.0));
-
-  float T = uTime * 0.75;
 
   float F = metaballs(uv + cheapFlow(uv, T) * 0.50, T);
   float blob = sCurve(clamp((F - 0.50) / 0.22, 0.0, 1.0));
@@ -208,7 +220,7 @@ void main() {
   vec2 disp = mix(gooDisp, finalDisp, morphPhase);
 
   float s = uStrength * (0.22 + 2.1 * tLocal);
-  vec2 warpedUv = clamp(uv + disp * s, vec2(0.0), vec2(1.0));
+  vec2 warpedUv = clamp(uv + disp * s + meltWarp, vec2(0.0), vec2(1.0));
 
   vec4 col = texture2D(inputBuffer, warpedUv);
 
@@ -369,6 +381,7 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
           uConverge: { value: 0 },
           uAspect: { value: w / h },
           uFlowIntensity: { value: 0.12 },
+          uMelt: { value: 0 },
         },
         vertexShader: VERT,
         fragmentShader: GOO_FRAG,
@@ -445,6 +458,11 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
       gooMaterial.uniforms.uFlowIntensity!.value = v
   }
 
+  function setMelt(v: number) {
+    if (gooMaterial)
+      gooMaterial.uniforms.uMelt!.value = v
+  }
+
   function destroy() {
     cancelAnimationFrame(animationId)
     window.removeEventListener('resize', handleResize)
@@ -475,5 +493,5 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
     canvas = null
   }
 
-  return { init, start, setExplode, setStrength, setFill, setFadeToBlack, setTint, setConverge, setLimit, setOpacity, setFlowIntensity, destroy }
+  return { init, start, setExplode, setStrength, setFill, setFadeToBlack, setTint, setConverge, setLimit, setOpacity, setFlowIntensity, setMelt, destroy }
 }
