@@ -131,36 +131,36 @@ ul, ol {
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ═══ SOLAR — The Canvas (70% of visual) ═══ */
-  --void:          #FFE500;
-  --void-warm:     #FFE500;
+  /* ═══ VOID — The Canvas (dark cinematic) ═══ */
+  --void:          #060610;
+  --void-warm:     #0A0A14;
   --void-blue:     #060610;
 
-  /* ═══ SURFACE — Layered Yellows ═══ */
-  --surface-1:     #FFED4A;
-  --surface-2:     #FFF3A3;
-  --surface-3:     #FFFBEB;
+  /* ═══ SURFACE — Dark Layers ═══ */
+  --surface-1:     #0E0E1A;
+  --surface-2:     #141420;
+  --surface-3:     #1A1A28;
 
-  /* ═══ TEXT HIERARCHY (dark on yellow) ═══ */
-  --text-primary:  #0A0A0A;
-  --text-body-color: #1A1A1A;
-  --text-muted:    #5C5C3D;
-  --text-ghost:    #9E9E6B;
+  /* ═══ TEXT HIERARCHY (light on dark) ═══ */
+  --text-primary:  #E8E8EC;
+  --text-body-color: #C8C8D0;
+  --text-muted:    #7A7A8E;
+  --text-ghost:    #4A4A5E;
 
   /* ═══ CHROME — Material (20% of visual) ═══ */
-  --chrome-light:  #1A1A1A;
-  --chrome-mid:    #4A4A4A;
-  --chrome-dark:   #7A7A5A;
+  --chrome-light:  #D0D0D8;
+  --chrome-mid:    #8A8A9E;
+  --chrome-dark:   #5A5A6E;
 
-  /* ═══ CHROMATIC EVENT — Interaction Only (10% of visual) ═══ */
-  --event-blue:    #FF4D00;
-  --event-cyan:    #FF6B35;
-  --event-indigo:  #E63900;
-  --event-violet:  #CC3300;
+  /* ═══ CHROMATIC EVENT — Identity Palette ═══ */
+  --event-blue:    #0047FF;
+  --event-cyan:    #a1e0e7;
+  --event-indigo:  #0f0a72;
+  --event-violet:  #0166c9;
 
   /* ═══ DARK SECTIONS (contrast blocks) ═══ */
   --dark-surface:  #0A0A0A;
-  --dark-text:     #FFE500;
+  --dark-text:     #E8E8EC;
 
   /* ═══ SILVER / FAIRY TALE (preloader only — stays dark) ═══ */
   --moonlit-void: #070708;
@@ -169,9 +169,9 @@ ul, ol {
   --moonlit-text: #c8c8cc;
 
   /* ═══ FUNCTIONAL ═══ */
-  --border-subtle: rgba(10, 10, 10, 0.08);
-  --border-hover:  rgba(10, 10, 10, 0.18);
-  --border-active: rgba(255, 77, 0, 0.4);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-hover:  rgba(255, 255, 255, 0.12);
+  --border-active: rgba(0, 71, 255, 0.4);
 
   /* ═══ LEGACY ALIASES ═══ */
   --bg-abyss:    var(--void);
@@ -181,14 +181,14 @@ ul, ol {
   --bg-subtle:   var(--surface-3);
   --text-secondary: var(--text-muted);
   --text-tertiary:  var(--text-ghost);
-  --text-disabled:  #B3B380;
+  --text-disabled:  #3A3A4E;
   --accent-primary: var(--event-blue);
-  --accent-deep:    #E63900;
-  --accent-light:   #FF6B35;
-  --accent-cyan:    #FF8C5A;
+  --accent-deep:    #0035CC;
+  --accent-light:   #3366FF;
+  --accent-cyan:    var(--event-cyan);
   --accent-indigo:  var(--event-indigo);
   --accent-lcyan:   var(--event-cyan);
-  --accent-glow:    rgba(255, 77, 0, 0.15);
+  --accent-glow:    rgba(0, 71, 255, 0.15);
 
   /* ═══ FONT STACKS — 4 Roles + 1 Display ═══ */
   --font-hero:      'Switzer', 'Helvetica Neue', 'Helvetica', sans-serif;
@@ -310,7 +310,7 @@ ul, ol {
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, var(--accent-primary), #FF8C5A);
+  background: linear-gradient(135deg, var(--accent-primary), var(--event-cyan));
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -318,7 +318,7 @@ ul, ol {
 
 .text-invert {
   mix-blend-mode: difference;
-  color: #0A0A0A;
+  color: #E8E8EC;
 }
 
 .font-display {
@@ -385,7 +385,7 @@ ul, ol {
   background: radial-gradient(
     ellipse 70% 60% at 50% 50%,
     transparent 50%,
-    rgba(200, 160, 0, 0.08) 100%
+    rgba(0, 71, 255, 0.06) 100%
   );
 }
 
@@ -394,8 +394,8 @@ ul, ol {
    ═══════════════════════════════════════════════════════════════════════ */
 
 ::selection {
-  background: var(--dark-surface);
-  color: var(--dark-text);
+  background: var(--event-blue);
+  color: #ffffff;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
