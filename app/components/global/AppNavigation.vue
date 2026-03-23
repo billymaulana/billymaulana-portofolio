@@ -358,7 +358,7 @@ onUnmounted(() => {
 .nav-burger__line {
   display: block;
   width: 100%;
-  height: 1.5px;
+  height: 2px;
   background: var(--text-primary);
   border-radius: 1px;
   transition:

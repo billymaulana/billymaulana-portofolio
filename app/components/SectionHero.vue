@@ -376,17 +376,17 @@ onUnmounted(() => {
 /* ─── Subtitle ─── */
 .hero__subtitle {
   margin-top: clamp(2rem, 4vh, 3rem);
-  font-family: var(--font-interface);
-  font-size: clamp(0.75rem, 0.9vw, 0.9rem);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: clamp(0.85rem, 1vw, 1rem);
+  font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--chrome-mid);
+  color: var(--text-primary);
   pointer-events: none;
   transition: opacity 0.3s ease;
 }
 
-/* ─── Layer 6: Scroll indicator ─── */
+/* ─── Layer 6: Scroll indicator — blended with fluid via difference ─── */
 .hero__scroll {
   position: absolute;
   bottom: clamp(2rem, 4vh, 3rem);
@@ -397,22 +397,24 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.75rem;
   pointer-events: none;
+  mix-blend-mode: difference;
 }
 
 .hero__scroll-line {
   display: block;
   width: 1px;
   height: 48px;
-  background: var(--chrome-dark);
+  background: var(--text-primary);
   transform-origin: top;
 }
 
 .hero__scroll-text {
-  font-family: var(--font-system);
-  font-size: var(--text-micro);
+  font-family: var(--font-display);
+  font-size: clamp(0.6rem, 0.7vw, 0.7rem);
+  font-weight: 600;
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-primary);
   writing-mode: vertical-rl;
 }
 
