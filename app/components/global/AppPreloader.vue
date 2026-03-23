@@ -130,81 +130,129 @@ async function runCinematic() {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   tl.to({}, {
-    duration: 3.0,
+    duration: 3.5,
     ease: 'power3.inOut',
     onUpdate() {
       const p = this.progress()
-      // Explode: 3.0 → 0 (goo resolves)
       blob.setExplode(3.0 * (1.0 - p))
-      // Strength: 1.2 → 0 (distortion clears)
       blob.setStrength(1.2 * (1.0 - p))
-      // Flow: 0.12 → 0.02 (motion calms)
       blob.setFlowIntensity(0.12 - 0.10 * p)
+      // Fill brightens as logo clarifies
+      blob.setFill(0.85 + 0.15 * p)
+      // Brief dim pulse at midpoint — masks recognition threshold
+      blob.setFadeToBlack(Math.sin(p * Math.PI) * 0.10)
     },
   })
+
+  // Vignette focuses attention on center during resolve
+  if (vignetteRef.value) {
+    tl.to(vignetteRef.value, {
+      opacity: 0.3,
+      duration: 3.5,
+      ease: 'power2.in',
+    }, '<')
+  }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // PHASE 3: LOGO HOLDS — RECOGNITION (4.2s → 4.8s)
   // Clear BM logo, brief cinematic pause.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  tl.to({}, { duration: 0.6 })
+  // Recognition pulse — logo breathes at the moment of clarity
+  tl.to({}, {
+    duration: 0.5,
+    ease: 'power3.out',
+    onUpdate() {
+      const p = this.progress()
+      const ping = Math.sin(p * Math.PI)
+      blob.setFill(1.0 + 0.05 * ping)
+      // Micro flow pulse — liquid remembers it was alive
+      blob.setFlowIntensity(0.02 + 0.03 * ping)
+    },
+  })
+
+  // Canvas micro-breathe — logo feels alive
+  if (canvasRef.value) {
+    tl.to(canvasRef.value, {
+      scale: 1.015,
+      duration: 0.25,
+      ease: 'sine.inOut',
+      yoyo: true,
+      repeat: 1,
+    }, '<')
+  }
+
+  // Corner labels sharpen into full focus
+  if (cornersRef.value) {
+    const focusChars = cornersRef.value.querySelectorAll('.preloader__corner-char')
+    tl.to(focusChars, {
+      opacity: 0.65,
+      duration: 0.5,
+      stagger: 0.006,
+      ease: 'power2.out',
+    }, '<')
+  }
+
+  // Vignette opens slightly — breath before the exit
+  if (vignetteRef.value) {
+    tl.to(vignetteRef.value, {
+      opacity: 0.15,
+      duration: 0.5,
+      ease: 'power2.out',
+    }, '<')
+  }
+
+  // Brief hold — let the beat land
+  tl.to({}, { duration: 0.3 })
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PHASE 5: CINEMATIC ZOOM EXIT (5.8s → 7.8s)
+  // PHASE 4: CLIP-PATH REVEAL EXIT
+  // Circle shrinks from edges → center, revealing hero behind.
+  // Logo is last thing visible — cinematic focal point.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   tl.add(() => {
     emit('complete')
   })
 
-  // Zoom: 1 → 6
-  if (canvasRef.value) {
-    tl.to(canvasRef.value, {
-      scale: 6,
-      filter: 'blur(8px)',
-      duration: 2.0,
-      ease: 'expo.in',
-    })
-  }
-
-  // Tunnel vignette
-  if (vignetteRef.value) {
-    tl.to(vignetteRef.value, {
-      opacity: 1,
-      duration: 2.0,
-      ease: 'power2.in',
-    }, '<')
-  }
-
-  // Flow spikes during zoom
-  tl.to({}, {
-    duration: 2.0,
-    ease: 'expo.in',
-    onUpdate() {
-      blob.setFlowIntensity(0.24 + 0.50 * this.progress())
-    },
-  }, '<')
-
-  // Corner labels fade
+  // Corner labels blur-fade out
   if (cornersRef.value) {
     const allChars = cornersRef.value.querySelectorAll('.preloader__corner-char')
     tl.to(allChars, {
       opacity: 0,
-      filter: 'blur(8px)',
-      duration: 0.6,
+      filter: 'blur(4px)',
+      duration: 0.4,
       stagger: 0.01,
+      ease: 'power2.in',
+    })
+  }
+
+  // Clip-path circle shrinks — reveals hero from edges inward
+  if (containerRef.value) {
+    gsap.set(containerRef.value, { clipPath: 'circle(100% at 50% 50%)' })
+    tl.to(containerRef.value, {
+      clipPath: 'circle(0% at 50% 50%)',
+      duration: 1.2,
+      ease: 'expo.inOut',
+    })
+  }
+
+  // Vignette crunch — tunnel vision as circle closes
+  if (vignetteRef.value) {
+    tl.to(vignetteRef.value, {
+      opacity: 0.7,
+      duration: 1.2,
       ease: 'power2.in',
     }, '<')
   }
 
-  // Container dissolves
-  if (containerRef.value) {
-    tl.to(containerRef.value, {
-      opacity: 0,
-      duration: 1.0,
-      ease: 'power3.in',
-    }, '-=1.0')
+  // Canvas subtle zoom — depth effect into logo
+  if (canvasRef.value) {
+    tl.to(canvasRef.value, {
+      scale: 1.08,
+      duration: 1.2,
+      ease: 'power2.in',
+    }, '<')
   }
 }
 </script>

@@ -100,7 +100,7 @@ body {
   font-size: var(--text-body);
   line-height: var(--leading-body);
   color: var(--text-body-color);
-  background-color: var(--void-warm);
+  background-color: var(--void-blue);
   overflow-x: hidden;
 }
 
