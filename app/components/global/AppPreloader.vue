@@ -130,17 +130,20 @@ async function runCinematic() {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   tl.to({}, {
-    duration: 3.5,
-    ease: 'power3.inOut',
+    duration: 4.2,
+    ease: 'expo.inOut',
     onUpdate() {
       const p = this.progress()
-      blob.setExplode(3.0 * (1.0 - p))
-      blob.setStrength(1.2 * (1.0 - p))
+      // Sub-ease the noise parameters with extra smoothing near the end —
+      // squared ease pulls breakup/shock to 0 faster, so last beat is clean.
+      const late = p * p * (3 - 2 * p)
+      blob.setExplode(3.0 * (1.0 - late))
+      blob.setStrength(1.2 * (1.0 - late))
       blob.setFlowIntensity(0.12 - 0.10 * p)
       // Fill brightens as logo clarifies
       blob.setFill(0.85 + 0.15 * p)
       // Brief dim pulse at midpoint — masks recognition threshold
-      blob.setFadeToBlack(Math.sin(p * Math.PI) * 0.10)
+      blob.setFadeToBlack(Math.sin(p * Math.PI) * 0.08)
     },
   })
 
@@ -148,7 +151,7 @@ async function runCinematic() {
   if (vignetteRef.value) {
     tl.to(vignetteRef.value, {
       opacity: 0.3,
-      duration: 3.5,
+      duration: 4.2,
       ease: 'power2.in',
     }, '<')
   }

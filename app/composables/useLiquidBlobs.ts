@@ -189,6 +189,11 @@ void main() {
   float gooPhase = sCurve(1.0 - clamp((te - 0.55) / 0.45, 0.0, 1.0));
   float morphPhase = sCurve(clamp((te - 0.40) / 0.60, 0.0, 1.0));
 
+  // Cleanup — active only in the logo-lock window (te near 0). Splash phase
+  // (te high) keeps full breakup/shock so the initial goo splash is intact.
+  float cleanup = 1.0 - smoothstep(0.05, 0.45, te);
+  float noiseGate = 1.0 - cleanup;
+
   vec2 p = uv - uCenter;
   float rSq = dot(p, p);
   float centerMask = 1.0 - sCurve(clamp(sqrt(rSq) / 0.95, 0.0, 1.0));
@@ -211,10 +216,12 @@ void main() {
 
   float ringArg = sqrt(rSq) * (12.0 + 22.0 * tLocal) - T * (1.9 + 1.2 * tLocal);
   float ring = sin(ringArg);
-  float shock = ring * (0.008 + 0.09 * tLocal) * (1.0 - sCurve(clamp(sqrt(rSq) / 0.95, 0.0, 1.0)));
+  // Shock attenuated by noiseGate — ring wave fades out as logo clarifies
+  float shock = ring * (0.008 + 0.07 * tLocal) * (1.0 - sCurve(clamp(sqrt(rSq) / 0.95, 0.0, 1.0))) * noiseGate;
 
   float br = clamp(0.5 + 0.5 * sin((uv.x * 10.0 - uv.y * 8.0) + T * 1.1), 0.0, 1.0);
-  vec2 breakup = (vec2(br, 1.0 - br) - 0.5) * (0.01 + 0.08 * tLocal);
+  // Breakup attenuated by noiseGate — high-frequency pixel chop dies off at the end
+  vec2 breakup = (vec2(br, 1.0 - br) - 0.5) * (0.01 + 0.06 * tLocal) * noiseGate;
 
   vec2 finalDisp = nrm * shock + breakup;
   vec2 disp = mix(gooDisp, finalDisp, morphPhase);
@@ -222,7 +229,19 @@ void main() {
   float s = uStrength * (0.22 + 2.1 * tLocal);
   vec2 warpedUv = clamp(uv + disp * s + meltWarp, vec2(0.0), vec2(1.0));
 
+  // 4-tap box blur — bell-curved band active only during logo-lock transition.
+  // Off at te > 0.55 (splash stays crisp liquid) and off at te < 0.05 (final sharp).
+  float blurEnvelope = smoothstep(0.05, 0.22, te) * (1.0 - smoothstep(0.35, 0.55, te));
+  float blurRadius = blurEnvelope * 0.0035;
   vec4 col = texture2D(inputBuffer, warpedUv);
+  if (blurRadius > 0.0001) {
+    vec4 s1 = texture2D(inputBuffer, clamp(warpedUv + vec2(blurRadius, 0.0), vec2(0.0), vec2(1.0)));
+    vec4 s2 = texture2D(inputBuffer, clamp(warpedUv - vec2(blurRadius, 0.0), vec2(0.0), vec2(1.0)));
+    vec4 s3 = texture2D(inputBuffer, clamp(warpedUv + vec2(0.0, blurRadius), vec2(0.0), vec2(1.0)));
+    vec4 s4 = texture2D(inputBuffer, clamp(warpedUv - vec2(0.0, blurRadius), vec2(0.0), vec2(1.0)));
+    vec4 blurred = (col + s1 + s2 + s3 + s4) * 0.2;
+    col = mix(col, blurred, blurEnvelope);
+  }
 
   float brightness = max(col.r, max(col.g, col.b));
   if (brightness < 0.05) {
