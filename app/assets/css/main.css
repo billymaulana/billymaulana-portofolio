@@ -3,6 +3,9 @@
    Brutalist Expression + Premium Feel + Dark Cinematic + Liquid/Glass
    ═══════════════════════════════════════════════════════════════════════ */
 
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
 /* ─── Font Face: Clash Display Variable (200-700) — Display/Headlines ─── */
 
 @font-face {

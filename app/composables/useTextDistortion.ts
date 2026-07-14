@@ -10,20 +10,30 @@
  * Text must WARP visibly, never disappear.
  */
 
+export interface DistortionLine {
+  text: string
+  xAlign?: 'left' | 'center' | 'right'
+  yFrac?: number
+  indent?: number
+  fontSize?: number
+}
+
 interface DistortionConfig {
   fontSize: number
   fontWeight: number
   fontFamily: string
+  letterSpacingEm: number
   radius: number
   intensity: number
   chromaticSpread: number
-  lines: { text: string, indent: number }[]
+  lines: DistortionLine[]
 }
 
 const defaultDistortionConfig: DistortionConfig = {
   fontSize: 200,
   fontWeight: 700,
   fontFamily: '\'Switzer\', \'Helvetica Neue\', sans-serif',
+  letterSpacingEm: 0,
   radius: 0.25,
   intensity: 0.08,
   chromaticSpread: 0.02,
@@ -31,6 +41,11 @@ const defaultDistortionConfig: DistortionConfig = {
     { text: 'BILLY', indent: 0 },
     { text: 'MAULANA', indent: 0 },
   ],
+}
+
+export function distortionTextPadding(width: number): number {
+  const rootFs = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  return Math.min(Math.max(1.5 * rootFs, width * 0.04), 4 * rootFs)
 }
 
 const distortionVertexShader = `
@@ -161,10 +176,10 @@ const distortionFragmentShader = `
     float idleChromatic = idleFactor * 2.0;
     float chromaticAmount = uChromatic * (influence * 3.0 * velBoost + (1.0 - uSettle) * 1.0) + idleChromatic;
 
-    // Cool-toned chromatic — blue/cyan dominant, minimal red fringing
-    vec2 rOffset = totalOffset + chromDir * chromaticAmount * 0.25 + chromDir2 * chromaticAmount * 0.08;
-    vec2 gOffset = totalOffset;
-    vec2 bOffset = totalOffset - chromDir * chromaticAmount - chromDir2 * chromaticAmount * 0.3;
+    // Cool-family split: R halved, G pulled toward B so their overlap reads cyan
+    vec2 rOffset = totalOffset + chromDir * chromaticAmount * 0.125 + chromDir2 * chromaticAmount * 0.04;
+    vec2 gOffset = totalOffset - chromDir * chromaticAmount * 0.4 - chromDir2 * chromaticAmount * 0.12;
+    vec2 bOffset = totalOffset - chromDir * chromaticAmount * 1.2 - chromDir2 * chromaticAmount * 0.36;
 
     float r = texture2D(uText, uv + rOffset).r;
     float g = texture2D(uText, uv + gOffset).g;
@@ -214,11 +229,52 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     return shader
   }
 
+  const isPositioned = cfg.lines.some(line => line.xAlign !== undefined || line.yFrac !== undefined)
+
+  function applyFont(ctx: CanvasRenderingContext2D, fontSize: number = cfg.fontSize) {
+    ctx.font = `${cfg.fontWeight} ${fontSize}px ${cfg.fontFamily}`
+    if ('letterSpacing' in ctx)
+      ctx.letterSpacing = `${fontSize * cfg.letterSpacingEm}px`
+  }
+
+  function renderPositionedText(offscreen: HTMLCanvasElement, ctx: CanvasRenderingContext2D): HTMLCanvasElement {
+    const width = Math.max(1, Math.floor(canvas?.clientWidth || window.innerWidth))
+    const height = Math.max(1, Math.floor(canvas?.clientHeight || window.innerHeight))
+    offscreen.width = width
+    offscreen.height = height
+
+    ctx.fillStyle = '#ffffff'
+    ctx.textBaseline = 'alphabetic'
+
+    const pad = distortionTextPadding(width)
+
+    for (let i = 0; i < cfg.lines.length; i++) {
+      const line = cfg.lines[i]!
+      const lineFontSize = line.fontSize ?? cfg.fontSize
+      applyFont(ctx, lineFontSize)
+      const metrics = ctx.measureText(line.text)
+      const indentPx = (line.indent ?? 0) * (lineFontSize / 200)
+      const align = line.xAlign ?? 'left'
+      let x = pad + indentPx
+      if (align === 'right')
+        x = width - pad - metrics.width - indentPx
+      else if (align === 'center')
+        x = (width - metrics.width) / 2 + indentPx
+      const yFrac = line.yFrac ?? (i + 1) / (cfg.lines.length + 1)
+      ctx.fillText(line.text, x, yFrac * height)
+    }
+
+    return offscreen
+  }
+
   function renderTextToCanvas(): HTMLCanvasElement {
     const offscreen = document.createElement('canvas')
     const ctx = offscreen.getContext('2d')!
 
-    ctx.font = `${cfg.fontWeight} ${cfg.fontSize}px ${cfg.fontFamily}`
+    if (isPositioned)
+      return renderPositionedText(offscreen, ctx)
+
+    applyFont(ctx)
 
     const indentScale = cfg.fontSize / 200
 
@@ -226,7 +282,7 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     // actualBoundingBoxLeft < 0 means the visual edge is to the RIGHT of origin (LSB gap).
     let leftBearing = 0
     for (const line of cfg.lines) {
-      if (line.indent === 0) {
+      if ((line.indent ?? 0) === 0) {
         const metrics = ctx.measureText(line.text)
         if (metrics.actualBoundingBoxLeft < 0) {
           leftBearing = Math.max(leftBearing, -metrics.actualBoundingBoxLeft)
@@ -237,7 +293,7 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     let maxWidth = 0
     for (const line of cfg.lines) {
       const metrics = ctx.measureText(line.text)
-      const totalWidth = metrics.width + line.indent * indentScale
+      const totalWidth = metrics.width + (line.indent ?? 0) * indentScale
       maxWidth = Math.max(maxWidth, totalWidth)
     }
 
@@ -250,18 +306,28 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
 
     ctx.clearRect(0, 0, offscreen.width, offscreen.height)
 
-    ctx.font = `${cfg.fontWeight} ${cfg.fontSize}px ${cfg.fontFamily}`
+    applyFont(ctx)
     ctx.fillStyle = '#ffffff'
     ctx.textBaseline = 'top'
 
     for (let i = 0; i < cfg.lines.length; i++) {
       const line = cfg.lines[i]!
-      const x = line.indent * indentScale - leftBearing
+      const x = (line.indent ?? 0) * indentScale - leftBearing
       const y = i * lineHeight
       ctx.fillText(line.text, x, y)
     }
 
     return offscreen
+  }
+
+  function uploadTextTexture() {
+    if (!gl || !textTexture)
+      return
+    const textCanvas = renderTextToCanvas()
+    gl.bindTexture(gl.TEXTURE_2D, textTexture)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
   }
 
   function createTexture(source: HTMLCanvasElement): WebGLTexture | null {
@@ -344,6 +410,17 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
   function handleResize() {
     if (!canvas || !gl)
       return
+
+    if (isPositioned) {
+      const width = Math.floor(canvas.clientWidth)
+      const height = Math.floor(canvas.clientHeight)
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width
+        canvas.height = height
+        uploadTextTexture()
+      }
+      return
+    }
 
     // Render text first so we can set correct aspect-ratio before reading dimensions
     const textCanvas = renderTextToCanvas()
@@ -459,12 +536,15 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     program = null
   }
 
-  function updateFontSize(newSize: number) {
-    if (cfg.fontSize === newSize)
-      return
-    cfg.fontSize = newSize
+  function refreshTexture() {
     if (!canvas || !gl || !textTexture)
       return
+    if (isPositioned) {
+      canvas.width = Math.floor(canvas.clientWidth)
+      canvas.height = Math.floor(canvas.clientHeight)
+      uploadTextTexture()
+      return
+    }
     const textCanvas = renderTextToCanvas()
     canvas.style.aspectRatio = `${textCanvas.width} / ${textCanvas.height}`
     canvas.width = Math.floor(canvas.clientWidth)
@@ -475,10 +555,23 @@ export function useTextDistortion(config: Partial<DistortionConfig> = {}) {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
   }
 
+  function updateFontSize(newSize: number) {
+    if (cfg.fontSize === newSize)
+      return
+    cfg.fontSize = newSize
+    refreshTexture()
+  }
+
+  function updateLines(lines: DistortionLine[]) {
+    cfg.lines = lines
+    refreshTexture()
+  }
+
   return {
     init,
     start,
     destroy,
     updateFontSize,
+    updateLines,
   }
 }

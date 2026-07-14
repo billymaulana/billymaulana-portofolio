@@ -79,12 +79,14 @@ export function useFluidSimulation() {
   const config = {
     SIM_RESOLUTION: 128,
     DYE_RESOLUTION: 1024,
-    DENSITY_DISSIPATION: 1.5,
+    /* 0.9 (dari default 1.5): tinta bertahan ~2.5s agar pita di void
+       sempat diapresiasi — recognition beat setelah gerakan berhenti */
+    DENSITY_DISSIPATION: 0.9,
     VELOCITY_DISSIPATION: 0.6,
     PRESSURE: 0.8,
     PRESSURE_ITERATIONS: 20,
-    CURL: 18,
-    SPLAT_RADIUS: 0.25,
+    CURL: 30,
+    SPLAT_RADIUS: 0.18,
     SPLAT_FORCE: 6000,
     SHADING: true,
     COLORFUL: true,
@@ -1230,7 +1232,11 @@ export function useFluidSimulation() {
   function splatPointer(pointer: Pointer) {
     const dx = pointer.deltaX * config.SPLAT_FORCE
     const dy = pointer.deltaY * config.SPLAT_FORCE
-    splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color)
+    /* Dye 0.15 dari generateColor terlalu redup melewati mix-blend-mode:
+       screen di atas void bg; ×8+ membanjiri viewport pada injeksi 60/s.
+       ×4.5 = pita tinta terlihat jelas tanpa menenggelamkan statement */
+    const c = pointer.color
+    splat(pointer.texcoordX, pointer.texcoordY, dx, dy, { r: c.r * 4.5, g: c.g * 4.5, b: c.b * 4.5 })
   }
 
   function multipleSplats(amount: number) {
@@ -1245,6 +1251,14 @@ export function useFluidSimulation() {
       const dy = 1000 * (Math.random() - 0.5)
       splat(x, y, dx, dy, color)
     }
+  }
+
+  function emitSplat(x: number, y: number, dx: number, dy: number) {
+    const color = generateColor()
+    color.r *= 10.0
+    color.g *= 10.0
+    color.b *= 10.0
+    splat(x, y, dx, dy, color)
   }
 
   function splat(x: number, y: number, dx: number, dy: number, color: FluidColor) {
@@ -1271,8 +1285,13 @@ export function useFluidSimulation() {
     return radius
   }
 
+  let hueMin = 0
+  let hueMax = 1
+
   function generateColor(): FluidColor {
-    const c = HSVtoRGB(Math.random(), 1.0, 1.0)
+    const span = hueMax - hueMin
+    const hue = ((hueMin + Math.random() * span) % 1 + 1) % 1
+    const c = HSVtoRGB(hue, 1.0, 1.0)
     c.r *= 0.15
     c.g *= 0.15
     c.b *= 0.15
@@ -1505,10 +1524,11 @@ export function useFluidSimulation() {
   // MAIN LOOP
   // ══════════════════════════════════════════════════════════════════════
 
+  /* resizeCanvas tidak boleh dipanggil per frame: membaca clientWidth tiap
+     frame memicu forced reflow (terukur 92ms/5s trace) — resize ditangani
+     ResizeObserver pemilik canvas via resize() publik */
   function update() {
     const dt = calcDeltaTime()
-    if (resizeCanvas())
-      initFramebuffers()
     updateColors(dt)
     applyInputs()
     if (!config.PAUSED)
@@ -1521,8 +1541,10 @@ export function useFluidSimulation() {
   // PUBLIC API
   // ══════════════════════════════════════════════════════════════════════
 
-  function init(canvasEl: HTMLCanvasElement, options?: { skipInitialSplats?: boolean }): boolean {
+  function init(canvasEl: HTMLCanvasElement, options?: { skipInitialSplats?: boolean, hueMin?: number, hueMax?: number }): boolean {
     canvas = canvasEl
+    hueMin = options?.hueMin ?? 0
+    hueMax = options?.hueMax ?? 1
 
     const ctx = getWebGLContext(canvas)
     if (!ctx || !ctx.ext.formatRGBA) {
@@ -1600,6 +1622,7 @@ export function useFluidSimulation() {
     pointers.push(createPointer())
 
     updateKeywords()
+    resizeCanvas()
     initFramebuffers()
 
     // Initial splats (skip if hero wants black-first activation)
@@ -1643,5 +1666,5 @@ export function useFluidSimulation() {
     splatStack = []
   }
 
-  return { init, resize, destroy }
+  return { init, resize, destroy, multipleSplats, emitSplat }
 }

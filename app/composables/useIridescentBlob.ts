@@ -170,22 +170,21 @@ export function useIridescentBlob(): IridescentBlobAPI {
     const mesh = new THREE.Mesh(geo, material)
     scene.add(mesh)
 
-    // ─── Lighting ───
-    const ambient = new THREE.AmbientLight(0x303050, 1.0)
+    /* PointLight modern Three.js memakai physically-correct decay kuadratik —
+       butuh intensitas puluhan candela agar terbaca di jarak 3-5 unit;
+       nilai satuan kecil membuat blob nyaris hitam */
+    const ambient = new THREE.AmbientLight(0x303050, 2.0)
     scene.add(ambient)
 
-    // Brand electric blue — primary key light
-    const pointBlue = new THREE.PointLight(0x0047FF, 4, 20)
+    const pointBlue = new THREE.PointLight(0x0047FF, 60, 20)
     pointBlue.position.set(2, 3, 4)
     scene.add(pointBlue)
 
-    // Brand cyan — secondary fill
-    const pointCyan = new THREE.PointLight(0xA1E0E7, 2, 15)
+    const pointCyan = new THREE.PointLight(0xA1E0E7, 30, 15)
     pointCyan.position.set(-3, -1, 2)
     scene.add(pointCyan)
 
-    // Warm rim for depth
-    const pointRim = new THREE.PointLight(0x4A2A80, 1.5, 10)
+    const pointRim = new THREE.PointLight(0x4A2A80, 25, 10)
     pointRim.position.set(0, -2, -3)
     scene.add(pointRim)
 
