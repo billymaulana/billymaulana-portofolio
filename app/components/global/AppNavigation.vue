@@ -336,7 +336,7 @@ onUnmounted(() => {
 /* ═══ Logo ═══ */
 .nav-logo {
   position: fixed;
-  top: clamp(1.25rem, 3vh, 2rem);
+  top: var(--hero-pad-v);
   left: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
   z-index: var(--z-nav);
   mix-blend-mode: difference;
@@ -353,7 +353,7 @@ onUnmounted(() => {
 /* ═══ Hamburger — 2 lines → X ═══ */
 .nav-burger {
   position: fixed;
-  top: clamp(1.25rem, 3vh, 2rem);
+  top: var(--hero-pad-v);
   right: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
   z-index: var(--z-nav);
   mix-blend-mode: difference;
@@ -431,7 +431,7 @@ onUnmounted(() => {
     radial-gradient(ellipse 50% 50% at 80% 80%, rgba(15, 10, 114, 0.12) 0%, transparent 50%),
     var(--void-blue, #060610);
   visibility: hidden;
-  clip-path: circle(0% at calc(100% - clamp(1.5rem, 4vw, 4rem) - 16px) clamp(1.25rem, 3vh, 2rem));
+  clip-path: circle(0% at calc(100% - clamp(1.5rem, 4vw, 4rem) - 16px) var(--hero-pad-v));
   display: flex;
   justify-content: center;
   align-items: center;

@@ -9,7 +9,7 @@ const MASTHEAD_TEXT = 'BILLYMAULANA'
 const NAME_FONT = '\'Bebas Neue\', \'Anton\', Impact, sans-serif'
 const NAME_TRACKING_EM = -0.04
 const NAME_MEASURE_BASE_PX = 100
-const NAME_Y_FRAC = 0.90
+const NAME_Y_FRAC = 0.89
 const NAME_OVERSHOOT_RIGHT_FRAC = 0
 
 const SOCIAL_LINKS = [
@@ -104,6 +104,50 @@ function measureMasthead(width: number): MastheadMetrics {
   }
 }
 
+/* mono/meta diposisikan CSS by box sedangkan masthead by ink: side bearing
+   dan trailing letter-spacing membuat tepi visualnya meleset dari garis grid
+   yang sama. Glyph panah CTA tidak ada di Switzer dan jatuh ke font fallback
+   sistem — metriknya berbeda antar-OS, jadi gap diukur runtime dan tidak
+   boleh dikonstankan. */
+function inkGap(el: HTMLElement, edge: 'left' | 'right'): number {
+  const ctx = document.createElement('canvas').getContext('2d')
+  if (!ctx)
+    return 0
+  const style = getComputedStyle(el)
+  const raw = el.textContent?.trim() ?? ''
+  if (!raw)
+    return 0
+  const text = style.textTransform === 'uppercase'
+    ? raw.toUpperCase()
+    : style.textTransform === 'lowercase' ? raw.toLowerCase() : raw
+  ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+  if ('letterSpacing' in ctx)
+    ctx.letterSpacing = style.letterSpacing === 'normal' ? '0px' : style.letterSpacing
+  const metrics = ctx.measureText(text)
+  const gap = edge === 'left'
+    ? -metrics.actualBoundingBoxLeft
+    : metrics.width - metrics.actualBoundingBoxRight
+  return Number.isFinite(gap) ? gap : 0
+}
+
+const INK_EDGES: [selector: string, cssVar: string, edge: 'left' | 'right'][] = [
+  ['.hero__mono--b', '--ink-mono-b', 'left'],
+  ['.hero__mono--m', '--ink-mono-m', 'right'],
+  ['.hero__meta-clock', '--ink-clock', 'left'],
+  ['.hero__meta-arrow', '--ink-cta', 'right'],
+]
+
+function layoutInkEdges() {
+  const section = sectionRef.value
+  if (!section)
+    return
+  for (const [selector, cssVar, edge] of INK_EDGES) {
+    const el = section.querySelector<HTMLElement>(selector)
+    if (el)
+      document.documentElement.style.setProperty(cssVar, `${inkGap(el, edge).toFixed(3)}px`)
+  }
+}
+
 /* --hero-pad diset di document.documentElement dengan distortionTextPadding
    yang sama dengan pengukuran masthead: fallback clamp CSS memakai vw
    (termasuk scrollbar) sehingga bisa meleset dari clientWidth — satu sumber
@@ -121,6 +165,10 @@ function layoutMasthead() {
   name.style.left = `${m.left}px`
   name.style.top = `${baselineY - m.baselineFromTop}px`
   name.style.fontSize = `${m.fontSize}px`
+  /* fit-to-width diukur dengan NAME_TRACKING_EM: bila tracking hanya hidup di
+     CSS, DOM melebar ~120px dari raster WebGL dan crossfade tampak melompat */
+  name.style.letterSpacing = `${NAME_TRACKING_EM}em`
+  name.style.visibility = 'inherit'
   mastheadHit = {
     left: m.pad,
     right: section.clientWidth - m.pad,
@@ -213,12 +261,14 @@ onMounted(async () => {
   await document.fonts.load(`400 100px ${NAME_FONT}`)
   await document.fonts.ready
   layoutMasthead()
+  layoutInkEdges()
   nameChars = nameRef.value ? buildNameChars(nameRef.value) : []
 
   uploadMasthead()
 
   textResizeHandler = () => {
     layoutMasthead()
+    layoutInkEdges()
     uploadMasthead()
   }
   window.addEventListener('resize', textResizeHandler)
@@ -303,19 +353,38 @@ onMounted(async () => {
         },
       })
 
+      const fadeTrigger = () => ({
+        trigger: sectionRef.value,
+        start: 'top top',
+        end: '50% top',
+        scrub: true,
+      })
+
       gsap.to(
-        [contentRef.value, fluidCanvasRef.value, taglineRef.value, monoBRef.value, monoMRef.value, metaRef.value].filter(Boolean),
+        [contentRef.value, taglineRef.value, monoBRef.value, monoMRef.value, metaRef.value].filter(Boolean),
         {
           opacity: 0,
           ease: 'none',
-          scrollTrigger: {
-            trigger: sectionRef.value,
-            start: 'top top',
-            end: '50% top',
-            scrub: true,
-          },
+          scrollTrigger: fadeTrigger(),
         },
       )
+
+      /* Kanvas dipisah dengan start eksplisit: opacity-nya juga ditulis
+         timeline entrance (0 → 1 pada 1.35s). Tanpa fromTo, tween scrub
+         merekam nilai saat render pertama — yang masih 0 — sehingga menjadi
+         0 → 0 dan kanvas tak pernah muncul lagi sampai reload */
+      if (fluidCanvasRef.value) {
+        gsap.fromTo(
+          fluidCanvasRef.value,
+          { opacity: 1 },
+          {
+            opacity: 0,
+            ease: 'none',
+            immediateRender: false,
+            scrollTrigger: fadeTrigger(),
+          },
+        )
+      }
     }
   })
 })
@@ -324,6 +393,8 @@ onUnmounted(() => {
   /* Tanpa dilepas, nilai px terakhir menempel di root dan jadi stale saat
      resize di halaman lain — fallback clamp CSS mengambil alih kembali */
   document.documentElement.style.removeProperty('--hero-pad')
+  for (const [, cssVar] of INK_EDGES)
+    document.documentElement.style.removeProperty(cssVar)
   gsapCtx?.revert()
   fluid.destroy()
   heroStage.destroy()
@@ -434,10 +505,10 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   left: 0;
+  visibility: hidden;
   font-family: 'Bebas Neue', 'Anton', Impact, sans-serif;
   font-weight: 400;
   font-size: 24vw;
-  letter-spacing: -0.01em;
   line-height: 1;
   color: #F2EFEA;
   white-space: nowrap;
@@ -505,18 +576,18 @@ onUnmounted(() => {
 }
 
 .hero__mono--b {
-  left: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
+  left: calc(var(--hero-pad, clamp(1.5rem, 4vw, 4rem)) - var(--ink-mono-b, 0px));
 }
 
 .hero__mono--m {
-  right: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
+  right: calc(var(--hero-pad, clamp(1.5rem, 4vw, 4rem)) - var(--ink-mono-m, 0px));
 }
 
 .hero__meta {
   position: absolute;
   left: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
   right: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
-  bottom: clamp(1.25rem, 2.6vh, 2rem);
+  bottom: var(--hero-pad-v);
   z-index: 6;
   display: flex;
   align-items: baseline;
@@ -532,6 +603,8 @@ onUnmounted(() => {
 }
 
 .hero__meta-clock {
+  position: relative;
+  left: calc(0px - var(--ink-clock, 0px));
   flex: 1 1 0;
   font-variant-numeric: tabular-nums;
 }
@@ -563,11 +636,19 @@ onUnmounted(() => {
 
 .hero__meta-cta {
   pointer-events: auto;
+  position: relative;
   display: inline-flex;
   align-items: baseline;
   gap: 0.75rem;
+  margin-right: calc(0px - var(--ink-cta, 0px));
   color: inherit;
   transition: color 0.3s var(--ease-out-expo);
+}
+
+.hero__meta-cta::after {
+  content: '';
+  position: absolute;
+  inset: -0.5rem 0;
 }
 
 .hero__meta-cta:hover {
@@ -586,8 +667,15 @@ onUnmounted(() => {
 
 .hero__meta-link {
   pointer-events: auto;
+  position: relative;
   color: inherit;
   transition: color 0.3s var(--ease-out-expo);
+}
+
+.hero__meta-link::after {
+  content: '';
+  position: absolute;
+  inset: -0.5rem 0;
 }
 
 .hero__meta-link:hover {

@@ -197,6 +197,8 @@ ul, ol {
   --accent-lcyan:   var(--event-cyan);
   --accent-glow:    rgba(0, 71, 255, 0.15);
 
+  --hero-pad-v: calc(var(--hero-pad, clamp(1.5rem, 4vw, 4rem)) * 0.618);
+
   /* ═══ FONT STACKS — 4 Roles + 1 Display ═══ */
   --font-hero:      'Switzer', 'Helvetica Neue', 'Helvetica', sans-serif;
   --font-statement: 'PP Editorial New', 'Georgia', serif;
