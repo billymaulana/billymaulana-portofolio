@@ -7,10 +7,10 @@ import { profile } from '~/constants/profile'
 
 const MASTHEAD_TEXT = 'BILLYMAULANA'
 const NAME_FONT = '\'Bebas Neue\', \'Anton\', Impact, sans-serif'
-const NAME_TRACKING_EM = -0.01
+const NAME_TRACKING_EM = -0.04
 const NAME_MEASURE_BASE_PX = 100
-const NAME_Y_FRAC = 0.925
-const NAME_OVERSHOOT_RIGHT_FRAC = 0.005
+const NAME_Y_FRAC = 0.90
+const NAME_OVERSHOOT_RIGHT_FRAC = 0
 
 const SOCIAL_LINKS = [
   { label: 'GitHub', href: profile.github },
@@ -81,10 +81,9 @@ interface MastheadMetrics {
 /* Fit & posisi berbasis lebar INK (actualBoundingBox), bukan advance width:
    side bearing font membuat tepi visual B/A meleset dari pad bila memakai
    advance — semua metric diukur di base size lalu diskala linear (letter-
-   spacing px ikut fontSize sehingga skala tetap linear). Tepi kanan diberi
-   overshoot optik +0.5% dari target width: glyph "A" terakhir Bebas
-   berdiagonal sehingga tanpa overshoot tepi kanan tampak masuk — tepi kiri
-   "B" (stem datar) tetap presisi di pad karena left dihitung dari kiri */
+   spacing px ikut fontSize sehingga skala tetap linear). Overshoot optik
+   kanan dihapus (frac 0): user meminta tepi "A" terkunci persis di garis
+   grid hamburger/M — presisi grid menang atas kompensasi diagonal glyph */
 function measureMasthead(width: number): MastheadMetrics {
   const ctx = document.createElement('canvas').getContext('2d')!
   ctx.font = `400 ${NAME_MEASURE_BASE_PX}px ${NAME_FONT}`

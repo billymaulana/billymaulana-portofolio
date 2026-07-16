@@ -200,7 +200,7 @@ ul, ol {
   /* ═══ FONT STACKS — 4 Roles + 1 Display ═══ */
   --font-hero:      'Switzer', 'Helvetica Neue', 'Helvetica', sans-serif;
   --font-statement: 'PP Editorial New', 'Georgia', serif;
-  --font-interface: 'Satoshi', 'Inter', system-ui, sans-serif;
+  --font-interface: 'Switzer', 'Helvetica Neue', system-ui, sans-serif;
   --font-system:    'JetBrains Mono', 'Fira Code', monospace;
   --font-display:   'Clash Display', 'Inter', system-ui, sans-serif;
   /* Legacy aliases */
