@@ -20,6 +20,9 @@ const MENU_ITEMS: MenuItem[] = [
   { label: 'Contact', target: '#contact' },
 ]
 
+const route = useRoute()
+const isNavHidden = computed(() => route.path === '/hero-yakushev')
+
 const isOpen = ref(false)
 const triggerRef = ref<HTMLElement>()
 const overlayRef = ref<HTMLElement>()
@@ -36,6 +39,16 @@ let magnetCurrentY = 0
 const MAGNET_RADIUS = 50
 const MAGNET_STRENGTH = 0.3
 const MAGNET_LERP = 0.1
+
+/* v-if melepas overlay dari DOM saat masuk route hidden — tanpa reset ini
+   body.overflow tertinggal 'hidden' bila menu sedang terbuka saat navigasi */
+watch(isNavHidden, (hidden) => {
+  if (hidden && isOpen.value) {
+    timeline?.kill()
+    isOpen.value = false
+    document.body.style.overflow = ''
+  }
+})
 
 // ─── Magnetic trigger ───
 
@@ -242,79 +255,81 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- BM Logo — top-left -->
-  <a
-    class="nav-logo"
-    href="#"
-    aria-label="Back to top"
-    data-cursor="link"
-    @click.prevent="scrollToTop"
-  >
-    <img
-      src="/assets/images/logo/logo-bm-white-origin.svg"
-      alt="BM"
-      class="nav-logo__img"
-      width="28"
-      height="28"
+  <template v-if="!isNavHidden">
+    <!-- BM Logo — top-left -->
+    <a
+      class="nav-logo"
+      href="#"
+      aria-label="Back to top"
+      data-cursor="link"
+      @click.prevent="scrollToTop"
     >
-  </a>
-
-  <!-- Hamburger trigger — top-right -->
-  <button
-    ref="triggerRef"
-    class="nav-burger"
-    :class="{ 'is-open': isOpen }"
-    :aria-expanded="isOpen"
-    aria-controls="nav-overlay"
-    aria-label="Toggle menu"
-    data-cursor="link"
-    @click="toggleMenu"
-    @mousemove="onTriggerMouseMove"
-    @mouseleave="onTriggerMouseLeave"
-  >
-    <span class="nav-burger__line nav-burger__line--top" />
-    <span class="nav-burger__line nav-burger__line--bot" />
-    <!-- Close icon: visible when menu is open -->
-    <svg
-      class="nav-burger__close-icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2.5"
-      stroke-linecap="round"
-      aria-hidden="true"
-    >
-      <line x1="6" y1="6" x2="18" y2="18" />
-      <line x1="18" y1="6" x2="6" y2="18" />
-    </svg>
-  </button>
-
-  <!-- Full-screen overlay -->
-  <div
-    id="nav-overlay"
-    ref="overlayRef"
-    class="nav-overlay"
-    :class="{ 'nav-overlay--open': isOpen }"
-    role="dialog"
-    :aria-hidden="!isOpen"
-    aria-label="Navigation menu"
-  >
-    <nav class="nav-overlay__inner" aria-label="Main navigation">
-      <a
-        v-for="(item, index) in MENU_ITEMS"
-        :key="item.label"
-        :ref="(el) => { if (el) itemRefs[index] = el as HTMLElement }"
-        class="nav-menu__item"
-        :href="item.target"
-        role="menuitem"
-        :tabindex="isOpen ? 0 : -1"
-        @click.prevent="navigateToSection(item.target)"
+      <img
+        src="/assets/images/logo/logo-bm-white-origin.svg"
+        alt="BM"
+        class="nav-logo__img"
+        width="28"
+        height="28"
       >
-        <span class="nav-menu__num">{{ String(index + 1).padStart(2, '0') }}</span>
-        <span class="nav-menu__label">{{ item.label }}</span>
-      </a>
-    </nav>
-  </div>
+    </a>
+
+    <!-- Hamburger trigger — top-right -->
+    <button
+      ref="triggerRef"
+      class="nav-burger"
+      :class="{ 'is-open': isOpen }"
+      :aria-expanded="isOpen"
+      aria-controls="nav-overlay"
+      aria-label="Toggle menu"
+      data-cursor="link"
+      @click="toggleMenu"
+      @mousemove="onTriggerMouseMove"
+      @mouseleave="onTriggerMouseLeave"
+    >
+      <span class="nav-burger__line nav-burger__line--top" />
+      <span class="nav-burger__line nav-burger__line--bot" />
+      <!-- Close icon: visible when menu is open -->
+      <svg
+        class="nav-burger__close-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
+        <line x1="6" y1="6" x2="18" y2="18" />
+        <line x1="18" y1="6" x2="6" y2="18" />
+      </svg>
+    </button>
+
+    <!-- Full-screen overlay -->
+    <div
+      id="nav-overlay"
+      ref="overlayRef"
+      class="nav-overlay"
+      :class="{ 'nav-overlay--open': isOpen }"
+      role="dialog"
+      :aria-hidden="!isOpen"
+      aria-label="Navigation menu"
+    >
+      <nav class="nav-overlay__inner" aria-label="Main navigation">
+        <a
+          v-for="(item, index) in MENU_ITEMS"
+          :key="item.label"
+          :ref="(el) => { if (el) itemRefs[index] = el as HTMLElement }"
+          class="nav-menu__item"
+          :href="item.target"
+          role="menuitem"
+          :tabindex="isOpen ? 0 : -1"
+          @click.prevent="navigateToSection(item.target)"
+        >
+          <span class="nav-menu__num">{{ String(index + 1).padStart(2, '0') }}</span>
+          <span class="nav-menu__label">{{ item.label }}</span>
+        </a>
+      </nav>
+    </div>
+  </template>
 </template>
 
 <style scoped>
@@ -322,7 +337,7 @@ onUnmounted(() => {
 .nav-logo {
   position: fixed;
   top: clamp(1.25rem, 3vh, 2rem);
-  left: var(--page-margin);
+  left: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
   z-index: var(--z-nav);
   mix-blend-mode: difference;
   display: flex;
@@ -339,7 +354,7 @@ onUnmounted(() => {
 .nav-burger {
   position: fixed;
   top: clamp(1.25rem, 3vh, 2rem);
-  right: var(--page-margin);
+  right: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
   z-index: var(--z-nav);
   mix-blend-mode: difference;
   width: 32px;
@@ -416,7 +431,7 @@ onUnmounted(() => {
     radial-gradient(ellipse 50% 50% at 80% 80%, rgba(15, 10, 114, 0.12) 0%, transparent 50%),
     var(--void-blue, #060610);
   visibility: hidden;
-  clip-path: circle(0% at calc(100% - var(--page-margin) - 16px) clamp(1.25rem, 3vh, 2rem));
+  clip-path: circle(0% at calc(100% - clamp(1.5rem, 4vw, 4rem) - 16px) clamp(1.25rem, 3vh, 2rem));
   display: flex;
   justify-content: center;
   align-items: center;

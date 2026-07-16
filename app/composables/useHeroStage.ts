@@ -1,17 +1,7 @@
-type GsapStatic = typeof import('gsap')['gsap']
-
-interface GhostDrift {
-  onPointerMove: (e: PointerEvent) => void
-  destroy: () => void
-}
-
-const GHOST_DRIFT_MAX_PX = 18
-
 export function useHeroStage() {
   const clockText = ref('00:00:00')
   let clockTimer: ReturnType<typeof setInterval> | null = null
   let rotatorTimer: ReturnType<typeof setInterval> | null = null
-  let ghostDrift: GhostDrift | null = null
 
   function startClock() {
     if (clockTimer)
@@ -46,33 +36,6 @@ export function useHeroStage() {
     }, intervalMs)
   }
 
-  function attachGhostDrift(gsap: GsapStatic, target: HTMLElement): GhostDrift {
-    let halfW = window.innerWidth / 2
-    let halfH = window.innerHeight / 2
-    const refreshViewport = () => {
-      halfW = window.innerWidth / 2
-      halfH = window.innerHeight / 2
-    }
-    window.addEventListener('resize', refreshViewport)
-
-    const xTo = gsap.quickTo(target, 'x', { duration: 0.8, ease: 'expo.out' })
-    const yTo = gsap.quickTo(target, 'y', { duration: 0.8, ease: 'expo.out' })
-
-    function onPointerMove(e: PointerEvent) {
-      xTo(((e.clientX - halfW) / halfW) * GHOST_DRIFT_MAX_PX)
-      yTo(((e.clientY - halfH) / halfH) * GHOST_DRIFT_MAX_PX)
-    }
-
-    ghostDrift = {
-      onPointerMove,
-      destroy: () => {
-        window.removeEventListener('resize', refreshViewport)
-        ghostDrift = null
-      },
-    }
-    return ghostDrift
-  }
-
   function destroy() {
     if (clockTimer) {
       clearInterval(clockTimer)
@@ -82,14 +45,12 @@ export function useHeroStage() {
       clearInterval(rotatorTimer)
       rotatorTimer = null
     }
-    ghostDrift?.destroy()
   }
 
   return {
     clockText,
     startClock,
     startStatusRotator,
-    attachGhostDrift,
     destroy,
   }
 }

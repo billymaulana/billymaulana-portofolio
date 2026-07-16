@@ -124,40 +124,130 @@ async function runCinematic() {
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PHASE 2: GOO RESOLVE — LOGO EMERGES (1.2s → 4.2s)
-  // CRZ-style: explode 3→0, strength 1.2→0.
-  // Liquid resolves into clear BM logo. Shader designed for this.
+  // PHASE 2: GOO RESOLVE — LOGO EMERGES (1.2s → 6.2s)
+  // CRZ-style: explode 3→0, strength 1.2→residual.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  tl.to({}, {
-    duration: 4.2,
+  /*
+   * Each physical quantity gets its own clock: one uniform ease across all
+   * uniforms makes the liquid "complete itself" mechanically and land hard.
+   * Big mass motion (explode) finishes early, position gathering (converge)
+   * next, surface noise (strength/flow) lives longest.
+   */
+  const shader = {
+    explode: 3.0,
+    strength: 1.2,
+    converge: 0,
+    flow: 0.12,
+    fill: 0.85,
+    pulse: 0,
+  }
+
+  if (isDebug) {
+    /*
+     * seek() suppresses tween onUpdate, so scrubbing from the console needs
+     * direct access to the timeline and the shader value proxy to re-push
+     * uniforms after a jump.
+     */
+    ;(window as any).__tl = tl
+    ;(window as any).__shader = shader
+  }
+
+  tl.addLabel('resolve')
+
+  /*
+   * power3.out instead of expo.out: uExplode is clamped to 0..1 in the
+   * shader, so the 3→1 stretch is invisible dead travel. expo.out burns
+   * through it plus most of the visible morph in the first second;
+   * power3.out keeps the same early-mass intent but spreads the readable
+   * goo→logo window across ~2.2s.
+   */
+  tl.to(shader, {
+    explode: 0,
+    duration: 3.2,
+    ease: 'power3.out',
+    onUpdate: () => blob.setExplode(shader.explode),
+  }, 'resolve')
+
+  tl.to(shader, {
+    strength: 0.12,
+    duration: 3.4,
+    ease: 'power3.out',
+    onUpdate: () => blob.setStrength(shader.strength),
+  }, 'resolve+=0.4')
+
+  /*
+   * Surface-tension overshoot lives on uStrength because uConverge and
+   * uExplode are both clamped to 0..1 in the goo shader (values past the
+   * final pose are no-ops there). Strength crosses through zero into a
+   * brief outward rebound, then settles at a small positive residual —
+   * exactly zero would freeze the surface entirely since every
+   * displacement term in the shader is multiplied by uStrength.
+   */
+  tl.to(shader, {
+    strength: -0.04,
+    duration: 0.4,
     ease: 'expo.inOut',
-    onUpdate() {
-      const p = this.progress()
-      // Sub-ease the noise parameters with extra smoothing near the end —
-      // squared ease pulls breakup/shock to 0 faster, so last beat is clean.
-      const late = p * p * (3 - 2 * p)
-      blob.setExplode(3.0 * (1.0 - late))
-      blob.setStrength(1.2 * (1.0 - late))
-      blob.setFlowIntensity(0.12 - 0.10 * p)
-      // Fill brightens as logo clarifies
-      blob.setFill(0.85 + 0.15 * p)
-      // Brief dim pulse at midpoint — masks recognition threshold
-      blob.setFadeToBlack(Math.sin(p * Math.PI) * 0.08)
-    },
-  })
+    onUpdate: () => blob.setStrength(shader.strength),
+  }, 'resolve+=3.8')
+
+  tl.to(shader, {
+    strength: 0.05,
+    duration: 0.8,
+    ease: 'power3.out',
+    onUpdate: () => blob.setStrength(shader.strength),
+  }, 'resolve+=4.2')
+
+  tl.to(shader, {
+    converge: 0.97,
+    duration: 2.8,
+    ease: 'expo.inOut',
+    onUpdate: () => blob.setConverge(shader.converge),
+  }, 'resolve+=0.6')
+
+  tl.to(shader, {
+    converge: 1.0,
+    duration: 0.9,
+    ease: 'power3.out',
+    onUpdate: () => blob.setConverge(shader.converge),
+  }, 'resolve+=3.4')
+
+  tl.to(shader, {
+    flow: 0.03,
+    duration: 4.6,
+    ease: 'power3.out',
+    onUpdate: () => blob.setFlowIntensity(shader.flow),
+  }, 'resolve')
+
+  tl.to(shader, {
+    fill: 1.0,
+    duration: 2.2,
+    ease: 'power3.out',
+    onUpdate: () => blob.setFill(shader.fill),
+  }, 'resolve+=1.6')
+
+  /*
+   * Dim pulse masks the recognition threshold; sine of eased progress
+   * returns to zero at both ends so the seams carry no visible step.
+   */
+  tl.to(shader, {
+    pulse: 1,
+    duration: 2.6,
+    ease: 'expo.inOut',
+    onUpdate: () => blob.setFadeToBlack(Math.sin(shader.pulse * Math.PI) * 0.05),
+  }, 'resolve+=0.4')
 
   // Vignette focuses attention on center during resolve
   if (vignetteRef.value) {
     tl.to(vignetteRef.value, {
       opacity: 0.3,
-      duration: 4.2,
-      ease: 'power2.in',
-    }, '<')
+      duration: 5.0,
+      ease: 'expo.inOut',
+    }, 'resolve')
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PHASE 3: LOGO HOLDS — RECOGNITION (4.2s → 4.8s)
+  // PHASE 3: LOGO HOLDS — RECOGNITION (6.2s → 7.05s)
   // Clear BM logo, brief cinematic pause.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -169,8 +259,11 @@ async function runCinematic() {
       const p = this.progress()
       const ping = Math.sin(p * Math.PI)
       blob.setFill(1.0 + 0.05 * ping)
-      // Micro flow pulse — liquid remembers it was alive
-      blob.setFlowIntensity(0.02 + 0.03 * ping)
+      /*
+       * Baseline 0.03 matches the flow residual left by PHASE 2 so the
+       * pulse splices in without a step.
+       */
+      blob.setFlowIntensity(0.03 + 0.03 * ping)
     },
   })
 
@@ -206,7 +299,7 @@ async function runCinematic() {
   }
 
   // Brief hold — let the beat land
-  tl.to({}, { duration: 0.3 })
+  tl.to({}, { duration: 0.35 })
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // PHASE 4: CLIP-PATH REVEAL EXIT
