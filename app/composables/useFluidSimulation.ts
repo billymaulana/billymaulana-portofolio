@@ -1177,11 +1177,6 @@ export function useFluidSimulation() {
     blit!(velocity!.write)
     velocity!.swap()
 
-    /* Mode content: dye tak pernah ditampilkan — advection 512px-nya
-       (pass termahal sim) di-skip. Velocity tetap penuh */
-    if (contentDisplayEnabled)
-      return
-
     if (!ext!.supportLinearFiltering)
       g.uniform2f(advectionProgram!.uniforms.dyeTexelSize!, dye!.texelSizeX, dye!.texelSizeY)
     g.uniform1i(advectionProgram!.uniforms.uVelocity!, velocity!.read.attach(0))
@@ -1282,7 +1277,7 @@ export function useFluidSimulation() {
     g.disable(g.BLEND)
     contentDisplayProgram.bind()
     g.uniform1i(contentDisplayProgram.uniforms.tMap!, contentTexture.attach(0))
-    g.uniform1i(contentDisplayProgram.uniforms.tFluid!, velocity!.read.attach(1))
+    g.uniform1i(contentDisplayProgram.uniforms.tFluid!, dye!.read.attach(1))
     blit!(target)
   }
 
@@ -1368,6 +1363,14 @@ export function useFluidSimulation() {
      frame (perilaku lama) meninggalkan titik-titik terpisah saat flick
      karena delta satu frame bisa melampaui radius gaussian */
   function splatSegment(seg: SplatSegment) {
+    /* Paritas daspritam pada mode content: SATU splat penuh per event di
+       posisi terkini — interpolasi sub-splat (dibuat untuk pita tinta
+       visible) melipatgandakan coverage dye ~8x sehingga displacement
+       membanjiri seluruh pita teks, bukan mengikuti jalur cursor */
+    if (contentDisplayEnabled) {
+      splat(seg.toX, seg.toY, seg.deltaX * config.SPLAT_FORCE, seg.deltaY * config.SPLAT_FORCE, seg.color)
+      return
+    }
     const dist = Math.hypot(seg.deltaX, seg.deltaY)
     const count = Math.max(1, Math.min(Math.ceil(dist / SPLAT_INTERP_SPACING), MAX_SPLATS_PER_SEGMENT))
     /* Momentum dibagi rata antar sub-splat: total energi per segmen setara
@@ -1419,17 +1422,30 @@ export function useFluidSimulation() {
     g.uniform1f(splatProgram!.uniforms.aspectRatio!, canvas!.width / canvas!.height)
     g.uniform2f(splatProgram!.uniforms.point!, x, y)
     g.uniform3f(splatProgram!.uniforms.color!, dx, dy, 0.0)
-    g.uniform1f(splatProgram!.uniforms.radius!, correctRadius(config.SPLAT_RADIUS / 100.0))
+    /* Wiring OGL referensi memakai radius mentah tanpa koreksi aspect —
+       correctRadius Pavel melebarkan blob ~2x di layar landscape */
+    g.uniform1f(splatProgram!.uniforms.radius!, contentDisplayEnabled
+      ? config.SPLAT_RADIUS / 100.0
+      : correctRadius(config.SPLAT_RADIUS / 100.0))
     g.uniform1f(splatProgram!.uniforms.clampValue!, VELOCITY_CLAMP)
     blit!(velocity!.write)
     velocity!.swap()
 
-    if (contentDisplayEnabled)
-      return
-
     g.uniform1i(splatProgram!.uniforms.uTarget!, dye!.read.attach(0))
-    g.uniform3f(splatProgram!.uniforms.color!, color.r, color.g, color.b)
-    g.uniform1f(splatProgram!.uniforms.clampValue!, DYE_MAX)
+    if (contentDisplayEnabled) {
+      /* Paritas daspritam: dye di-splat dengan vektor kecepatan (dx,dy,1) dan
+         menjadi peta displacement — bukan velocity field. Velocity hasil
+         pressure-projection punya lobus +/- berselang dan disustain vorticity
+         (tearing zebra + residu saat idle); density murni ter-advect dan
+         meluruh multiplicative sehingga teks selalu pulih utuh. Tanpa clamp
+         DYE_MAX: nilai kecepatan ratusan akan tergencet ke 0.85 */
+      g.uniform3f(splatProgram!.uniforms.color!, dx, dy, 1.0)
+      g.uniform1f(splatProgram!.uniforms.clampValue!, VELOCITY_CLAMP)
+    }
+    else {
+      g.uniform3f(splatProgram!.uniforms.color!, color.r, color.g, color.b)
+      g.uniform1f(splatProgram!.uniforms.clampValue!, DYE_MAX)
+    }
     blit!(dye!.write)
     dye!.swap()
   }
