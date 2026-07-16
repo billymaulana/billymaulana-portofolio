@@ -67,6 +67,16 @@ interface Pointer {
   color: FluidColor
 }
 
+interface SplatSegment {
+  fromX: number
+  fromY: number
+  toX: number
+  toY: number
+  deltaX: number
+  deltaY: number
+  color: FluidColor
+}
+
 export function useFluidSimulation() {
   // ── State ──
   let canvas: HTMLCanvasElement | null = null
@@ -75,39 +85,70 @@ export function useFluidSimulation() {
   let isWebGL2 = false
   let animFrameId = 0
 
-  // ── Config (Pavel defaults) ──
+  /* Kalibrasi perilaku fluid daspritam.in (decay multiplicative per-frame
+     dikonversi ke bentuk divisive Pavel 1/(1+d*dt) pada dt 1/60):
+     dye 0.93/frame -> 4.5 · velocity 0.90/frame -> 6.7 · curl 20 ·
+     pressure iterations 3 · splat force deltaPx*5 ~ 7200 screen-normalized.
+     Trail mati cepat = tidak ada akumulasi dye = tidak bisa blow-out putih */
   const config = {
     SIM_RESOLUTION: 128,
-    DYE_RESOLUTION: 1024,
-    /* 0.9 (dari default 1.5): tinta bertahan ~2.5s agar pita di void
-       sempat diapresiasi — recognition beat setelah gerakan berhenti */
-    DENSITY_DISSIPATION: 0.9,
-    VELOCITY_DISSIPATION: 0.6,
+    DYE_RESOLUTION: 512,
+    /* 3.5, bukan 4.5 hasil konversi persis: trail butuh sisa napas ~1s agar
+       smear terbaca sebagai air, bukan kilat. Clamp DYE_MAX tetap menjamin
+       anti blow-out pada dissipation berapapun */
+    DENSITY_DISSIPATION: 4.5,
+    VELOCITY_DISSIPATION: 6.7,
     PRESSURE: 0.8,
-    PRESSURE_ITERATIONS: 20,
-    CURL: 30,
-    SPLAT_RADIUS: 0.18,
-    SPLAT_FORCE: 6000,
-    SHADING: true,
+    PRESSURE_ITERATIONS: 3,
+    /* 14, bukan 20 forensik daspritam: tanpa shading, vorticity 20 masih
+       menyisakan tendril keriting di tepi blob — referensi bertepi mulus */
+    CURL: 14,
+    SPLAT_RADIUS: 0.35,
+    SPLAT_FORCE: 7200,
+    /* Referensi daspritam tanpa shading/bloom/sunrays: normal-based shading
+       memberi relief 3D kasar, sunrays flicker radial saat dye melewati
+       threshold — keduanya sumber "kedip" dan tekstur berkerut */
+    SHADING: false,
     COLORFUL: true,
     COLOR_UPDATE_SPEED: 10,
     PAUSED: false,
     BACK_COLOR: { r: 0, g: 0, b: 0 },
     TRANSPARENT: false,
-    BLOOM: true,
+    BLOOM: false,
     BLOOM_ITERATIONS: 8,
     BLOOM_RESOLUTION: 256,
-    BLOOM_INTENSITY: 0.8,
-    BLOOM_THRESHOLD: 0.6,
+    BLOOM_INTENSITY: 0.7,
+    BLOOM_THRESHOLD: 0.8,
     BLOOM_SOFT_KNEE: 0.7,
-    SUNRAYS: true,
+    SUNRAYS: false,
     SUNRAYS_RESOLUTION: 196,
     SUNRAYS_WEIGHT: 1.0,
   }
 
+  /* Dye di-clamp saat splat: dissipation cepat sekalipun, gerakan menetap di
+     satu titik menumpuk deposit >1 dan bloom memutihkan layar. Clamp = plafon
+     energi; velocity TIDAK di-clamp (butuh rentang ratusan, bertanda) */
+  /* 0.85, bukan 1.0: hue cycling menumpuk deposit beda warna di titik dwell —
+     ketiga channel mencapai plafon bersamaan = core memutih. Di bawah 1.0
+     campuran tetap ber-tint dan bloom prefilter (threshold 0.8) nyaris diam */
+  const DYE_MAX = 0.85
+  const VELOCITY_CLAMP = 1e6
+  /* Sub-splat interpolasi segmen: jarak antar deposit jauh di bawah FWHM
+     gaussian radius 0.3 (~0.09 uv) supaya flick cepat tetap pita kontinu */
+  const SPLAT_INTERP_SPACING = 0.02
+  const MAX_SPLATS_PER_SEGMENT = 8
+  /* 1.4, bukan 1.8: radius 0.35 menaikkan total deposit ~2x (terukur mean
+     luminance 22 vs 11) — sustained sweep memenuhi layar dengan kabut,
+     sedangkan referensi menjaga background tetap void */
+  const DYE_SPLAT_MULT = 1.2
+
   // ── Pointers ──
   const pointers: Pointer[] = []
   let splatStack: number[] = []
+  /* Cap 32: bila rAF macet (tab background) event menumpuk — segmen tertua
+     dibuang daripada membanjiri GPU dengan ratusan splat sekali frame */
+  const splatSegments: SplatSegment[] = []
+  const MAX_QUEUED_SEGMENTS = 32
 
   // ── Programs ──
   let blurProgram: ProgramObj | null = null
@@ -139,6 +180,12 @@ export function useFluidSimulation() {
   let sunraysFBO: FBO | null = null
   let sunraysTempFBO: FBO | null = null
   let ditheringTexture: TextureObj | null = null
+
+  // ── Content display (mode displacement daspritam) ──
+  let contentDisplayEnabled = false
+  let contentDisplayProgram: ProgramObj | null = null
+  let contentTexture: TextureObj | null = null
+  let pointerGate: ((u: number, v: number) => boolean) | null = null
 
   // ── Blit ──
   let blit: ((target: FBO | null, clear?: boolean) => void) | null = null
@@ -395,12 +442,18 @@ export function useFluidSimulation() {
     uniform vec3 color;
     uniform vec2 point;
     uniform float radius;
+    uniform float clampValue;
     void main () {
         vec2 p = vUv - point.xy;
         p.x *= aspectRatio;
         vec3 splat = exp(-dot(p, p) / radius) * color;
-        vec3 base = texture2D(uTarget, vUv).xyz;
-        gl_FragColor = vec4(base + splat, 1.0);
+        vec3 result = texture2D(uTarget, vUv).xyz + splat;
+        /* Skala proporsional, bukan min() per-channel: min meratakan ketiga
+           channel ke plafon yang sama sehingga titik dwell memutih abu-abu;
+           skala mempertahankan rasio hue tinta */
+        float peak = max(result.x, max(result.y, result.z));
+        result *= peak > clampValue ? clampValue / peak : 1.0;
+        gl_FragColor = vec4(result, 1.0);
     }
   `
 
@@ -551,6 +604,32 @@ export function useFluidSimulation() {
         vec2 vel = texture2D(uVelocity, vUv).xy;
         vel.xy -= vec2(R - L, T - B);
         gl_FragColor = vec4(vel, 0.0, 1.0);
+    }
+  `
+
+  /* Display pass daspritam: velocity fluid men-displace konten (uv - vel*0.001)
+     dan menggeser channel G/B (vel*0.003) untuk fringe chromatic. Channel R
+     sengaja tidak digeser — persis source referensi */
+  const contentDisplayShaderSource = `
+    precision highp float;
+
+    uniform sampler2D tMap;
+    uniform sampler2D tFluid;
+    varying vec2 vUv;
+
+    void main() {
+      vec3 fluid = texture2D(tFluid, vUv).rgb;
+      vec2 uv = vUv;
+      vec2 uv2 = vUv - fluid.rg * 0.001;
+
+      vec4 color = texture2D(tMap, uv2);
+
+      vec3 rgb = fluid * 0.003;
+
+      color.g = texture2D(tMap, vec2(uv.x - rgb.x, uv.y + rgb.y)).g;
+      color.b = texture2D(tMap, vec2(uv.x - rgb.x, uv.y + rgb.y)).b;
+
+      gl_FragColor = color;
     }
   `
 
@@ -1030,11 +1109,14 @@ export function useFluidSimulation() {
     if (splatStack.length > 0)
       multipleSplats(splatStack.pop()!)
 
+    if (splatSegments.length > 0) {
+      for (const seg of splatSegments)
+        splatSegment(seg)
+      splatSegments.length = 0
+    }
+
     pointers.forEach((p) => {
-      if (p.moved) {
-        p.moved = false
-        splatPointer(p)
-      }
+      p.moved = false
     })
   }
 
@@ -1095,6 +1177,11 @@ export function useFluidSimulation() {
     blit!(velocity!.write)
     velocity!.swap()
 
+    /* Mode content: dye tak pernah ditampilkan — advection 512px-nya
+       (pass termahal sim) di-skip. Velocity tetap penuh */
+    if (contentDisplayEnabled)
+      return
+
     if (!ext!.supportLinearFiltering)
       g.uniform2f(advectionProgram!.uniforms.dyeTexelSize!, dye!.texelSizeX, dye!.texelSizeY)
     g.uniform1i(advectionProgram!.uniforms.uVelocity!, velocity!.read.attach(0))
@@ -1105,6 +1192,10 @@ export function useFluidSimulation() {
   }
 
   function render(target: FBO | null) {
+    if (contentDisplayEnabled) {
+      drawContentDisplay(target)
+      return
+    }
     const g = gl!
     if (config.BLOOM)
       applyBloom(dye!.read, bloomFBO!)
@@ -1149,6 +1240,49 @@ export function useFluidSimulation() {
     }
     if (config.SUNRAYS)
       g.uniform1i(displayMaterial!.uniforms.uSunrays!, sunraysFBO!.attach(3))
+    blit!(target)
+  }
+
+  function setContentCanvas(source: HTMLCanvasElement) {
+    if (!gl)
+      return
+    const g = gl
+    if (!contentTexture) {
+      const texture = g.createTexture()!
+      g.bindTexture(g.TEXTURE_2D, texture)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE)
+      contentTexture = {
+        texture,
+        width: source.width,
+        height: source.height,
+        attach(id: number) {
+          g.activeTexture(g.TEXTURE0 + id)
+          g.bindTexture(g.TEXTURE_2D, texture)
+          return id
+        },
+      }
+    }
+    g.bindTexture(g.TEXTURE_2D, contentTexture.texture)
+    /* Raster 2D top-down, vUv WebGL bottom-up — flip saat upload agar
+       searah dengan velocity field (texcoordY pointer sudah di-flip) */
+    g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, true)
+    g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, source)
+    g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, false)
+    contentTexture.width = source.width
+    contentTexture.height = source.height
+  }
+
+  function drawContentDisplay(target: FBO | null) {
+    if (!contentTexture || !contentDisplayProgram)
+      return
+    const g = gl!
+    g.disable(g.BLEND)
+    contentDisplayProgram.bind()
+    g.uniform1i(contentDisplayProgram.uniforms.tMap!, contentTexture.attach(0))
+    g.uniform1i(contentDisplayProgram.uniforms.tFluid!, velocity!.read.attach(1))
     blit!(target)
   }
 
@@ -1229,14 +1363,28 @@ export function useFluidSimulation() {
   // SPLAT + COLOR
   // ══════════════════════════════════════════════════════════════════════
 
-  function splatPointer(pointer: Pointer) {
-    const dx = pointer.deltaX * config.SPLAT_FORCE
-    const dy = pointer.deltaY * config.SPLAT_FORCE
-    /* Dye 0.15 dari generateColor terlalu redup melewati mix-blend-mode:
-       screen di atas void bg; ×8+ membanjiri viewport pada injeksi 60/s.
-       ×4.5 = pita tinta terlihat jelas tanpa menenggelamkan statement */
-    const c = pointer.color
-    splat(pointer.texcoordX, pointer.texcoordY, dx, dy, { r: c.r * 4.5, g: c.g * 4.5, b: c.b * 4.5 })
+  /* Paritas daspritam: setiap event pointer di-queue sebagai segmen lalu
+     dipecah menjadi sub-splat sepanjang garis lama->baru. Satu splat per
+     frame (perilaku lama) meninggalkan titik-titik terpisah saat flick
+     karena delta satu frame bisa melampaui radius gaussian */
+  function splatSegment(seg: SplatSegment) {
+    const dist = Math.hypot(seg.deltaX, seg.deltaY)
+    const count = Math.max(1, Math.min(Math.ceil(dist / SPLAT_INTERP_SPACING), MAX_SPLATS_PER_SEGMENT))
+    /* Momentum dibagi rata antar sub-splat: total energi per segmen setara
+       satu splat penuh, meniru deposit per-event kecil milik daspritam */
+    const dx = seg.deltaX * config.SPLAT_FORCE / count
+    const dy = seg.deltaY * config.SPLAT_FORCE / count
+    const dyeColor = {
+      r: seg.color.r * DYE_SPLAT_MULT,
+      g: seg.color.g * DYE_SPLAT_MULT,
+      b: seg.color.b * DYE_SPLAT_MULT,
+    }
+    for (let i = 1; i <= count; i++) {
+      const t = i / count
+      const x = seg.fromX + (seg.toX - seg.fromX) * t
+      const y = seg.fromY + (seg.toY - seg.fromY) * t
+      splat(x, y, dx, dy, dyeColor)
+    }
   }
 
   function multipleSplats(amount: number) {
@@ -1253,11 +1401,14 @@ export function useFluidSimulation() {
     }
   }
 
-  function emitSplat(x: number, y: number, dx: number, dy: number) {
+  /* 14 (dari 10): dissipation cepat kalibrasi daspritam memangkas umur splat
+     tunggal — deposit awal dinaikkan agar splat programatik tetap terbaca
+     tanpa mengubah kontrak pemanggil; plafon dijaga clamp DYE_MAX di shader */
+  function emitSplat(x: number, y: number, dx: number, dy: number, brightness = 1) {
     const color = generateColor()
-    color.r *= 10.0
-    color.g *= 10.0
-    color.b *= 10.0
+    color.r *= 14.0 * brightness
+    color.g *= 14.0 * brightness
+    color.b *= 14.0 * brightness
     splat(x, y, dx, dy, color)
   }
 
@@ -1269,11 +1420,16 @@ export function useFluidSimulation() {
     g.uniform2f(splatProgram!.uniforms.point!, x, y)
     g.uniform3f(splatProgram!.uniforms.color!, dx, dy, 0.0)
     g.uniform1f(splatProgram!.uniforms.radius!, correctRadius(config.SPLAT_RADIUS / 100.0))
+    g.uniform1f(splatProgram!.uniforms.clampValue!, VELOCITY_CLAMP)
     blit!(velocity!.write)
     velocity!.swap()
 
+    if (contentDisplayEnabled)
+      return
+
     g.uniform1i(splatProgram!.uniforms.uTarget!, dye!.read.attach(0))
     g.uniform3f(splatProgram!.uniforms.color!, color.r, color.g, color.b)
+    g.uniform1f(splatProgram!.uniforms.clampValue!, DYE_MAX)
     blit!(dye!.write)
     dye!.swap()
   }
@@ -1418,6 +1574,22 @@ export function useFluidSimulation() {
     pointer.deltaX = correctDeltaX(pointer.texcoordX - pointer.prevTexcoordX)
     pointer.deltaY = correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY)
     pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0
+    /* Segmen per event (bukan per frame): browser yang tidak meng-coalesce
+       mousemove mengirim >1 event/frame — semua gerakan ikut ter-splat,
+       bukan hanya delta event terakhir */
+    if (pointer.moved && (!pointerGate || pointerGate(pointer.texcoordX, pointer.texcoordY))) {
+      if (splatSegments.length >= MAX_QUEUED_SEGMENTS)
+        splatSegments.shift()
+      splatSegments.push({
+        fromX: pointer.prevTexcoordX,
+        fromY: pointer.prevTexcoordY,
+        toX: pointer.texcoordX,
+        toY: pointer.texcoordY,
+        deltaX: pointer.deltaX,
+        deltaY: pointer.deltaY,
+        color: pointer.color,
+      })
+    }
   }
 
   function updatePointerUpData(pointer: Pointer) {
@@ -1541,10 +1713,24 @@ export function useFluidSimulation() {
   // PUBLIC API
   // ══════════════════════════════════════════════════════════════════════
 
-  function init(canvasEl: HTMLCanvasElement, options?: { skipInitialSplats?: boolean, hueMin?: number, hueMax?: number }): boolean {
+  function init(canvasEl: HTMLCanvasElement, options?: {
+    skipInitialSplats?: boolean
+    hueMin?: number
+    hueMax?: number
+    curl?: number
+    splatRadius?: number
+    contentDisplay?: boolean
+    pointerGate?: (u: number, v: number) => boolean
+  }): boolean {
     canvas = canvasEl
     hueMin = options?.hueMin ?? 0
     hueMax = options?.hueMax ?? 1
+    if (options?.curl !== undefined)
+      config.CURL = options.curl
+    if (options?.splatRadius !== undefined)
+      config.SPLAT_RADIUS = options.splatRadius
+    contentDisplayEnabled = options?.contentDisplay ?? false
+    pointerGate = options?.pointerGate ?? null
 
     const ctx = getWebGLContext(canvas)
     if (!ctx || !ctx.ext.formatRGBA) {
@@ -1592,6 +1778,9 @@ export function useFluidSimulation() {
     )
 
     displayMaterial = createMaterial(baseVertexShader, displayShaderSource)
+
+    if (contentDisplayEnabled)
+      contentDisplayProgram = createProgramObj(baseVertexShader, compileShader(gl.FRAGMENT_SHADER, contentDisplayShaderSource))
 
     // Setup blit (fullscreen quad)
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
@@ -1662,9 +1851,14 @@ export function useFluidSimulation() {
     sunraysFBO = null
     sunraysTempFBO = null
     ditheringTexture = null
+    contentTexture = null
+    contentDisplayProgram = null
+    contentDisplayEnabled = false
+    pointerGate = null
     pointers.length = 0
     splatStack = []
+    splatSegments.length = 0
   }
 
-  return { init, resize, destroy, multipleSplats, emitSplat }
+  return { init, resize, destroy, multipleSplats, emitSplat, setContentCanvas }
 }

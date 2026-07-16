@@ -2,124 +2,147 @@
 import type { DistortionLine } from '~/composables/useTextDistortion'
 import { useFluidSimulation } from '~/composables/useFluidSimulation'
 import { useHeroStage } from '~/composables/useHeroStage'
-import { distortionTextPadding, useTextDistortion } from '~/composables/useTextDistortion'
-import { useTextScramble } from '~/composables/useTextScramble'
+import { distortionTextPadding, useMastheadRaster } from '~/composables/useTextDistortion'
+import { profile } from '~/constants/profile'
 
-const NAME_FIRST = 'BILLY'
-const NAME_LAST = 'MAULANA'
-const NAME_FONT = '\'Switzer\', \'Helvetica Neue\', sans-serif'
-const NAME_TRACKING_EM = -0.035
-/* yFrac dihitung dari baseline: BILLY hasil fit 52vw punya ascent ~0.75em —
-   yFrac di bawah 0.4 membuat huruf terpotong tepi atas viewport */
-const NAME_FIRST_YFRAC = 0.42
-const NAME_LAST_YFRAC = 0.82
-const NAME_FIRST_WIDTH_FRAC = 0.52
-const NAME_LAST_WIDTH_FRAC = 0.78
+const MASTHEAD_TEXT = 'BILLYMAULANA'
+const NAME_FONT = '\'Bebas Neue\', \'Anton\', Impact, sans-serif'
+const NAME_TRACKING_EM = -0.01
 const NAME_MEASURE_BASE_PX = 100
+const NAME_Y_FRAC = 0.925
+const NAME_OVERSHOOT_RIGHT_FRAC = 0.005
 
-const STATUS_LINES = [
-  'AVAILABLE FOR SELECT WORK',
-  'VUE · NUXT · TYPESCRIPT',
-  'WEBGL · GSAP · MOTION',
+const SOCIAL_LINKS = [
+  { label: 'GitHub', href: profile.github },
+  { label: 'LinkedIn', href: profile.linkedin },
+  { label: 'Instagram', href: profile.instagram },
 ]
 
 const sectionRef = ref<HTMLElement>()
 const fluidCanvasRef = ref<HTMLCanvasElement>()
 const contentRef = ref<HTMLElement>()
-const textCanvasRef = ref<HTMLCanvasElement>()
 const namesRef = ref<HTMLElement>()
-const firstNameRef = ref<HTMLElement>()
-const lastNameRef = ref<HTMLElement>()
-const ghostWrapRef = ref<HTMLElement>()
-const ghostRef = ref<HTMLElement>()
+const nameRef = ref<HTMLElement>()
+const taglineRef = ref<HTMLElement>()
+const monoBRef = ref<HTMLElement>()
+const monoMRef = ref<HTMLElement>()
 const metaRef = ref<HTMLElement>()
-const statusDotRef = ref<HTMLElement>()
-const indexNumRef = ref<HTMLElement>()
-const statusRef = ref<HTMLElement>()
-const clockRef = ref<HTMLElement>()
-const scrollRef = ref<HTMLElement>()
-const scrollLineRef = ref<HTMLElement>()
 
 const fluid = useFluidSimulation()
-const stage = useHeroStage()
-const { scramble: scrambleText } = useTextScramble({ speed: 25, iterations: 4 })
-const { scramble: scrambleDigits } = useTextScramble({ chars: '0123456789', speed: 45, iterations: 8 })
-const { clockText } = stage
+const heroStage = useHeroStage()
+const { clockText } = heroStage
 
 let gsapCtx: gsap.Context | null = null
 let resizeObserver: ResizeObserver | null = null
-let fluidActivated = false
 let fluidReady = false
-let textDistortion: ReturnType<typeof useTextDistortion> | null = null
-let ghostDrift: ReturnType<typeof stage.attachGhostDrift> | null = null
 let textResizeHandler: (() => void) | null = null
-let sectionPointerHandler: ((e: PointerEvent) => void) | null = null
 
-interface NameFontSizes {
-  first: number
-  last: number
+let nameChars: HTMLElement[] = []
+
+let mastheadHit: { left: number, right: number, top: number, bottom: number } | null = null
+
+/* Gate splat fluid ke pita ink masthead: efek hanya lahir saat cursor
+   menyentuh teks (permintaan eksplisit user), bukan di seluruh hero.
+   Bounds di-cache dari layoutMasthead — tanpa measureText per event.
+   0.73em ≈ cap height Bebas Neue; 0.06em toleransi bawah baseline */
+function mastheadPointerGate(u: number, v: number): boolean {
+  const section = sectionRef.value
+  if (!section || !mastheadHit)
+    return false
+  const x = u * section.clientWidth
+  const y = (1 - v) * section.clientHeight
+  return x >= mastheadHit.left && x <= mastheadHit.right
+    && y >= mastheadHit.top && y <= mastheadHit.bottom
 }
 
-/* Ukuran per baris dihitung dari pengukuran teks (scale = targetWidth /
-   measuredWidth), bukan vw statis — letterSpacing px ikut skala fontSize
-   sehingga lebar terukur linear terhadap fontSize dan hasil fit eksak */
-function measureNameFontSizes(width: number): NameFontSizes {
+const mastheadRaster = useMastheadRaster({
+  fontFamily: NAME_FONT,
+  fontWeight: 400,
+  letterSpacingEm: NAME_TRACKING_EM,
+  lines: [],
+})
+
+function uploadMasthead() {
+  const section = sectionRef.value
+  if (!section || !fluidReady)
+    return
+  mastheadRaster.updateLines(buildDistortionLines())
+  const dpr = window.devicePixelRatio || 1
+  fluid.setContentCanvas(mastheadRaster.render(section.clientWidth, section.clientHeight, dpr))
+}
+
+interface MastheadMetrics {
+  pad: number
+  fontSize: number
+  left: number
+  baselineFromTop: number
+}
+
+/* Fit & posisi berbasis lebar INK (actualBoundingBox), bukan advance width:
+   side bearing font membuat tepi visual B/A meleset dari pad bila memakai
+   advance — semua metric diukur di base size lalu diskala linear (letter-
+   spacing px ikut fontSize sehingga skala tetap linear). Tepi kanan diberi
+   overshoot optik +0.5% dari target width: glyph "A" terakhir Bebas
+   berdiagonal sehingga tanpa overshoot tepi kanan tampak masuk — tepi kiri
+   "B" (stem datar) tetap presisi di pad karena left dihitung dari kiri */
+function measureMasthead(width: number): MastheadMetrics {
   const ctx = document.createElement('canvas').getContext('2d')!
-  ctx.font = `700 ${NAME_MEASURE_BASE_PX}px ${NAME_FONT}`
+  ctx.font = `400 ${NAME_MEASURE_BASE_PX}px ${NAME_FONT}`
   if ('letterSpacing' in ctx)
     ctx.letterSpacing = `${NAME_MEASURE_BASE_PX * NAME_TRACKING_EM}px`
-
-  function fitTo(text: string, widthFrac: number): number {
-    return (width * widthFrac) / ctx.measureText(text).width * NAME_MEASURE_BASE_PX
-  }
-
+  const metrics = ctx.measureText(MASTHEAD_TEXT)
+  const inkWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight
+  const pad = distortionTextPadding(width)
+  const targetWidth = width - 2 * pad
+  const scale = (targetWidth * (1 + NAME_OVERSHOOT_RIGHT_FRAC)) / inkWidth
+  const ascent = metrics.fontBoundingBoxAscent
+  const descent = metrics.fontBoundingBoxDescent
   return {
-    first: fitTo(NAME_FIRST, NAME_FIRST_WIDTH_FRAC),
-    last: fitTo(NAME_LAST, NAME_LAST_WIDTH_FRAC),
+    pad,
+    fontSize: NAME_MEASURE_BASE_PX * scale,
+    left: pad + metrics.actualBoundingBoxLeft * scale,
+    baselineFromTop: ((NAME_MEASURE_BASE_PX - (ascent + descent)) / 2 + ascent) * scale,
   }
 }
 
-function buildDistortionLines(): DistortionLine[] {
-  const width = sectionRef.value?.clientWidth ?? window.innerWidth
-  const sizes = measureNameFontSizes(width)
-  return [
-    { text: NAME_FIRST, xAlign: 'left', yFrac: NAME_FIRST_YFRAC, fontSize: sizes.first },
-    { text: NAME_LAST, xAlign: 'right', yFrac: NAME_LAST_YFRAC, fontSize: sizes.last },
-  ]
-}
-
-/* Overlay DOM diposisikan dengan metrics canvas yang sama dengan offscreen
-   texture, supaya crossfade DOM → WebGL tidak menimbulkan pergeseran visual */
-function layoutNames() {
+/* --hero-pad diset di document.documentElement dengan distortionTextPadding
+   yang sama dengan pengukuran masthead: fallback clamp CSS memakai vw
+   (termasuk scrollbar) sehingga bisa meleset dari clientWidth — satu sumber
+   di root = meta/tagline section DAN logo/burger AppNavigation sejajar
+   piksel dengan ink masthead */
+function layoutMasthead() {
   const section = sectionRef.value
-  const first = firstNameRef.value
-  const last = lastNameRef.value
-  if (!section || !first || !last)
+  const name = nameRef.value
+  if (!section || !name)
     return
 
-  const w = section.clientWidth
-  const h = section.clientHeight
-  const pad = distortionTextPadding(w)
-  const sizes = measureNameFontSizes(w)
-
-  const ctx = document.createElement('canvas').getContext('2d')!
-
-  function placeName(el: HTMLElement, text: string, fontSize: number, align: 'left' | 'right', yFrac: number) {
-    ctx.font = `700 ${fontSize}px ${NAME_FONT}`
-    if ('letterSpacing' in ctx)
-      ctx.letterSpacing = `${fontSize * NAME_TRACKING_EM}px`
-    const metrics = ctx.measureText(text)
-    const x = align === 'left' ? pad : w - pad - metrics.width
-    const ascent = metrics.fontBoundingBoxAscent
-    const descent = metrics.fontBoundingBoxDescent
-    const baselineFromTop = (fontSize - (ascent + descent)) / 2 + ascent
-    el.style.left = `${x}px`
-    el.style.top = `${yFrac * h - baselineFromTop}px`
-    el.style.fontSize = `${fontSize}px`
+  const m = measureMasthead(section.clientWidth)
+  const baselineY = NAME_Y_FRAC * section.clientHeight
+  document.documentElement.style.setProperty('--hero-pad', `${m.pad}px`)
+  name.style.left = `${m.left}px`
+  name.style.top = `${baselineY - m.baselineFromTop}px`
+  name.style.fontSize = `${m.fontSize}px`
+  mastheadHit = {
+    left: m.pad,
+    right: section.clientWidth - m.pad,
+    top: baselineY - m.fontSize * 0.73,
+    bottom: baselineY + m.fontSize * 0.06,
   }
+}
 
-  placeName(first, NAME_FIRST, sizes.first, 'left', NAME_FIRST_YFRAC)
-  placeName(last, NAME_LAST, sizes.last, 'right', NAME_LAST_YFRAC)
+/* renderPositionedText menaruh origin baris kiri di pad + indent*(fontSize/200):
+   indent dikonversi dari offset ink (m.left - m.pad) supaya tepi ink texture
+   WebGL identik piksel dengan overlay DOM saat crossfade */
+function buildDistortionLines(): DistortionLine[] {
+  const width = sectionRef.value?.clientWidth ?? window.innerWidth
+  const m = measureMasthead(width)
+  return [{
+    text: MASTHEAD_TEXT,
+    xAlign: 'left',
+    yFrac: NAME_Y_FRAC,
+    fontSize: m.fontSize,
+    indent: (m.left - m.pad) * (200 / m.fontSize),
+  }]
 }
 
 function buildNameChars(el: HTMLElement): HTMLElement[] {
@@ -140,11 +163,15 @@ onMounted(async () => {
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   if (prefersReduced) {
+    /* fonts.ready bisa resolve sebelum Bebas Neue di-fetch (font baru dimuat
+       saat dipakai) — tanpa load eksplisit, fit-to-width terukur dengan
+       metrics fallback dan lebar masthead meleset */
+    await document.fonts.load(`400 100px ${NAME_FONT}`)
     await document.fonts.ready
-    layoutNames()
-    textResizeHandler = layoutNames
+    layoutMasthead()
+    heroStage.startClock()
+    textResizeHandler = layoutMasthead
     window.addEventListener('resize', textResizeHandler)
-    stage.startClock()
     return
   }
 
@@ -154,195 +181,119 @@ onMounted(async () => {
   gsap.registerPlugin(ScrollTrigger)
 
   gsap.set(
-    [namesRef.value, metaRef.value, scrollRef.value].filter(Boolean),
+    [namesRef.value, taglineRef.value, monoBRef.value, monoMRef.value, metaRef.value].filter(Boolean),
     { autoAlpha: 0 },
   )
-
-  /* Transform diambil alih GSAP secara eksplisit: parsing matrix dari CSS
-     translate(-50%,-50%) menghasilkan x/y dalam px yang akan tertimpa oleh
-     quickTo drift — xPercent/yPercent menjaga centering tetap utuh */
-  if (ghostRef.value) {
-    gsap.set(ghostRef.value, {
-      xPercent: -50,
-      yPercent: -50,
-      x: 0,
-      y: 0,
-      rotation: -4,
-      opacity: 0,
-      filter: 'blur(18px)',
-    })
-  }
 
   if (fluidCanvasRef.value) {
     /* Hue dikunci ke identity palette (cyan #a1e0e7 → blue #0047FF →
        indigo #0f0a72 → violet): chromatic event hanya dalam keluarga warna
        brand, tetap multi-color (taste-dna melarang single-tint) */
-    fluidReady = fluid.init(fluidCanvasRef.value, { skipInitialSplats: true, hueMin: 0.52, hueMax: 0.75 })
+    fluidReady = fluid.init(fluidCanvasRef.value, {
+      skipInitialSplats: true,
+      hueMin: 0.52,
+      hueMax: 0.75,
+      curl: 20,
+      splatRadius: 0.3,
+      contentDisplay: true,
+      pointerGate: mastheadPointerGate,
+    })
     if (fluidReady) {
       fluidCanvasRef.value.style.opacity = '0'
       resizeObserver = new ResizeObserver(() => {
         fluid.resize()
+        uploadMasthead()
       })
       resizeObserver.observe(fluidCanvasRef.value)
     }
   }
 
+  /* fonts.ready bisa resolve sebelum Bebas Neue di-fetch (font baru dimuat
+     saat dipakai) — tanpa load eksplisit, fit-to-width terukur dengan
+     metrics fallback dan lebar masthead meleset */
+  await document.fonts.load(`400 100px ${NAME_FONT}`)
   await document.fonts.ready
-  layoutNames()
-  const firstChars = firstNameRef.value ? buildNameChars(firstNameRef.value) : []
-  const lastChars = lastNameRef.value ? buildNameChars(lastNameRef.value) : []
+  layoutMasthead()
+  nameChars = nameRef.value ? buildNameChars(nameRef.value) : []
 
-  if (textCanvasRef.value) {
-    const sim = useTextDistortion({
-      intensity: 0.075,
-      chromaticSpread: 0.015,
-      letterSpacingEm: NAME_TRACKING_EM,
-      lines: buildDistortionLines(),
-    })
-    if (sim.init(textCanvasRef.value))
-      textDistortion = sim
-  }
+  uploadMasthead()
 
   textResizeHandler = () => {
-    layoutNames()
-    textDistortion?.updateLines(buildDistortionLines())
+    layoutMasthead()
+    uploadMasthead()
   }
   window.addEventListener('resize', textResizeHandler)
 
-  if (ghostRef.value)
-    ghostDrift = stage.attachGhostDrift(gsap, ghostRef.value)
-
-  sectionPointerHandler = (e: PointerEvent) => {
-    ghostDrift?.onPointerMove(e)
-    if (fluidReady && !fluidActivated && fluidCanvasRef.value) {
-      fluidActivated = true
-      gsap.to(fluidCanvasRef.value, {
-        opacity: 1,
-        duration: 1.2,
-        ease: 'power3.out',
-      })
-    }
-  }
-  sectionRef.value?.addEventListener('pointermove', sectionPointerHandler, { passive: true })
+  /* Pengukuran saat init masih bisa memakai metrics fallback walau
+     fonts.load di-await (race pemuatan face 400) — akses fonts.ready BARU
+     setelah render memberi promise segar; refresh sekali menjamin fit
+     presisi, selesai di balik preloader */
+  document.fonts.ready.then(() => textResizeHandler?.())
 
   gsapCtx = gsap.context(() => {
-    const metaItems = metaRef.value
-      ? Array.from(metaRef.value.querySelectorAll<HTMLElement>('.hero__meta-item'))
+    const taglineLines = taglineRef.value
+      ? Array.from(taglineRef.value.querySelectorAll<HTMLElement>('.hero__tagline-line'))
       : []
-    const scrollText = scrollRef.value?.querySelector<HTMLElement>('.hero__scroll-text') ?? null
+    const metaBlocks = metaRef.value
+      ? Array.from(metaRef.value.querySelectorAll<HTMLElement>('.hero__meta-block'))
+      : []
 
-    gsap.set(firstChars, { opacity: 0, x: -24, filter: 'blur(16px)' })
-    gsap.set(lastChars, { opacity: 0, x: 24, filter: 'blur(16px)' })
-    gsap.set(metaItems, { autoAlpha: 0 })
-    if (clockRef.value)
-      gsap.set(clockRef.value, { autoAlpha: 0 })
-    if (scrollLineRef.value)
-      gsap.set(scrollLineRef.value, { scaleY: 0 })
-    if (scrollText)
-      gsap.set(scrollText, { opacity: 0 })
+    gsap.set(nameChars, { yPercent: 100, filter: 'blur(8px)' })
+    gsap.set(taglineLines, { autoAlpha: 0, y: 16, filter: 'blur(10px)' })
+    if (monoBRef.value)
+      gsap.set(monoBRef.value, { autoAlpha: 0, x: -12 })
+    if (monoMRef.value)
+      gsap.set(monoMRef.value, { autoAlpha: 0, x: 12 })
+    gsap.set(metaBlocks, { autoAlpha: 0 })
     gsap.set(
-      [namesRef.value, metaRef.value, scrollRef.value].filter(Boolean),
+      [namesRef.value, taglineRef.value, metaRef.value].filter(Boolean),
       { autoAlpha: 1 },
     )
 
-    const ghostBreath = ghostRef.value
-      ? gsap.to(ghostRef.value, {
-          opacity: 0.17,
-          duration: 3.5,
-          ease: 'expo.inOut',
-          repeat: -1,
-          yoyo: true,
-          paused: true,
-        })
-      : null
-
-    const dotPulse = statusDotRef.value
-      ? gsap.to(statusDotRef.value, {
-          scale: 1.35,
-          opacity: 0.55,
-          duration: 1.1,
-          ease: 'expo.inOut',
-          repeat: -1,
-          yoyo: true,
-          paused: true,
-        })
-      : null
-
     const tl = gsap.timeline({ defaults: { ease: 'expo.out' } })
 
-    if (firstChars.length) {
-      tl.to(firstChars, {
-        opacity: 1,
-        x: 0,
+    if (nameChars.length) {
+      tl.to(nameChars, {
+        yPercent: 0,
         filter: 'blur(0px)',
-        duration: 0.9,
-        stagger: 0.022,
+        duration: 1,
+        stagger: 0.02,
         ease: 'power4.out',
-      }, 0.15)
+      }, 0)
     }
 
-    if (lastChars.length) {
-      tl.to(lastChars, {
-        opacity: 1,
-        x: 0,
+    if (taglineLines.length) {
+      tl.to(taglineLines, {
+        autoAlpha: 1,
+        y: 0,
         filter: 'blur(0px)',
         duration: 0.9,
-        stagger: { each: 0.022, from: 'end' },
-        ease: 'power4.out',
-      }, 0.35)
-    }
-
-    if (ghostRef.value) {
-      tl.to(ghostRef.value, {
-        opacity: 0.12,
-        filter: 'blur(0px)',
-        duration: 1.1,
+        stagger: 0.12,
         ease: 'power3.out',
-      }, 0.75)
-      tl.call(() => {
-        ghostBreath?.play()
-      }, [], 1.85)
+      }, 0.5)
     }
 
-    metaItems.forEach((item, i) => {
-      const at = 0.75 + i * 0.09
-      tl.to(item, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, at)
-      const label = item.querySelector<HTMLElement>('.hero__meta-scramble')
-      if (label) {
-        tl.call(() => {
-          scrambleText(label)
-        }, [], at)
-      }
+    for (const mono of [monoBRef.value, monoMRef.value]) {
+      if (mono)
+        tl.to(mono, { autoAlpha: 1, x: 0, duration: 0.8, ease: 'power3.out' }, 0.8)
+    }
+
+    metaBlocks.forEach((block, i) => {
+      tl.to(block, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, 1 + i * 0.09)
     })
 
     tl.call(() => {
-      if (indexNumRef.value)
-        scrambleDigits(indexNumRef.value)
-      stage.startClock()
-      if (statusRef.value)
-        stage.startStatusRotator(statusRef.value, STATUS_LINES, scrambleText)
-      dotPulse?.play()
-    }, [], 1.05)
+      heroStage.startClock()
+    }, [], 1)
 
-    if (clockRef.value)
-      tl.to(clockRef.value, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, 1.05)
-
-    if (scrollLineRef.value)
-      tl.to(scrollLineRef.value, { scaleY: 1, duration: 1, ease: 'expo.inOut' }, 1.15)
-    if (scrollText)
-      tl.to(scrollText, { opacity: 1, duration: 0.6, ease: 'power3.out' }, 1.55)
-
-    if (textDistortion && textCanvasRef.value && namesRef.value) {
-      tl.call(() => {
-        textDistortion?.start()
-      }, [], 1.25)
-      tl.to(textCanvasRef.value, { opacity: 1, duration: 0.6, ease: 'power3.out' }, 1.35)
+    if (fluidReady && fluidCanvasRef.value && namesRef.value) {
+      tl.to(fluidCanvasRef.value, { opacity: 1, duration: 0.6, ease: 'power3.out' }, 1.35)
       tl.to(namesRef.value, { autoAlpha: 0, duration: 0.6, ease: 'power3.out' }, 1.4)
       tl.set(namesRef.value, { display: 'none' }, 2.15)
     }
 
     if (sectionRef.value && contentRef.value) {
-      gsap.to(contentRef.value, {
+      gsap.to([contentRef.value, fluidCanvasRef.value].filter(Boolean), {
         yPercent: -25,
         ease: 'none',
         scrollTrigger: {
@@ -354,7 +305,7 @@ onMounted(async () => {
       })
 
       gsap.to(
-        [contentRef.value, metaRef.value, ghostWrapRef.value].filter(Boolean),
+        [contentRef.value, fluidCanvasRef.value, taglineRef.value, monoBRef.value, monoMRef.value, metaRef.value].filter(Boolean),
         {
           opacity: 0,
           ease: 'none',
@@ -367,47 +318,19 @@ onMounted(async () => {
         },
       )
     }
-
-    if (sectionRef.value && fluidCanvasRef.value) {
-      gsap.to(fluidCanvasRef.value, {
-        yPercent: -12,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: sectionRef.value,
-          start: 'top top',
-          end: 'bottom top',
-          scrub: 0.5,
-        },
-      })
-    }
-
-    if (sectionRef.value && scrollRef.value) {
-      gsap.to(scrollRef.value, {
-        opacity: 0,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: sectionRef.value,
-          start: 'top top',
-          end: '15% top',
-          scrub: true,
-        },
-      })
-    }
   })
 })
 
 onUnmounted(() => {
+  /* Tanpa dilepas, nilai px terakhir menempel di root dan jadi stale saat
+     resize di halaman lain — fallback clamp CSS mengambil alih kembali */
+  document.documentElement.style.removeProperty('--hero-pad')
   gsapCtx?.revert()
-  stage.destroy()
   fluid.destroy()
-  textDistortion?.destroy()
-  textDistortion = null
-  ghostDrift = null
+  heroStage.destroy()
   resizeObserver?.disconnect()
   if (textResizeHandler)
     window.removeEventListener('resize', textResizeHandler)
-  if (sectionPointerHandler)
-    sectionRef.value?.removeEventListener('pointermove', sectionPointerHandler)
 })
 </script>
 
@@ -425,56 +348,44 @@ onUnmounted(() => {
 
     <div class="hero__grain" aria-hidden="true" />
 
-    <div ref="ghostWrapRef" class="hero__ghost" aria-hidden="true">
-      <span ref="ghostRef" class="hero__ghost-text">frontend architect</span>
-    </div>
-
     <div ref="contentRef" class="hero__content">
-      <canvas
-        ref="textCanvasRef"
-        class="hero__text-canvas"
-        aria-hidden="true"
-      />
       <div ref="namesRef" class="hero__names" aria-hidden="true">
-        <span ref="firstNameRef" class="hero__name">BILLY</span>
-        <span ref="lastNameRef" class="hero__name">MAULANA</span>
+        <span ref="nameRef" class="hero__name">BILLYMAULANA</span>
       </div>
       <h1 class="sr-only">
         Billy Maulana
       </h1>
     </div>
 
-    <div ref="metaRef" class="hero__meta">
-      <div class="hero__meta-item hero__meta-edition" aria-hidden="true">
-        <span class="hero__meta-scramble">PORTFOLIO — 2026</span>
-        <span class="hero__meta-version">V.3</span>
-      </div>
-      <div class="hero__meta-item hero__meta-index" aria-hidden="true">
-        <span class="hero__meta-index-rule" />
-        <span ref="indexNumRef" class="hero__meta-index-num">01 — 05</span>
-      </div>
-      <div class="hero__meta-item hero__meta-status" aria-hidden="true">
-        <span ref="statusDotRef" class="hero__meta-dot" />
-        <span ref="statusRef" class="hero__meta-scramble">AVAILABLE FOR SELECT WORK</span>
-      </div>
-      <div class="hero__meta-item hero__meta-location" aria-hidden="true">
-        <span class="hero__meta-scramble">BANDUNG 6.9°S 107.6°E</span>
-        <span ref="clockRef" class="hero__meta-clock">— {{ clockText }}</span>
-      </div>
-    </div>
+    <p ref="taglineRef" class="hero__tagline">
+      <span class="hero__tagline-line"><em class="hero__tagline-voice">A Frontend Architect</em> <span class="hero__tagline-craft">crafting</span> <span class="hero__tagline-quiet">interfaces</span></span>
+      <br aria-hidden="true">
+      <span class="hero__tagline-line"><span class="hero__tagline-craft">that move millions of</span> <span class="hero__tagline-quiet">people.</span></span>
+    </p>
 
-    <div ref="scrollRef" class="hero__scroll" aria-hidden="true">
-      <span ref="scrollLineRef" class="hero__scroll-line" />
-      <span class="hero__scroll-text">Explore</span>
+    <span ref="monoBRef" class="hero__mono hero__mono--b" aria-hidden="true">B</span>
+    <span ref="monoMRef" class="hero__mono hero__mono--m" aria-hidden="true">M</span>
+
+    <div ref="metaRef" class="hero__meta">
+      <p class="hero__meta-block hero__meta-clock">
+        Bandung — {{ clockText }} GMT+7
+      </p>
+      <ul class="hero__meta-block hero__meta-socials" aria-label="Social links">
+        <li v-for="social in SOCIAL_LINKS" :key="social.href">
+          <a class="hero__meta-link" :href="social.href" target="_blank" rel="noopener noreferrer">{{ social.label }}</a>
+        </li>
+      </ul>
+      <div class="hero__meta-block hero__meta-slot">
+        <a class="hero__meta-cta" href="#contact">
+          <span class="hero__meta-cta-label">Open to work <span class="hero__meta-arrow" aria-hidden="true">↗</span></span>
+        </a>
+      </div>
     </div>
   </section>
 </template>
 
 <style scoped>
 .hero {
-  --hero-margin: clamp(1.5rem, 4vw, 4rem);
-  --hero-bottom: clamp(2rem, 4vh, 3rem);
-
   position: relative;
   width: 100%;
   height: 100vh;
@@ -490,9 +401,9 @@ onUnmounted(() => {
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 3;
+  z-index: 5;
   pointer-events: auto;
-  mix-blend-mode: screen;
+  mix-blend-mode: difference;
 }
 
 .hero__grain {
@@ -507,44 +418,12 @@ onUnmounted(() => {
   background-repeat: repeat;
 }
 
-.hero__ghost {
-  position: absolute;
-  left: 50%;
-  top: 56%;
-  z-index: 4;
-  pointer-events: none;
-}
-
-.hero__ghost-text {
-  display: inline-block;
-  transform: translate(-50%, -50%) rotate(-4deg);
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 400;
-  font-size: 7vw;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  white-space: nowrap;
-  color: rgb(208, 208, 216);
-  opacity: 0;
-  will-change: transform, filter, opacity;
-}
-
 .hero__content {
   position: absolute;
   inset: 0;
   z-index: 5;
   pointer-events: none;
   mix-blend-mode: difference;
-}
-
-.hero__text-canvas {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
 }
 
 .hero__names {
@@ -556,12 +435,12 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   left: 0;
-  font-family: 'Switzer', 'Helvetica Neue', sans-serif;
-  font-weight: 700;
-  font-size: 13vw;
-  letter-spacing: -0.035em;
+  font-family: 'Bebas Neue', 'Anton', Impact, sans-serif;
+  font-weight: 400;
+  font-size: 24vw;
+  letter-spacing: -0.01em;
   line-height: 1;
-  color: #fff;
+  color: #F2EFEA;
   white-space: nowrap;
 }
 
@@ -570,140 +449,162 @@ onUnmounted(() => {
   will-change: transform, filter, opacity;
 }
 
+.hero__tagline {
+  position: absolute;
+  top: clamp(4.5rem, 11vh, 7rem);
+  left: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
+  right: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
+  z-index: 6;
+  margin-inline: auto;
+  max-width: 38ch;
+  pointer-events: none;
+  text-align: center;
+  text-wrap: balance;
+  font-family: var(--font-hero);
+  font-weight: 400;
+  font-size: clamp(1.25rem, 1.9vw, 1.71rem);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  color: rgba(242, 239, 234, 0.96);
+}
+
+.hero__tagline-line {
+  display: inline-block;
+}
+
+.hero__tagline-voice {
+  font-family: 'Cormorant', var(--font-statement);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.08em;
+  letter-spacing: -0.015em;
+  padding-right: 0.06em;
+  color: rgba(242, 239, 234, 0.96);
+}
+
+.hero__tagline-craft {
+  color: rgba(242, 239, 234, 0.96);
+}
+
+.hero__tagline-quiet {
+  color: rgba(242, 239, 234, 0.45);
+}
+
+.hero__mono {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  pointer-events: none;
+  font-family: var(--font-hero);
+  font-weight: 400;
+  font-size: 1.875rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: rgba(242, 239, 234, 0.9);
+}
+
+.hero__mono--b {
+  left: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
+}
+
+.hero__mono--m {
+  right: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
+}
+
 .hero__meta {
   position: absolute;
-  inset: 0;
+  left: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
+  right: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
+  bottom: clamp(1.25rem, 2.6vh, 2rem);
   z-index: 6;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   pointer-events: none;
   font-family: var(--font-hero);
   font-weight: 500;
   font-size: 0.625rem;
+  line-height: 1;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: rgba(208, 208, 216, 0.62);
-  font-feature-settings: 'tnum' 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.hero__meta-item {
-  position: absolute;
-}
-
-.hero__meta-edition {
-  top: clamp(4.5rem, 9vh, 6.5rem);
-  right: var(--hero-margin);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.35rem;
-  text-align: right;
-}
-
-.hero__meta-version {
-  opacity: 0.55;
-}
-
-.hero__meta-index {
-  top: 50%;
-  left: var(--hero-margin);
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.hero__meta-index-rule {
-  width: 1px;
-  height: 28px;
-  background: rgba(208, 208, 216, 0.35);
-}
-
-.hero__meta-index-num {
-  writing-mode: vertical-rl;
-}
-
-.hero__meta-status {
-  bottom: var(--hero-bottom);
-  left: var(--hero-margin);
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.hero__meta-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent-primary, #0047FF);
-  flex-shrink: 0;
-}
-
-.hero__meta-location {
-  bottom: var(--hero-bottom);
-  right: var(--hero-margin);
-  text-align: right;
+  color: rgba(242, 239, 234, 0.92);
 }
 
 .hero__meta-clock {
-  margin-left: 0.6ch;
+  flex: 1 1 0;
+  font-variant-numeric: tabular-nums;
 }
 
-.hero__scroll {
-  position: absolute;
-  bottom: var(--hero-bottom);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 8;
+.hero__meta-socials {
+  flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: baseline;
+  gap: 0.75em;
+}
+
+.hero__meta-socials li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75em;
+}
+
+.hero__meta-socials li + li::before {
+  content: '/';
+  color: rgba(208, 208, 216, 0.3);
+}
+
+.hero__meta-slot {
+  flex: 1 1 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+}
+
+.hero__meta-cta {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: baseline;
   gap: 0.75rem;
-  pointer-events: none;
-  mix-blend-mode: difference;
+  color: inherit;
+  transition: color 0.3s var(--ease-out-expo);
 }
 
-.hero__scroll-line {
-  display: block;
-  width: 1px;
-  height: 28px;
-  background: var(--text-primary);
-  transform-origin: top;
+.hero__meta-cta:hover {
+  color: #F2EFEA;
 }
 
-.hero__scroll-text {
-  font-family: var(--font-display);
-  font-size: clamp(0.6rem, 0.7vw, 0.7rem);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--text-primary);
-  writing-mode: vertical-rl;
+.hero__meta-arrow {
+  display: inline-block;
+  letter-spacing: 0;
+  transition: transform 0.3s var(--ease-out-expo);
+}
+
+.hero__meta-cta:hover .hero__meta-arrow {
+  transform: translate(2px, -2px);
+}
+
+.hero__meta-link {
+  pointer-events: auto;
+  color: inherit;
+  transition: color 0.3s var(--ease-out-expo);
+}
+
+.hero__meta-link:hover {
+  color: #F2EFEA;
 }
 
 @media (max-width: 768px) {
-  .hero__meta-edition,
-  .hero__meta-index,
-  .hero__meta-status {
+  .hero__mono,
+  .hero__meta-socials {
     display: none;
-  }
-
-  .hero__scroll {
-    bottom: 1.5rem;
-  }
-
-  .hero__scroll-line {
-    height: 32px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hero__canvas {
     display: none;
-  }
-
-  .hero__ghost-text {
-    opacity: 0.14;
   }
 }
 </style>
