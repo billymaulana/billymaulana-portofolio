@@ -5,9 +5,25 @@ import { useHeroStage } from '~/composables/useHeroStage'
 import { distortionTextPadding, useMastheadRaster } from '~/composables/useTextDistortion'
 import { profile } from '~/constants/profile'
 
+/* Satu-satunya tempat menyetel efek liquid hero. Motion = parameter eksak
+   daspritam (port Pavel Dobryakov). Ubah `mode`/`color`/dst di sini saja —
+   tak perlu menyentuh shader. mode 'faithful' = mekanik asli daspritam
+   (fluid invisible, teks meleleh + chromatic aberration ber-tint `color`);
+   mode 'dye' = tubuh cairan `color` terlihat dengan inti putih. */
+const FLUID = {
+  mode: 'faithful' as 'faithful' | 'dye',
+  color: '#0047FF',
+  curl: 20,
+  splatRadius: 0.3,
+  splatForce: 7200,
+  displace: 0.001,
+  chromatic: 0.003,
+  whiteCore: 0.95,
+}
+
 const MASTHEAD_TEXT = 'BILLYMAULANA'
-const NAME_FONT = '\'Bebas Neue\', \'Anton\', Impact, sans-serif'
-const NAME_TRACKING_EM = -0.04
+const NAME_FONT = '\'Bebas Neue\', Impact, sans-serif'
+const NAME_TRACKING_EM = -0.015
 const NAME_MEASURE_BASE_PX = 100
 const NAME_Y_FRAC = 0.89
 const NAME_OVERSHOOT_RIGHT_FRAC = 0
@@ -38,22 +54,6 @@ let fluidReady = false
 let textResizeHandler: (() => void) | null = null
 
 let nameChars: HTMLElement[] = []
-
-let mastheadHit: { left: number, right: number, top: number, bottom: number } | null = null
-
-/* Gate splat fluid ke pita ink masthead: efek hanya lahir saat cursor
-   menyentuh teks (permintaan eksplisit user), bukan di seluruh hero.
-   Bounds di-cache dari layoutMasthead — tanpa measureText per event.
-   0.73em ≈ cap height Bebas Neue; 0.06em toleransi bawah baseline */
-function mastheadPointerGate(u: number, v: number): boolean {
-  const section = sectionRef.value
-  if (!section || !mastheadHit)
-    return false
-  const x = u * section.clientWidth
-  const y = (1 - v) * section.clientHeight
-  return x >= mastheadHit.left && x <= mastheadHit.right
-    && y >= mastheadHit.top && y <= mastheadHit.bottom
-}
 
 const mastheadRaster = useMastheadRaster({
   fontFamily: NAME_FONT,
@@ -131,8 +131,6 @@ function inkGap(el: HTMLElement, edge: 'left' | 'right'): number {
 }
 
 const INK_EDGES: [selector: string, cssVar: string, edge: 'left' | 'right'][] = [
-  ['.hero__mono--b', '--ink-mono-b', 'left'],
-  ['.hero__mono--m', '--ink-mono-m', 'right'],
   ['.hero__meta-clock', '--ink-clock', 'left'],
   ['.hero__meta-arrow', '--ink-cta', 'right'],
 ]
@@ -169,12 +167,6 @@ function layoutMasthead() {
      CSS, DOM melebar ~120px dari raster WebGL dan crossfade tampak melompat */
   name.style.letterSpacing = `${NAME_TRACKING_EM}em`
   name.style.visibility = 'inherit'
-  mastheadHit = {
-    left: m.pad,
-    right: section.clientWidth - m.pad,
-    top: baselineY - m.fontSize * 0.73,
-    bottom: baselineY + m.fontSize * 0.06,
-  }
 }
 
 /* renderPositionedText menaruh origin baris kiri di pad + indent*(fontSize/200):
@@ -233,17 +225,19 @@ onMounted(async () => {
   )
 
   if (fluidCanvasRef.value) {
-    /* Hue dikunci ke identity palette (cyan #a1e0e7 → blue #0047FF →
-       indigo #0f0a72 → violet): chromatic event hanya dalam keluarga warna
-       brand, tetap multi-color (taste-dna melarang single-tint) */
+    /* Fluid merespons di seluruh hero (paritas daspritam), tanpa gate ke pita
+       teks. Semua parameter dari konstanta FLUID di atas */
     fluidReady = fluid.init(fluidCanvasRef.value, {
       skipInitialSplats: true,
-      hueMin: 0.52,
-      hueMax: 0.75,
-      curl: 20,
-      splatRadius: 0.3,
       contentDisplay: true,
-      pointerGate: mastheadPointerGate,
+      displayMode: FLUID.mode,
+      color: FLUID.color,
+      curl: FLUID.curl,
+      splatRadius: FLUID.splatRadius,
+      splatForce: FLUID.splatForce,
+      displace: FLUID.displace,
+      chromatic: FLUID.chromatic,
+      whiteCore: FLUID.whiteCore,
     })
     if (fluidReady) {
       fluidCanvasRef.value.style.opacity = '0'
@@ -433,8 +427,12 @@ onUnmounted(() => {
       <span class="hero__tagline-line"><span class="hero__tagline-craft">that move millions of</span> <span class="hero__tagline-quiet">people.</span></span>
     </p>
 
-    <span ref="monoBRef" class="hero__mono hero__mono--b" aria-hidden="true">B</span>
-    <span ref="monoMRef" class="hero__mono hero__mono--m" aria-hidden="true">M</span>
+    <span ref="monoBRef" class="hero__mono hero__mono--b" aria-hidden="true">
+      <svg viewBox="0 0 88 61" fill="none" stroke="currentColor" stroke-width="1.179" stroke-linecap="round" stroke-linejoin="round"><path d="M44 1v59m43-29.5C87 46.794 67.748 60 44 60S1 46.794 1 30.5C1 14.21 20.252 1 44 1s43 13.21 43 29.5" /><path d="M75.758 30.5C75.758 46.794 61.54 60 44 60c-17.536 0-31.755-13.206-31.755-29.5C12.245 14.21 26.465 1 44 1c17.54 0 31.758 13.21 31.758 29.5" /><path d="M62.987 30.5C62.987 46.794 54.488 60 44 60c-10.484 0-18.987-13.206-18.987-29.5C25.013 14.21 33.516 1 44 1c10.488 0 18.987 13.21 18.987 29.5M1 30.5h86" /><path fill="currentColor" stroke="none" d="M62.987 30.5a.61.61 0 0 1-.612.616c-9.805 0-17.756 7.95-17.756 17.76 0 .344-.28.613-.611.613a.61.61 0 0 1-.616-.613c0-9.81-7.947-17.76-17.752-17.76h-.011a.62.62 0 0 1-.616-.616c0-.332.284-.616.616-.616h.01c9.806 0 17.753-7.95 17.753-17.76 0-.344.272-.616.615-.616.333 0 .612.272.612.616 0 9.81 7.951 17.76 17.756 17.76.344 0 .612.284.612.616" /></svg>
+    </span>
+    <span ref="monoMRef" class="hero__mono hero__mono--m" aria-hidden="true">
+      <svg viewBox="0 0 80 80" fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"><path d="M40.0004 0L40.0081 39.9606L55.3078 3.04481L40.0226 39.9668L68.2846 11.7157L40.0336 39.9777L76.9555 24.6926L40.0397 39.9923L80.0004 40L40.0397 40.0077L76.9555 55.3074L40.0336 40.0223L68.2846 68.2842L40.0226 40.0332L55.3078 76.9552L40.0081 40.0394L40.0004 80L39.9926 40.0394L24.6929 76.9552L39.9781 40.0332L11.7161 68.2842L39.9671 40.0223L3.04517 55.3074L39.961 40.0077L0.000366211 40L39.961 39.9923L3.04517 24.6926L39.9671 39.9777L11.7161 11.7157L39.9781 39.9668L24.6929 3.04481L39.9926 39.9606L40.0004 0Z" /></svg>
+    </span>
 
     <div ref="metaRef" class="hero__meta">
       <p class="hero__meta-block hero__meta-clock">
@@ -445,11 +443,11 @@ onUnmounted(() => {
           <a class="hero__meta-link" :href="social.href" target="_blank" rel="noopener noreferrer">{{ social.label }}</a>
         </li>
       </ul>
-      <div class="hero__meta-block hero__meta-slot">
-        <a class="hero__meta-cta" href="#contact">
-          <span class="hero__meta-cta-label">Open to work <span class="hero__meta-arrow" aria-hidden="true">↗</span></span>
-        </a>
-      </div>
+      <nav class="hero__meta-block hero__meta-slot" aria-label="Sections">
+        <a class="hero__meta-link" href="#work">Work</a>
+        <a class="hero__meta-link" href="#about">About</a>
+        <a class="hero__meta-link" href="#contact">Contact</a>
+      </nav>
     </div>
   </section>
 </template>
@@ -473,7 +471,7 @@ onUnmounted(() => {
   height: 100%;
   z-index: 5;
   pointer-events: auto;
-  mix-blend-mode: difference;
+  mix-blend-mode: screen;
 }
 
 .hero__grain {
@@ -506,7 +504,7 @@ onUnmounted(() => {
   top: 0;
   left: 0;
   visibility: hidden;
-  font-family: 'Bebas Neue', 'Anton', Impact, sans-serif;
+  font-family: 'Obviously', 'Bebas Neue', Impact, sans-serif;
   font-weight: 400;
   font-size: 24vw;
   line-height: 1;
@@ -521,22 +519,22 @@ onUnmounted(() => {
 
 .hero__tagline {
   position: absolute;
-  top: clamp(4.5rem, 11vh, 7rem);
+  top: clamp(1.25rem, 4vh, 1.75rem);
   left: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
   right: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
   z-index: 6;
   margin-inline: auto;
-  max-width: 38ch;
+  max-width: 45rem;
   pointer-events: none;
   text-align: center;
   text-wrap: balance;
-  font-family: var(--font-hero);
+  font-family: 'Suisse', 'Helvetica Neue', Arial, sans-serif;
   font-weight: 400;
-  font-size: clamp(1.25rem, 1.9vw, 1.71rem);
+  font-size: clamp(1.0625rem, 1.9vw, 2.28rem);
   line-height: 1.3;
   letter-spacing: -0.02em;
   font-feature-settings: 'kern' 1, 'liga' 1;
-  color: rgba(242, 239, 234, 0.96);
+  color: #F2EFEA;
 }
 
 .hero__tagline-line {
@@ -544,21 +542,10 @@ onUnmounted(() => {
 }
 
 .hero__tagline-voice {
-  font-family: 'Cormorant', var(--font-statement);
+  font-family: 'Apparel', var(--font-statement), Georgia, serif;
   font-style: italic;
-  font-weight: 600;
-  font-size: 1.08em;
-  letter-spacing: -0.015em;
-  padding-right: 0.06em;
-  color: rgba(242, 239, 234, 0.96);
-}
-
-.hero__tagline-craft {
-  color: rgba(242, 239, 234, 0.96);
-}
-
-.hero__tagline-quiet {
-  color: rgba(242, 239, 234, 0.45);
+  font-weight: 400;
+  font-size: 1em;
 }
 
 .hero__mono {
@@ -567,20 +554,22 @@ onUnmounted(() => {
   transform: translateY(-50%);
   z-index: 6;
   pointer-events: none;
-  font-family: var(--font-hero);
-  font-weight: 400;
-  font-size: 1.875rem;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  color: rgba(242, 239, 234, 0.9);
+  width: clamp(1.75rem, 2.4vw, 2.6rem);
+  color: #F2EFEA;
+}
+
+.hero__mono svg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .hero__mono--b {
-  left: calc(var(--hero-pad, clamp(1.5rem, 4vw, 4rem)) - var(--ink-mono-b, 0px));
+  left: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
 }
 
 .hero__mono--m {
-  right: calc(var(--hero-pad, clamp(1.5rem, 4vw, 4rem)) - var(--ink-mono-m, 0px));
+  right: var(--hero-pad, clamp(1.5rem, 4vw, 4rem));
 }
 
 .hero__meta {
@@ -632,6 +621,7 @@ onUnmounted(() => {
   display: flex;
   align-items: baseline;
   justify-content: flex-end;
+  gap: 1.1em;
 }
 
 .hero__meta-cta {

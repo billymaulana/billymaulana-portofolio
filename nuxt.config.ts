@@ -85,6 +85,8 @@ export default defineNuxtConfig({
   routeRules: {
     '/': { prerender: true },
     '/**': { prerender: true },
+    /* Alat internal untuk sesi kalibrasi taste — tidak boleh ikut ter-generate ke output publik. */
+    '/calibration': { prerender: false, robots: false, sitemap: false },
   },
 
   // Comprehensive SEO Head Configuration

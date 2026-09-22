@@ -1,5 +1,7 @@
 # Project Memory
 
+> Profil taste personal kanonik: `docs/awwwards/personal-taste-profile.md`. Bagian taste di bawah adalah arsip — edit di file kanonik.
+
 ## Active Concept: "Editorial Void x Liquid Intelligence"
 
 Branch: `mac-explorer-design` (nama branch = eksplorasi design, BUKAN konsep mac/OS)

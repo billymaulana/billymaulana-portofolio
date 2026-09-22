@@ -318,3 +318,80 @@ for (i = 0; i < octaves; i++) {
 | "Kenapa animasi ini terasa aneh?" | Usually wrong easing or missing decay |
 
 **Rule of thumb**: Jika animasi terasa "off" tapi kamu tidak bisa articulate kenapa — kemungkinan besar masalahnya di easing curve atau missing inertia/decay. Math is the debugging tool untuk motion feel.
+
+---
+
+## 8. Bobot Proporsional — Pacing Tanpa Easing (sumber: motion.zajno.com, 2026-07-26)
+
+Di timeline **scrubbed**, easing curve tidak tersedia (lihat `motion-principles.md` § Kontradiksi
+K1). Pacing tetap bisa dibentuk lewat pembagian bobot durasi.
+
+### Formula
+
+```
+panjangScrollSegmen_i = totalScroll * (bobot_i / Sigma bobot)
+kecepatanRelatif_i    = (progresPath_i - progresPath_{i-1}) / (bobot_i / Sigma bobot)
+```
+
+Contoh terukur dari `motion.zajno.com` (MotionPath 5 segmen, `ease: "none"` seluruhnya):
+
+| Segmen | Bobot | Porsi scroll | Progres path | Porsi path | Kecepatan relatif |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 4 | 5,7% | — (translate y) | — | — |
+| 2 | 7 | 10,0% | 0 -> 0,1477 | 14,8% | **1,48x** (cepat) |
+| 3 | 18 | 25,7% | 0,1477 -> 0,43367 | 28,6% | 1,11x |
+| 4 | 14 | 20,0% | 0,43367 -> 0,61329 | 18,0% | 0,90x |
+| 5 | 27 | 38,6% | 0,61329 -> 1 | 38,7% | 1,00x |
+
+Bobot total 70. Rasio kecepatan 1,48x -> 1,11x -> 0,90x -> 1,00x menghasilkan kurva "cepat di awal,
+melambat di tikungan panjang" — bentuk yang sama dengan `power1.out`, tapi dibangun dari geometri
+timeline, bukan dari fungsi easing. Keuntungannya: tidak bertabrakan dengan smoothing Lenis.
+
+**Cara memakainya**: tentukan dulu porsi PATH tiap segmen (dari geometri), lalu pilih bobot durasi
+yang lebih besar dari porsi path bila ingin segmen itu terasa lambat, lebih kecil bila ingin cepat.
+
+### Stagger sebagai rasio, bukan milidetik
+
+```js
+const a = parseInt(1.5 * vw / totalLength * 100);   // bobot elemen, dalam persen panjang scroll
+gsap.to(".arrow", { x: 0.84 * vw, duration: a, stagger: a / 4 });
+```
+
+`stagger = durasi / 4` — seperempat durasi elemen itu sendiri, jadi tumpang-tindih antar elemen
+selalu 75% berapa pun panjang scroll dan lebar viewport. Angka stagger tetap (30-60ms di
+`motion-principles.md`) benar untuk animasi berbasis waktu, tapi **pecah pada timeline scrubbed**
+karena panjang scroll berubah menurut viewport. Untuk scrub, tulis stagger sebagai fraksi durasi.
+
+### Kurva smooth-scroll Lenis
+
+```js
+easing: e => Math.min(1, 1.001 - Math.pow(2, -10 * e))
+```
+
+Ini `expo.out` standar. Faktor `1.001` mendorong nilai akhir sedikit melewati 1 sebelum di-clamp
+`Math.min`, sehingga tidak ada frame terakhir yang menggantung di 0,999. Dipasangkan dengan
+`duration: 2`.
+
+### CustomEase dengan undershoot negatif
+
+```js
+CustomEase.create("bounce",      "M0,0 C0.05222,-0.59802 0.31828,-1.38625 0.55039,0 0.65208,-0.78892 0.94566,-0.58262 1,1");
+CustomEase.create("bounceSmall", "M0,0,C0.052,-0.598,0.246,-0.72,0.336,0,0.498,-0.502,0.792,-0.482,1,1");
+```
+
+Kedua kurva turun ke **nilai negatif** (-1,386 dan -0,72) sebelum naik ke 1 — objek ditarik ke arah
+BERLAWANAN dulu, baru bergerak. Itu prinsip *anticipation* Disney yang dituliskan sebagai kurva,
+bukan sebagai keyframe tambahan. Titik potong sumbu di `x = 0.55039` dan `x = 0.336`: makin awal
+titik potongnya, makin pendek fase antisipasinya (`bounceSmall` lebih halus).
+
+Pemakaiannya langka dan disengaja: 2 kurva, 2 pemakaian, di seluruh situs sepanjang 64.670px.
+
+### Normalisasi gaya terhadap frame time
+
+```
+scale = 1000 / 60 / lastDelta        // 1,0 pada 60fps; 2,0 saat frame 30ms
+gaya  = koefisien * massa * scale
+```
+
+Tanpa `scale`, gaya per-frame membuat objek bergerak lebih jauh di mesin cepat. Ini versi gaya dari
+prinsip yang sama dengan `deltaTime capping` di `motion-architecture.md`.

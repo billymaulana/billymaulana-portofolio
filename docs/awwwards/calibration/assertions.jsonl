@@ -1,0 +1,8 @@
+{"pair":"composition-bleed-vs-blocks","dim":"Pola komposisi","a":"Wordmark menembus tepi","b":"Wordmark dipecah blok","pick":"a","note":"","toggles":2,"ts":"2026-07-26T06:55:36.951Z"}
+{"pair":"weight-heavy-vs-light","dim":"Weight display","a":"Berat — Inter 800","b":"Ringan — Switzer 300","pick":"a","note":"","toggles":2,"ts":"2026-07-26T06:55:51.408Z"}
+{"pair":"leading-tight-vs-open","dim":"Leading display","a":"Rapat 0.77","b":"Terbuka 1.00","pick":"a","note":"","toggles":4,"ts":"2026-07-26T06:56:29.016Z"}
+{"pair":"hierarchy-value-vs-scale","dim":"Cara membangun hierarki","a":"Lewat nilai abu","b":"Lewat lompatan ukuran","pick":"a","note":"","toggles":4,"ts":"2026-07-26T06:56:59.016Z"}
+{"pair":"ground-dark-vs-light","dim":"Ground","a":"Hampir-hitam #0A0A0A","b":"Terang hangat #EAEAEA","pick":"a","note":"","toggles":2,"ts":"2026-07-26T06:57:04.666Z"}
+{"pair":"accent-single-vs-none","dim":"Aksen warna","a":"Satu glyph beraksen","b":"Monokrom murni","pick":"b","note":"","toggles":1,"ts":"2026-07-26T06:57:11.166Z"}
+{"pair":"case-sentence-vs-upper","dim":"Case display","a":"Sentence case","b":"UPPERCASE penuh","pick":"a","note":"","toggles":4,"ts":"2026-07-26T06:57:37.448Z"}
+{"pair":"density-minimal-vs-editorial","dim":"Densitas konten","a":"Minimal","b":"Padat editorial","pick":"b","note":"","toggles":3,"ts":"2026-07-26T06:58:02.918Z"}

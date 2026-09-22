@@ -64,6 +64,7 @@ interface Pointer {
   deltaY: number
   down: boolean
   moved: boolean
+  seeded: boolean
   color: FluidColor
 }
 
@@ -183,9 +184,78 @@ export function useFluidSimulation() {
 
   // ── Content display (mode displacement daspritam) ──
   let contentDisplayEnabled = false
+  let interpolateSegments = false
   let contentDisplayProgram: ProgramObj | null = null
   let contentTexture: TextureObj | null = null
   let pointerGate: ((u: number, v: number) => boolean) | null = null
+
+  const contentDisplay = {
+    mode: 0,
+    displace: 0.001,
+    chromatic: 0.003,
+    color: [0, 0.28, 1] as [number, number, number],
+    whiteCore: 0.95,
+    /* 3.2 puts an untouched letterform just under the top stop of the ramp, so the masthead reads
+       as the hottest matter on screen rather than as pale yellow. */
+    textHeat: 3.2,
+    /* 6.0 reaches roughly one stem width of trail at stroke speed: far enough to read as the
+       letter dissolving, short enough that the counters never close up. */
+    meltSpan: 3.0,
+    /* 0.045 uv is about one stem width of the masthead at 1440: the trail reads as the letter
+       lifting into the current without ever closing a counter or erasing a stroke. */
+    meltMax: 0.045,
+    /* 0.03 uv keeps the warp inside one counter: the letterform bends and bulges, it never
+       travels far enough for a stroke to land on top of its neighbour. */
+    warpMax: 0.03,
+    /* 1.0 leaves the fluid the whole ramp, so the field matches /checkpoint/liquid/liquid-2
+       exactly; the contour below is what separates the name from it. Lower this only if a route
+       wants the pale stops reserved for type. */
+    fluidCeil: 1.0,
+    /* Bounded boost on top of textHeat 3.2: a stroke lifts the letterform about a third further up
+       the ramp, from cream to white hot, and can never run away with it. */
+    ignite: 1.2,
+    /* 2.0 lands thick ejecta near the amber stop C6 and lets it cool through magenta as it thins —
+       4.5 put the whole trail at the cream stops and the band blew out. */
+    ember: 2.0,
+    char: 0.55,
+    /* Streak length: 6.0 of the displacement vector, capped at 0.2 uv (~290px at 1440). Shorter
+       tails looked right in isolation but killed the banding — nearly every pixel found ink at
+       distance zero, so the ramp never had room to travel and the smear came out white. The
+       reference sheets all run their drips about as long as the letters are tall. */
+    smearSpan: 6.0,
+    smearMax: 0.2,
+    /* How fast the ramp cools down the streak. 1.15 puts cream at the glyph, magenta a third of the
+       way down, indigo at the tip — the layering the reference sheets all share. */
+    bandFall: 1.35,
+    /* C3 violet. Measured against 0.24: dropping the floor further moved the falloff into stops so
+       dark that the tinted region simply went dim — the colour needs luminance to be seen against a
+       black ground, so the floor stays where the ramp is still bright. */
+    bandFloor: 0.42,
+    /* uv distance over which the streak walks the whole ramp. */
+    bandScale: 0.16,
+    bandStrength: 1.6,
+    grain: 0.045,
+    /* Presence runs past 1 where splats overlap, so 1.6 saturates wet under a dwelling pool
+       while a single passing stroke only partly wets the letter. */
+    wetGain: 1.1,
+    /* 0.026 uv, roughly an eighth of the cap height here. Measured against 0.035: the larger sag
+       dissolved the whole word under a full-width sweep, which trades the melt's readability for
+       nothing — the drooping is legible well before the letter leaves its baseline. */
+    sag: 0.026,
+    soften: 0.005,
+    thin: 0.45,
+    /* The halo carries the effect, so its radius is a tenth of a stem rather than a hairline,
+       and it opens further under a passing current. */
+    glow: 1.35,
+    glowRadius: 0.02,
+    glowBase: 0.18,
+  }
+
+  function hexToRgb(hex: string): [number, number, number] {
+    const h = hex.replace('#', '')
+    const int = Number.parseInt(h.length === 3 ? h.replace(/./g, c => c + c) : h, 16)
+    return [(int >> 16 & 255) / 255, (int >> 8 & 255) / 255, (int & 255) / 255]
+  }
 
   // ── Blit ──
   let blit: ((target: FBO | null, clear?: boolean) => void) | null = null
@@ -607,29 +677,315 @@ export function useFluidSimulation() {
     }
   `
 
-  /* Display pass daspritam: velocity fluid men-displace konten (uv - vel*0.001)
-     dan menggeser channel G/B (vel*0.003) untuk fringe chromatic. Channel R
-     sengaja tidak digeser — persis source referensi */
+  /* Display pass daspritam: velocity fluid men-displace konten (uv - vel*0.001).
+     Fringe chromatic R-vs-G/B (dulu merah+aqua) diganti tint dua-tone biru:
+     TANDA aberration (hi-lo) memilih #0000ff (biru solid) vs #0061ff (azure),
+     magnitudonya jadi kekuatan mix ke tepi huruf yang bergerak. */
+  /* Buffer dye mode content menyimpan (vx, vy, presence): rg = vektor
+     kecepatan (peta displacement, meluruh bersih), b = density presence 0..1
+     penanda jejak kursor. Tiga mode display via uMode (semua parameter uniform
+     supaya warna/displace/chromatic diubah dari config tanpa menyentuh GLSL):
+       0 FAITHFUL — paritas mekanik daspritam: fluid invisible, teks meleleh +
+         chromatic aberration; energi tepi diberi tint uColor (biru).
+       1 DYE — tubuh cairan uColor terlihat dengan inti putih (non-daspritam).
+       2 THERMAL — energi tepi (presence + speed) dipetakan lewat colormap
+         termal 9-stop, dipakai identik dengan background heat field. */
   const contentDisplayShaderSource = `
     precision highp float;
 
     uniform sampler2D tMap;
     uniform sampler2D tFluid;
+    uniform float uMode;
+    uniform float uDisplace;
+    uniform float uChromatic;
+    uniform vec3 uColor;
+    uniform float uWhite;
+    uniform float uTextHeat;
+    uniform float uMeltSpan;
+    uniform float uMeltMax;
+    uniform float uWarpMax;
+    uniform float uFluidCeil;
+    uniform float uIgnite;
+    uniform float uEmber;
+    uniform float uChar;
+    uniform float uSmearSpan;
+    uniform float uSmearMax;
+    uniform float uGlow;
+    uniform float uGlowRadius;
+    uniform float uBandFall;
+    uniform float uBandScale;
+    uniform float uBandFloor;
+    uniform float uBandStrength;
+    uniform float uGrain;
+    uniform float uWetGain;
+    uniform float uSag;
+    uniform float uSoften;
+    uniform float uThin;
+    uniform float uGlowBase;
     varying vec2 vUv;
 
+    const vec3 C0 = vec3(0.020, 0.020, 0.027);
+    const vec3 C1 = vec3(0.059, 0.039, 0.447);
+    const vec3 C2 = vec3(0.227, 0.102, 0.620);
+    const vec3 C3 = vec3(0.420, 0.184, 0.784);
+    const vec3 C4 = vec3(0.639, 0.169, 0.659);
+    const vec3 C5 = vec3(0.831, 0.361, 0.431);
+    const vec3 C6 = vec3(0.933, 0.541, 0.165);
+    const vec3 C7 = vec3(0.973, 0.749, 0.153);
+    const vec3 C8 = vec3(0.996, 0.898, 0.365);
+    const vec3 C9 = vec3(0.999, 0.961, 0.702);
+    const vec3 C10 = vec3(1.000, 0.996, 0.961);
+
+    vec3 thermal(float t) {
+      t = clamp(t, 0.0, 1.0);
+      if (t < 0.13) return mix(C0, C1, smoothstep(0.00, 0.13, t));
+      if (t < 0.28) return mix(C1, C2, smoothstep(0.13, 0.28, t));
+      if (t < 0.43) return mix(C2, C3, smoothstep(0.28, 0.43, t));
+      if (t < 0.56) return mix(C3, C4, smoothstep(0.43, 0.56, t));
+      if (t < 0.68) return mix(C4, C5, smoothstep(0.56, 0.68, t));
+      if (t < 0.79) return mix(C5, C6, smoothstep(0.68, 0.79, t));
+      if (t < 0.875) return mix(C6, C7, smoothstep(0.79, 0.875, t));
+      if (t < 0.935) return mix(C7, C8, smoothstep(0.875, 0.935, t));
+      if (t < 0.975) return mix(C8, C9, smoothstep(0.935, 0.975, t));
+      return mix(C9, C10, smoothstep(0.975, 1.00, t));
+    }
+
     void main() {
-      vec3 fluid = texture2D(tFluid, vUv).rgb;
+      vec3 f = texture2D(tFluid, vUv).rgb;
+      vec2 vel = f.rg;
+      float presence = clamp(f.b, 0.0, 1.6);
+
       vec2 uv = vUv;
-      vec2 uv2 = vUv - fluid.rg * 0.001;
+      vec2 uv2 = uv - vel * uDisplace;
+      vec3 base = texture2D(tMap, uv2).rgb;
 
-      vec4 color = texture2D(tMap, uv2);
+      vec2 shift = vel * uChromatic;
+      vec3 sh = texture2D(tMap, vec2(uv.x - shift.x, uv.y + shift.y)).rgb;
 
-      vec3 rgb = fluid * 0.003;
+      vec3 col;
+      if (uMode < 0.5) {
+        float aberr = clamp(length(sh - base), 0.0, 1.0);
+        col = base + uColor * aberr;
+      } else if (uMode < 1.5) {
+        base.g = sh.g;
+        base.b = sh.b;
+        vec3 hue = mix(uColor, vec3(1.0), smoothstep(uWhite, uWhite + 0.4, presence));
+        vec3 body = hue * smoothstep(0.0, 0.3, presence);
+        float cover = smoothstep(0.04, 0.22, presence);
+        col = mix(base, body, cover);
+      } else if (uMode < 2.5) {
+        float speed = length(vel);
+        /* Pemotongan keras di ujung panas memetakan semua energi di atas ambang
+           ke warna identik, sehingga inti aliran runtuh jadi bidang cream rata
+           dan detail yang sudah dihitung solver terbuang. Kurva eksponensial
+           mendekati 1 tanpa pernah menyentuhnya — gradasi tetap hidup sampai
+           piksel terpanas. */
+        float raw = presence * 0.62 + speed * 0.0042;
+        float heat = pow(1.0 - exp(-raw * 1.35), 0.62);
 
-      color.g = texture2D(tMap, vec2(uv.x - rgb.x, uv.y + rgb.y)).g;
-      color.b = texture2D(tMap, vec2(uv.x - rgb.x, uv.y + rgb.y)).b;
+        vec3 hot = thermal(heat);
+        float cover = smoothstep(0.015, 0.30, heat);
 
-      gl_FragColor = color;
+        /* Pemisahan kanal RGB milik mode dye menghasilkan cyan dan merah pada tinta putih —
+           dua warna yang tidak ada di ramp termal, sehingga terbaca sebagai artefak rusak.
+           Magnitudo aberasi dipertahankan, tapi warnanya diambil dari ramp pada suhu lebih
+           tinggi supaya tepi yang bergerak tetap berada di dalam palet. */
+        float aberr = clamp(length(sh - base), 0.0, 1.0);
+        vec3 ink = mix(base, thermal(min(heat + 0.34, 1.0)), aberr * 0.85);
+
+        col = mix(ink, max(ink, hot), cover);
+      } else if (uMode < 3.5) {
+        /* Plasma text — the field of mode 2 with the masthead inside it instead of under it. The
+           raster is never drawn as ink; its luminance is fed into the heat term, so the letters sit
+           at the top of the same ramp the fluid paints with and the velocity field drags that hot
+           matter like any other. Mode 2 kept the raster as white ink and let the field pass over
+           it, which reads as a cloud covering the name; clipping the field to the letterform
+           instead (the mode this one replaces) left a stripe of texture and no field at all.
+           Everything below the ramp floor resolves to C0, which is the page ground, so an
+           untouched canvas stays black without a cover term. */
+        float speed = length(vel);
+
+        /* Mode 0 warps by the raw velocity, which is fine when the flow dies in a third of a second.
+           This route keeps velocity alive for seconds, and an unclamped warp then samples the raster
+           hundreds of pixels away and shreds the name outright. uWarpMax caps the offset so the
+           letterform bends with the current instead of being carried off by it. */
+        vec2 flow = vel * uDisplace;
+        float flowLen = length(flow);
+        vec2 dir = flowLen > 1e-5 ? flow / flowLen : vec2(0.0);
+        vec2 warped = uv - dir * min(flowLen, uWarpMax);
+
+        /* Melting, driven by how much liquid is SITTING on the pixel rather than how fast it moves.
+           Presence builds while the plasma dwells on a letter and decays with the dye, so a letter
+           sags under a passing pool and recovers once it drains — displacement alone only ever
+           pushed the glyph sideways while the flow lasted. */
+        float wet = clamp(presence * uWetGain, 0.0, 1.0);
+
+        /* Sampling upward in uv shows content from above this pixel, which reads as the letterform
+           drooping down the screen. The raster is uploaded flipped, so +y here is up. */
+        vec2 gp = warped + vec2(0.0, uSag * wet);
+
+        /* Molten edges are soft edges. Four taps opening with wet, so a dry letter keeps its crisp
+           contour and a wet one loses it — the reference sheets are all soft exactly where the
+           liquid is and sharp everywhere else. */
+        float glyphSharp = 0.0;
+        for (int i = 0; i < 4; i++) {
+          float a = float(i) * 1.5708;
+          vec3 g = texture2D(tMap, gp + vec2(cos(a), sin(a)) * uSoften * wet).rgb;
+          glyphSharp += max(g.r, max(g.g, g.b));
+        }
+        vec3 baseM = texture2D(tMap, gp).rgb;
+        glyphSharp = mix(max(baseM.r, max(baseM.g, baseM.b)), glyphSharp * 0.25, wet);
+
+        /* A single displaced sample only ever SHIFTS the letterform, so under a passing current the
+           name stayed a solid slab that moved — legible but inert. Sampling the raster along a run
+           of offsets smears its matter down the flow instead, the way ink lifts off a letter and
+           trails behind it. The trail is bounded too, at roughly one stem width. */
+        float tailLen = min(flowLen * uMeltSpan, uMeltMax);
+        float glyphMelt = 0.0;
+        for (int i = 0; i < 6; i++) {
+          vec3 s = texture2D(tMap, warped - dir * tailLen * (float(i) / 5.0)).rgb;
+          glyphMelt += max(s.r, max(s.g, s.b));
+        }
+        glyphMelt /= 6.0;
+
+        /* Thresholds are sim texels per second, the same units the trail probe reports: a stroke
+           peaks near 80 and a field left alone falls under 3 within a second. Melting therefore
+           tracks the live current rather than the ink that happens to be lying around, and the name
+           is crisp again as soon as the water goes still. */
+        float melt = smoothstep(8.0, 120.0, speed);
+
+        /* Core and ejecta are tracked separately. Feeding the smear into the same term as the body
+           gave every trailing wisp the letterform's own heat, and the whole masthead band blew out
+           to one sheet of cream. Matter that has left the letter is cooling matter: it gets its own,
+           lower term below, which is what puts amber trails against a white core. */
+        float core = glyphSharp * (1.0 - 0.25 * melt);
+        float ejecta = max(glyphMelt - glyphSharp, 0.0) * melt;
+
+        float fluidHeat = pow(1.0 - exp(-(presence * 0.62 + speed * 0.0042) * 1.35), 0.62);
+
+        /* Ignition: a current crossing the name drives it further up the ramp instead of merely
+           dragging it, so holding a stroke over a letter takes it from cream to white hot. The
+           boost is bounded by smoothstep rather than scaled by raw speed — velocity runs to the
+           hundreds here, and multiplying by it saturated the whole band on the first fast pass. */
+        float ignite = uIgnite * smoothstep(10.0, 150.0, speed);
+        /* Thinning is what keeps the wet band from reading as a heavy slab: molten matter has left,
+           so it contributes less heat and the plasma shows through it instead of being buried under
+           a second layer of cream at full strength. */
+        float inkHeat = pow(1.0 - exp(-(core * (uTextHeat + ignite) * (1.0 - uThin * wet)) * 1.35), 0.62);
+
+        /* Ejecta lands mid-ramp: amber where it is thick, dropping through magenta and violet as it
+           thins into the plasma. That gradient is the melt reading — a bright edge that cools, not
+           a border drawn around a shape. */
+        float emberHeat = pow(1.0 - exp(-(ejecta * uEmber) * 1.35), 0.62);
+
+        float heat = max(max(min(fluidHeat, uFluidCeil), inkHeat), emberHeat);
+
+        /* Char sits behind the flame front, never around the letter: it exists only where matter
+           has been torn off AND this pixel is no longer part of the letterform. It cools by walking
+           DOWN the ramp, not by mixing toward black — mixing cream with the ramp floor crosses the
+           straight line between two distant stops and lands on grey, which is the one thing this
+           palette must never produce. Subtracting heat instead walks cream → amber → magenta →
+           violet, every step a colour the ramp actually contains. */
+        float charred = smoothstep(0.05, 0.4, ejecta) * (1.0 - smoothstep(0.15, 0.6, core)) * melt;
+        heat = max(heat - charred * uChar, 0.0);
+
+        vec3 hot = thermal(heat);
+
+        /* Aberration keeps the mode 2 treatment: magnitude from the channel split, colour taken
+           from a hotter point on the ramp so moving edges never leave the palette. */
+        float aberr = clamp(length(sh - base), 0.0, 1.0);
+        col = mix(hot, thermal(min(heat + 0.34, 1.0)), aberr * 0.85);
+      } else {
+        /* Liquid blur — mapped from the reference folder (Thermal Blur / Liquid Blur / MELT / FLOW
+           typography). Every one of those shares three traits that the previous prism pass did not
+           have: the letterform is SOFT rather than razor sharp, it bleeds into streaks that run
+           along one direction, and those streaks carry layered colour bands that cool with distance
+           from the glyph. A thin chromatic fringe on a crisp letter reads as a lens artefact; these
+           read as matter dissolving, which is what the liquid is supposed to be doing to the name.
+
+           The march below walks backwards along the flow and accumulates ink, tinting each step
+           from the ramp by how far down the streak it is: nearest the letter stays cream, and the
+           tail runs magenta, violet, indigo. That is the banding, and it comes from the marching
+           itself rather than from any added stripe. */
+        float speed = length(vel);
+
+        vec2 flow = vel * uDisplace;
+        float flowLen = length(flow);
+        vec2 dir = flowLen > 1e-5 ? flow / flowLen : vec2(0.0, -1.0);
+        float tail = min(flowLen * uSmearSpan, uSmearMax);
+
+        vec2 warp = uv - dir * min(flowLen, uWarpMax);
+
+        /* Two things come out of one march: how much ink this pixel collects looking back up the
+           flow (its blur), and HOW FAR it had to look before finding any (its distance from the
+           letterform). The first gives the drip its shape, the second gives it colour — a pixel
+           hugging a stem is cream, one far downstream is violet. Colouring by sample index instead
+           was the mistake in the pass before: it painted the ramp onto the letter itself rather
+           than along the direction the matter travelled. */
+        float ink = 0.0;
+        float wsum = 0.0;
+        float hitDist = 1.0;
+        for (int i = 0; i < 14; i++) {
+          float t = float(i) / 13.0;
+          vec3 s = texture2D(tMap, warp - dir * tail * t).rgb;
+          float lum = max(s.r, max(s.g, s.b));
+          /* Far samples keep half their weight rather than a seventh: at the steeper falloff the
+             drip carried almost no mass, so the band colour it was tinted with never showed against
+             the white body it trails from. */
+          float w = 1.0 - t * 0.5;
+          ink += lum * w;
+          wsum += w;
+          if (lum > 0.4 && hitDist > 0.99) hitDist = t;
+        }
+        ink /= wsum;
+
+        /* Distance in uv, not in steps, so a still canvas reads zero and the resting masthead stays
+           white however many samples the loop takes. */
+        float travelled = hitDist * tail;
+        /* Ramp position is the pixel's own softness, not its distance from the glyph. Distance put
+           colour only in a thin fringe downstream, because almost every pixel finds ink immediately
+           and lands at the cream end. Softness varies across the WHOLE smeared region: a core that
+           collected full ink stays cream, an edge that collected half runs amber, a wisp that
+           collected a tenth runs magenta into violet. That is the gradient every sheet in the
+           reference folder shows — bright core, coloured falloff. */
+        float soft = clamp(ink * uBandFall, 0.0, 1.0);
+        vec3 band = thermal(mix(uBandFloor, 1.0, soft));
+
+        /* Haze is what makes the type read as soft matter rather than vector art. Speed is clamped
+           before it widens the radius: unbounded, a fast stroke drives velocity into the hundreds
+           and the ring samples a third of the screen away, which stops being a halo and becomes one
+           smooth blob that swallows the name. */
+        float radius = uGlowRadius * (1.0 + min(speed, 120.0) * 0.008);
+        float haze = 0.0;
+        for (int ring = 0; ring < 2; ring++) {
+          float rr = radius * (0.55 + 0.45 * float(ring));
+          for (int i = 0; i < 8; i++) {
+            float a = float(i) * 0.7854;
+            vec3 g = texture2D(tMap, warp + vec2(cos(a), sin(a)) * rr).rgb;
+            haze += max(g.r, max(g.g, g.b));
+          }
+        }
+        haze /= 16.0;
+
+        float activity = smoothstep(2.0, 60.0, speed);
+
+        /* The streak IS the body, not a tint laid over a white core. Adding colour on top of full
+           white only ever brightens — the reference sheets have the drip itself carrying the bands,
+           so the accumulated march is what gets drawn, and the ramp puts cream at the glyph and
+           magenta, violet, indigo down the tail. A little of the plain march is mixed back in to
+           hold the letterform's mass. */
+        /* Haze is tinted by the same ramp, so the halo belongs to the falloff instead of sitting on
+           it as a white fog. */
+        vec3 lit = (vec3(ink) + vec3(haze) * uGlow * (uGlowBase + activity));
+        vec3 body = mix(lit, lit * band * uBandStrength, activity);
+
+        /* Grain: every reference in the folder carries it, and it is what keeps a wide soft bloom
+           from banding into flat rings on a dark ground. */
+        float grain = fract(sin(dot(vUv * 1024.0, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+        col = body + grain * uGrain;
+      }
+
+      gl_FragColor = vec4(col, 1.0);
     }
   `
 
@@ -1278,6 +1634,33 @@ export function useFluidSimulation() {
     contentDisplayProgram.bind()
     g.uniform1i(contentDisplayProgram.uniforms.tMap!, contentTexture.attach(0))
     g.uniform1i(contentDisplayProgram.uniforms.tFluid!, dye!.read.attach(1))
+    g.uniform1f(contentDisplayProgram.uniforms.uMode!, contentDisplay.mode)
+    g.uniform1f(contentDisplayProgram.uniforms.uDisplace!, contentDisplay.displace)
+    g.uniform1f(contentDisplayProgram.uniforms.uChromatic!, contentDisplay.chromatic)
+    g.uniform3f(contentDisplayProgram.uniforms.uColor!, contentDisplay.color[0], contentDisplay.color[1], contentDisplay.color[2])
+    g.uniform1f(contentDisplayProgram.uniforms.uWhite!, contentDisplay.whiteCore)
+    g.uniform1f(contentDisplayProgram.uniforms.uTextHeat!, contentDisplay.textHeat)
+    g.uniform1f(contentDisplayProgram.uniforms.uMeltSpan!, contentDisplay.meltSpan)
+    g.uniform1f(contentDisplayProgram.uniforms.uMeltMax!, contentDisplay.meltMax)
+    g.uniform1f(contentDisplayProgram.uniforms.uWarpMax!, contentDisplay.warpMax)
+    g.uniform1f(contentDisplayProgram.uniforms.uFluidCeil!, contentDisplay.fluidCeil)
+    g.uniform1f(contentDisplayProgram.uniforms.uIgnite!, contentDisplay.ignite)
+    g.uniform1f(contentDisplayProgram.uniforms.uEmber!, contentDisplay.ember)
+    g.uniform1f(contentDisplayProgram.uniforms.uChar!, contentDisplay.char)
+    g.uniform1f(contentDisplayProgram.uniforms.uSmearSpan!, contentDisplay.smearSpan)
+    g.uniform1f(contentDisplayProgram.uniforms.uSmearMax!, contentDisplay.smearMax)
+    g.uniform1f(contentDisplayProgram.uniforms.uGlow!, contentDisplay.glow)
+    g.uniform1f(contentDisplayProgram.uniforms.uGlowRadius!, contentDisplay.glowRadius)
+    g.uniform1f(contentDisplayProgram.uniforms.uBandFall!, contentDisplay.bandFall)
+    g.uniform1f(contentDisplayProgram.uniforms.uBandScale!, contentDisplay.bandScale)
+    g.uniform1f(contentDisplayProgram.uniforms.uBandFloor!, contentDisplay.bandFloor)
+    g.uniform1f(contentDisplayProgram.uniforms.uBandStrength!, contentDisplay.bandStrength)
+    g.uniform1f(contentDisplayProgram.uniforms.uGrain!, contentDisplay.grain)
+    g.uniform1f(contentDisplayProgram.uniforms.uWetGain!, contentDisplay.wetGain)
+    g.uniform1f(contentDisplayProgram.uniforms.uSag!, contentDisplay.sag)
+    g.uniform1f(contentDisplayProgram.uniforms.uSoften!, contentDisplay.soften)
+    g.uniform1f(contentDisplayProgram.uniforms.uThin!, contentDisplay.thin)
+    g.uniform1f(contentDisplayProgram.uniforms.uGlowBase!, contentDisplay.glowBase)
     blit!(target)
   }
 
@@ -1363,20 +1746,28 @@ export function useFluidSimulation() {
      frame (perilaku lama) meninggalkan titik-titik terpisah saat flick
      karena delta satu frame bisa melampaui radius gaussian */
   function splatSegment(seg: SplatSegment) {
-    /* Paritas daspritam pada mode content: SATU splat penuh per event di
-       posisi terkini — interpolasi sub-splat (dibuat untuk pita tinta
-       visible) melipatgandakan coverage dye ~8x sehingga displacement
-       membanjiri seluruh pita teks, bukan mengikuti jalur cursor */
-    if (contentDisplayEnabled) {
-      splat(seg.toX, seg.toY, seg.deltaX * config.SPLAT_FORCE, seg.deltaY * config.SPLAT_FORCE, seg.color)
-      return
-    }
     const dist = Math.hypot(seg.deltaX, seg.deltaY)
     const count = Math.max(1, Math.min(Math.ceil(dist / SPLAT_INTERP_SPACING), MAX_SPLATS_PER_SEGMENT))
     /* Momentum dibagi rata antar sub-splat: total energi per segmen setara
        satu splat penuh, meniru deposit per-event kecil milik daspritam */
     const dx = seg.deltaX * config.SPLAT_FORCE / count
     const dy = seg.deltaY * config.SPLAT_FORCE / count
+    /* Content mode drops one full splat per event at the newest position, so a fast flick prints
+       separate beads once the per-frame step passes the gaussian sigma. Interpolating only helps
+       when presence is divided by the count alongside momentum — dividing momentum alone is what
+       multiplied dye coverage and flooded the text band. Opt-in so routes calibrated against the
+       single-splat behaviour keep it. */
+    if (contentDisplayEnabled) {
+      if (!interpolateSegments) {
+        splat(seg.toX, seg.toY, seg.deltaX * config.SPLAT_FORCE, seg.deltaY * config.SPLAT_FORCE, seg.color)
+        return
+      }
+      for (let i = 1; i <= count; i++) {
+        const t = i / count
+        splat(seg.fromX + (seg.toX - seg.fromX) * t, seg.fromY + (seg.toY - seg.fromY) * t, dx, dy, seg.color, 1 / count)
+      }
+      return
+    }
     const dyeColor = {
       r: seg.color.r * DYE_SPLAT_MULT,
       g: seg.color.g * DYE_SPLAT_MULT,
@@ -1407,15 +1798,22 @@ export function useFluidSimulation() {
   /* 14 (dari 10): dissipation cepat kalibrasi daspritam memangkas umur splat
      tunggal — deposit awal dinaikkan agar splat programatik tetap terbaca
      tanpa mengubah kontrak pemanggil; plafon dijaga clamp DYE_MAX di shader */
-  function emitSplat(x: number, y: number, dx: number, dy: number, brightness = 1) {
+  function emitSplat(x: number, y: number, dx: number, dy: number, brightness = 1, radius?: number) {
     const color = generateColor()
     color.r *= 14.0 * brightness
     color.g *= 14.0 * brightness
     color.b *= 14.0 * brightness
+    if (radius === undefined) {
+      splat(x, y, dx, dy, color)
+      return
+    }
+    const previousRadius = config.SPLAT_RADIUS
+    config.SPLAT_RADIUS = radius
     splat(x, y, dx, dy, color)
+    config.SPLAT_RADIUS = previousRadius
   }
 
-  function splat(x: number, y: number, dx: number, dy: number, color: FluidColor) {
+  function splat(x: number, y: number, dx: number, dy: number, color: FluidColor, presence = 1) {
     const g = gl!
     splatProgram!.bind()
     g.uniform1i(splatProgram!.uniforms.uTarget!, velocity!.read.attach(0))
@@ -1439,7 +1837,7 @@ export function useFluidSimulation() {
          (tearing zebra + residu saat idle); density murni ter-advect dan
          meluruh multiplicative sehingga teks selalu pulih utuh. Tanpa clamp
          DYE_MAX: nilai kecepatan ratusan akan tergencet ke 0.85 */
-      g.uniform3f(splatProgram!.uniforms.color!, dx, dy, 1.0)
+      g.uniform3f(splatProgram!.uniforms.color!, dx, dy, presence)
       g.uniform1f(splatProgram!.uniforms.clampValue!, VELOCITY_CLAMP)
     }
     else {
@@ -1565,6 +1963,7 @@ export function useFluidSimulation() {
       deltaY: 0,
       down: false,
       moved: false,
+      seeded: false,
       color: { r: 30 * 0.15 / 255, g: 0, b: 300 * 0.15 / 255 },
     }
   }
@@ -1580,9 +1979,27 @@ export function useFluidSimulation() {
     pointer.deltaX = 0
     pointer.deltaY = 0
     pointer.color = generateColor()
+    pointer.seeded = true
   }
 
   function updatePointerMoveData(pointer: Pointer, posX: number, posY: number) {
+    /* Pointer lahir di texcoord (0,0), bukan di posisi kursor sebenarnya. Karena
+       mousemove di sini tidak lagi digerbangi `down` seperti port aslinya, event
+       pertama akan menghitung delta dari sudut kanvas ke kursor dan meledak jadi
+       satu splat sepanjang layar — cukup kursor kebetulan berada di atas viewport
+       saat halaman dimuat. Event pertama hanya menanam posisi, tanpa gaya. */
+    if (!pointer.seeded) {
+      pointer.texcoordX = posX / canvas!.width
+      pointer.texcoordY = 1.0 - posY / canvas!.height
+      pointer.prevTexcoordX = pointer.texcoordX
+      pointer.prevTexcoordY = pointer.texcoordY
+      pointer.deltaX = 0
+      pointer.deltaY = 0
+      pointer.moved = false
+      pointer.seeded = true
+      return
+    }
+
     pointer.prevTexcoordX = pointer.texcoordX
     pointer.prevTexcoordY = pointer.texcoordY
     pointer.texcoordX = posX / canvas!.width
@@ -1735,8 +2152,42 @@ export function useFluidSimulation() {
     hueMax?: number
     curl?: number
     splatRadius?: number
+    splatForce?: number
+    simResolution?: number
+    dyeResolution?: number
     contentDisplay?: boolean
     pointerGate?: (u: number, v: number) => boolean
+    displayMode?: 'faithful' | 'dye' | 'thermal' | 'plasmaText' | 'liquidBlur'
+    displace?: number
+    chromatic?: number
+    color?: string
+    whiteCore?: number
+    textHeat?: number
+    meltSpan?: number
+    meltMax?: number
+    warpMax?: number
+    fluidCeil?: number
+    ignite?: number
+    ember?: number
+    char?: number
+    smearSpan?: number
+    smearMax?: number
+    glow?: number
+    glowRadius?: number
+    bandFall?: number
+    bandScale?: number
+    bandFloor?: number
+    bandStrength?: number
+    grain?: number
+    wetGain?: number
+    sag?: number
+    soften?: number
+    thin?: number
+    glowBase?: number
+    densityDissipation?: number
+    velocityDissipation?: number
+    pressureIterations?: number
+    interpolateSegments?: boolean
   }): boolean {
     canvas = canvasEl
     hueMin = options?.hueMin ?? 0
@@ -1745,8 +2196,74 @@ export function useFluidSimulation() {
       config.CURL = options.curl
     if (options?.splatRadius !== undefined)
       config.SPLAT_RADIUS = options.splatRadius
+    if (options?.splatForce !== undefined)
+      config.SPLAT_FORCE = options.splatForce
+    if (options?.simResolution !== undefined)
+      config.SIM_RESOLUTION = options.simResolution
+    if (options?.dyeResolution !== undefined)
+      config.DYE_RESOLUTION = options.dyeResolution
+    if (options?.densityDissipation !== undefined)
+      config.DENSITY_DISSIPATION = options.densityDissipation
+    if (options?.velocityDissipation !== undefined)
+      config.VELOCITY_DISSIPATION = options.velocityDissipation
+    if (options?.pressureIterations !== undefined)
+      config.PRESSURE_ITERATIONS = options.pressureIterations
+    interpolateSegments = options?.interpolateSegments ?? false
     contentDisplayEnabled = options?.contentDisplay ?? false
     pointerGate = options?.pointerGate ?? null
+    contentDisplay.mode = { faithful: 0, dye: 1, thermal: 2, plasmaText: 3, liquidBlur: 4 }[options?.displayMode ?? 'faithful']
+    if (options?.displace !== undefined)
+      contentDisplay.displace = options.displace
+    if (options?.chromatic !== undefined)
+      contentDisplay.chromatic = options.chromatic
+    if (options?.color !== undefined)
+      contentDisplay.color = hexToRgb(options.color)
+    if (options?.whiteCore !== undefined)
+      contentDisplay.whiteCore = options.whiteCore
+    if (options?.textHeat !== undefined)
+      contentDisplay.textHeat = options.textHeat
+    if (options?.meltSpan !== undefined)
+      contentDisplay.meltSpan = options.meltSpan
+    if (options?.meltMax !== undefined)
+      contentDisplay.meltMax = options.meltMax
+    if (options?.warpMax !== undefined)
+      contentDisplay.warpMax = options.warpMax
+    if (options?.fluidCeil !== undefined)
+      contentDisplay.fluidCeil = options.fluidCeil
+    if (options?.ignite !== undefined)
+      contentDisplay.ignite = options.ignite
+    if (options?.ember !== undefined)
+      contentDisplay.ember = options.ember
+    if (options?.char !== undefined)
+      contentDisplay.char = options.char
+    if (options?.smearSpan !== undefined)
+      contentDisplay.smearSpan = options.smearSpan
+    if (options?.smearMax !== undefined)
+      contentDisplay.smearMax = options.smearMax
+    if (options?.glow !== undefined)
+      contentDisplay.glow = options.glow
+    if (options?.glowRadius !== undefined)
+      contentDisplay.glowRadius = options.glowRadius
+    if (options?.bandFall !== undefined)
+      contentDisplay.bandFall = options.bandFall
+    if (options?.bandScale !== undefined)
+      contentDisplay.bandScale = options.bandScale
+    if (options?.bandFloor !== undefined)
+      contentDisplay.bandFloor = options.bandFloor
+    if (options?.bandStrength !== undefined)
+      contentDisplay.bandStrength = options.bandStrength
+    if (options?.grain !== undefined)
+      contentDisplay.grain = options.grain
+    if (options?.wetGain !== undefined)
+      contentDisplay.wetGain = options.wetGain
+    if (options?.sag !== undefined)
+      contentDisplay.sag = options.sag
+    if (options?.soften !== undefined)
+      contentDisplay.soften = options.soften
+    if (options?.thin !== undefined)
+      contentDisplay.thin = options.thin
+    if (options?.glowBase !== undefined)
+      contentDisplay.glowBase = options.glowBase
 
     const ctx = getWebGLContext(canvas)
     if (!ctx || !ctx.ext.formatRGBA) {
@@ -1870,6 +2387,7 @@ export function useFluidSimulation() {
     contentTexture = null
     contentDisplayProgram = null
     contentDisplayEnabled = false
+    interpolateSegments = false
     pointerGate = null
     pointers.length = 0
     splatStack = []

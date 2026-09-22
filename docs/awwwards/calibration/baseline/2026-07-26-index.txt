@@ -1,0 +1,50 @@
+taste-lint · http://localhost:3000/
+
+FAIL font-family-count          3 teks (Switzer, Apparel, Suisse) + 0 mono
+                                wajib: ≤ 2 teks + 1 mono
+       - Switzer
+       - Apparel
+       - Suisse
+PASS font-weight-count          400, 500
+FAIL tracking-threshold         7/14 elemen di luar rentang
+                                wajib: dalam rentang per ambang ukuran
+       - p 10px → 0.28em (wajar 0.05…0.2em) "Bandung — 08:03:25 GMT+7"
+       - a 10px → 0.28em (wajar 0.05…0.2em) "GitHub"
+       - a 10px → 0.28em (wajar 0.05…0.2em) "LinkedIn"
+       - a 10px → 0.28em (wajar 0.05…0.2em) "Instagram"
+       - a 10px → 0.28em (wajar 0.05…0.2em) "Work"
+       - a 10px → 0.28em (wajar 0.05…0.2em) "About"
+       - a 10px → 0.28em (wajar 0.05…0.2em) "Contact"
+PASS tracking-not-global        3 nilai tracking untuk 2 tier
+FAIL leading-tier               2/2 blok menyimpang
+                                wajib: ±0.06 dari target tier
+       - h1 17px [body] → 1.6 (target 1.3)
+       - p 10px [label] → 1 (target 1.2)
+FAIL display-body-ratio         1× (27px : 27px)
+                                wajib: ≥ 5×
+       - tidak ada satu pun teks ≥64px di DOM — masthead kemungkinan dirender di canvas/WebGL sehingga tidak terukur di sini; verifikasi manual
+PASS forbidden-size-zone        0 elemen di zona 30–39px
+FAIL text-wrap                  2 elemen belum diset
+                                wajib: balance di heading, pretty di body
+       - h1 heading → text-wrap: nowrap (wajib balance)
+       - p body → text-wrap: wrap (wajib pretty)
+SKIP tabular-nums               tidak ada elemen didominasi angka
+FAIL measure                    1 elemen melebihi measure
+                                wajib: body ≤75ch, display ≤34ch
+       - p [label] 101ch (maks 75ch)
+SKIP section-padding-neighbor   section < 2
+PASS opacity-floor              0 elemen di bawah 0.08 (2 dikecualikan karena blend mode)
+PASS color-count                2 warna signifikan
+PASS radius-scale               0px 0px 4px 4px
+FAIL easing-banned              3/11 transition memakai easing BANNED
+                                wajib: tidak ada linear/ease
+       - a → ease (top)
+       - div → ease (all)
+       - div → ease (all)
+FAIL animated-props             3 transition menganimasi properti non-compositor
+                                wajib: hanya transform/opacity/clip-path
+       - a → top
+       - div → width, height
+       - div → width, height
+
+6 pass · 8 fail · 2 skip → BELUM SIAP

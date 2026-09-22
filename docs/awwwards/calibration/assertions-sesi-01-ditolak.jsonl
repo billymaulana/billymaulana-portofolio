@@ -1,0 +1,8 @@
+{"pair":"execution-vs-identity","dim":"Eksekusi vs identitas font","a":"Inter, dieksekusi disiplin","b":"Clash Display, semua default","pick":"skip","note":"","ts":"2026-07-26T04:33:49.888Z"}
+{"pair":"pairing-strategy","dim":"Strategi pairing","a":"Single-family disiplin","b":"Pairing kontras 3 famili","pick":"skip","note":"","ts":"2026-07-26T04:34:51.771Z"}
+{"pair":"tracking-display","dim":"Tracking display","a":"Longgar −0.015em","b":"Rapat −0.045em","pick":"a","note":"","ts":"2026-07-26T04:36:06.772Z"}
+{"pair":"leading-display","dim":"Leading display","a":"Rapat 0.82","b":"Netral 1.0","pick":"skip","note":"","ts":"2026-07-26T04:36:20.038Z"}
+{"pair":"weight-display","dim":"Weight display","a":"Ringan 400","b":"Berat 700","pick":"skip","note":"","ts":"2026-07-26T04:36:27.371Z"}
+{"pair":"scale-ratio","dim":"Rasio display : body","a":"Sedang 6×","b":"Ekstrem 16×","pick":"b","note":"","ts":"2026-07-26T04:36:57.771Z"}
+{"pair":"display-class","dim":"Kelas typeface display","a":"Serif editorial","b":"Neo-grotesque","pick":"b","note":"","ts":"2026-07-26T04:37:21.559Z"}
+{"pair":"optical-simulation","dim":"Simulasi optical size","a":"Menyesuaikan ukuran","b":"Seragam semua tier","pick":"skip","note":"","ts":"2026-07-26T04:38:04.298Z"}

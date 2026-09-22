@@ -32,11 +32,14 @@ export default defineConfig({
       accent: {},
       bg: {},
       mono: {},
+      primary: '#DEDBC8',
     },
 
     // Typography structure — Swiss pairing
     fontFamily: {
-      sans: ['Satoshi', 'system-ui', '-apple-system', 'sans-serif'],
+      sans: ['Apparel', 'Times New Roman', 'sans-serif', 'system-ui', '-apple-system'],
+      apparel: ['Apparel', 'Times New Roman', 'sans-serif', 'system-ui', '-apple-system'],
+      suisse: ['Suisse', 'Arial', 'sans-serif'],
       display: ['Clash Display', 'Satoshi', 'system-ui', 'sans-serif'],
     },
 

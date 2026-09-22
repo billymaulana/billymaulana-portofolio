@@ -38,3 +38,13 @@ CLAUDE.md
 # Private assets
 public/cv
 .firecrawl
+
+# Obsidian vault config
+.obsidian/
+
+# MCP browser artifacts
+.playwright-mcp/
+
+# Reference and failure screenshots: kept on disk, not in history (531MB of PNG)
+docs/awwwards/references/library/assets/
+docs/awwwards/failures/assets/

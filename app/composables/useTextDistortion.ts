@@ -21,7 +21,7 @@ export interface MastheadRasterConfig {
 
 export function distortionTextPadding(width: number): number {
   const rootFs = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-  return Math.min(Math.max(1.5 * rootFs, width * 0.04), 4 * rootFs)
+  return Math.min(Math.max(0.875 * rootFs, width * 0.0111), 1.5 * rootFs)
 }
 
 export function useMastheadRaster(config: MastheadRasterConfig) {

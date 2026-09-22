@@ -1,0 +1,4825 @@
+{
+  "version": 1,
+  "updated": "2026-07-26",
+  "count": 145,
+  "entries": [
+    {
+      "slug": "1820productions",
+      "title": "1820 Productions",
+      "url": "https://www.1820productions.com/",
+      "category": [
+        "agency",
+        "editorial"
+      ],
+      "style": [
+        "editorial",
+        "cinematic"
+      ],
+      "fonts": [
+        "Suisseintl",
+        "Suisseintl Condensed"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "12 kolom gap 9.6px · 12 kolom gap 9.6px · 16 kolom gap 9.6px",
+      "mood": [
+        "premium",
+        "nocturnal"
+      ],
+      "libraries": [
+        "gsap",
+        "video ×4",
+        "webflow"
+      ],
+      "rating": null,
+      "summary": "Suisse Int'l Condensed 72px w600 ls-0.02 lh1.0 — rasio 3.0x · 3 weight · ground #1C1C1C",
+      "path": "references/library/1820productions.md",
+      "thumb": "references/library/assets/1820productions-desktop.png"
+    },
+    {
+      "slug": "7thfloor",
+      "title": "7 Wentworth Selborne",
+      "url": "https://www.7thfloor.com.au/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonik"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "5 kolom gap 16px · 1 kolom gap 0px · 2 kolom gap 48px · 2 kolom gap 15px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonik 83px w400 ls0 lh0.9 — rasio 3.2× · 2 weight · ground #FFFFFF · kelompok Aeonik",
+      "path": "references/library/7thfloor.md",
+      "thumb": "references/library/assets/7thfloor-desktop.png"
+    },
+    {
+      "slug": "acrestudio",
+      "title": "Acre Studio",
+      "url": "https://acrestudio-template.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aspekta"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 28.728px · 12 kolom gap 28.728px · 12 kolom gap 28.728px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Aspekta 192px w400 ls-0.04 lh0.8 — rasio 10.1× · 2 weight · ground #30473D",
+      "path": "references/library/acrestudio.md",
+      "thumb": "references/library/assets/acrestudio-desktop.png"
+    },
+    {
+      "slug": "adcker",
+      "title": "Adcker",
+      "url": "https://adcker.com/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Kumbh Sans",
+        "psl",
+        "nhm"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "12 kolom gap 15px · 12 kolom gap 15px · 12 kolom gap 15px",
+      "mood": [
+        "brutal",
+        "playful"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis",
+        "video ×3"
+      ],
+      "rating": null,
+      "summary": "Kumbh Sans 184.8px w400 ls-0.05 lh0.8 UPPERCASE — rasio ~20x · 2 weight · ground #EFEDEA hangat",
+      "path": "references/library/adcker.md",
+      "thumb": "references/library/assets/adcker-desktop.png"
+    },
+    {
+      "slug": "adoxstudio",
+      "title": "Adox Studio",
+      "url": "https://adoxstudio.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter Tight",
+        "Space Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "4 kolom gap 12px · 3 kolom gap 60px · 2 kolom gap 20px",
+      "mood": [
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter Tight 160px w600 ls-0.04 lh0.8 — rasio 8.0× · 4 weight · ground #000000",
+      "path": "references/library/adoxstudio.md",
+      "thumb": "references/library/assets/adoxstudio-desktop.png"
+    },
+    {
+      "slug": "akilia",
+      "title": "Akilia",
+      "url": "https://www.akilia.io/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Archia webfont",
+        "Aeonikpro"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "8 kolom gap 16px · 8 kolom gap 80px · 8 kolom gap 80px · 8 kolom gap 16px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Archia webfont 64px w400 ls0.0075 lh0.8 — rasio 2.7× · 2 weight · ground #121317 · kelompok Aeonik",
+      "path": "references/library/akilia.md",
+      "thumb": "references/library/assets/akilia-desktop.png"
+    },
+    {
+      "slug": "algarve-template",
+      "title": "Algarve Studio",
+      "url": "https://algarve-template.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "42 Dot Sans"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "5 kolom gap 14.4px · 4 kolom gap 14.4px · 2 kolom gap 14.4px",
+      "mood": [
+        "monumental",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "42 Dot Sans 285px w500 ls-0.007 lh0.76 — rasio 13.6× · 3 weight · ground #F8F7F3",
+      "path": "references/library/algarve-template.md",
+      "thumb": "references/library/assets/algarve-template-desktop.png"
+    },
+    {
+      "slug": "alture-template",
+      "title": "Alture",
+      "url": "https://alture-template.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter VF",
+        "BDO Grotesk VF",
+        "system-ui"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "4 kolom gap 16px · 2 kolom gap 16px · 3 kolom gap 24px",
+      "mood": [
+        "monumental",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter VF 288px w500 ls-0.05 lh1 — rasio 12.0× · 5 weight · ground #F8F7F3",
+      "path": "references/library/alture-template.md",
+      "thumb": "references/library/assets/alture-template-desktop.png"
+    },
+    {
+      "slug": "andrew-williams",
+      "title": "Andrew Williams",
+      "url": "https://andrew-williams.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Inter",
+        "IBM Plex Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "2 kolom gap 12px · 2 kolom gap 12px · 2 kolom gap 12px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Inter 200px w700 ls-0.06 lh0.96 — rasio 8.3× · 3 weight · ground #000000",
+      "path": "references/library/andrew-williams.md",
+      "thumb": "references/library/assets/andrew-williams-desktop.png"
+    },
+    {
+      "slug": "arlox-studio",
+      "title": "Arlox",
+      "url": "https://arlox-studio.webflow.io/",
+      "category": [
+        "ecommerce",
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter Tight",
+        "Chivo Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 10px · 4 kolom gap 0px · 4 kolom gap 0px",
+      "mood": [
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter Tight 100px w600 ls-0.03 lh1 — rasio 4.2× · 3 weight · ground #F7F7F7",
+      "path": "references/library/arlox-studio.md",
+      "thumb": "references/library/assets/arlox-studio-desktop.png"
+    },
+    {
+      "slug": "art-yakushev",
+      "title": "art-yakushev.com",
+      "url": "https://www.art-yakushev.com/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "cinematic",
+        "editorial"
+      ],
+      "fonts": [
+        "Suisse",
+        "Apparel"
+      ],
+      "grid_type": [
+        "edge-anchored",
+        "full-bleed",
+        "scattered"
+      ],
+      "grid": "Edge-anchored sinematik: statement atas, video kinescope tengah, nama full-width di baseline bawah; nav + jam YEREVAN + socials tersebar di empat sudut; section works memakai tipografi scatter over foto",
+      "mood": [
+        "premium",
+        "cinematic",
+        "kinetic"
+      ],
+      "libraries": [
+        "gsap",
+        "splittype",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "motionnya smooth, typography keren, text di hero terlihat seperti prisma atau silver, scroll terasa smooth, typography boldnya saya suka, footernya text blend dengan warna dibelakangnya, secara keseluruhan motion dan feel terasa mahal, splashscreennya smooth",
+      "path": "references/library/art-yakushev.md",
+      "thumb": "references/library/assets/art-yakushev-desktop.png"
+    },
+    {
+      "slug": "aupalevodka",
+      "title": "Aupale Vodka",
+      "url": "https://www.aupalevodka.com/en/",
+      "category": [
+        "product"
+      ],
+      "style": [
+        "editorial",
+        "cinematic"
+      ],
+      "fonts": [
+        "Instrument Serif",
+        "Martha"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 16px · 3 kolom gap normal · 5 kolom gap normal",
+      "mood": [
+        "luxurious",
+        "serene"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Instrument Serif 436-441px w400 ls0 lh0.84 — rasio ~27.6x · 2 weight · ground putih / foto gelap",
+      "path": "references/library/aupalevodka.md",
+      "thumb": "references/library/assets/aupalevodka-desktop.png"
+    },
+    {
+      "slug": "avexa",
+      "title": "Avexa",
+      "url": "https://avexa.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter Tight",
+        "Instrument Serif"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "6 kolom gap 8px · 2 kolom gap 32px · 12 kolom gap 8px",
+      "mood": [
+        "monumental",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Inter Tight 288px w500 ls-0.04 lh0.85 — rasio 12.0× · 2 weight · ground #FFFFFF",
+      "path": "references/library/avexa.md",
+      "thumb": "references/library/assets/avexa-desktop.png"
+    },
+    {
+      "slug": "axure",
+      "title": "Axure",
+      "url": "https://axure.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Interdisplay",
+        "Inter Tight",
+        "Lato"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "4 kolom gap 16px · 2 kolom gap 142px · 3 kolom gap 32px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Interdisplay 130px w800 ls-0.03 lh1 — rasio 5.4× · 4 weight · ground #FFFFFF",
+      "path": "references/library/axure.md",
+      "thumb": "references/library/assets/axure-desktop.png"
+    },
+    {
+      "slug": "baselane",
+      "title": "Baselane Studio",
+      "url": "https://baselanexfahlevi.framer.website/",
+      "category": [
+        "agency",
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "swiss",
+        "minimalism"
+      ],
+      "fonts": [
+        "Switzer"
+      ],
+      "grid_type": [
+        "swiss",
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "Grid 8 kolom gap 14px; wordmark per-karakter 369px; body 20px di kolom sempit",
+      "mood": [
+        "austere",
+        "monumental",
+        "premium"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Switzer 369px / Switzer 400 / −0.02em / lh 0.90 — Grid 8 kolom / gap 14px, dan hanya DUA weight (400/500) di seluruh situs. Display 369px pada weight 400.",
+      "path": "references/library/baselane.md",
+      "thumb": "references/library/assets/baselane-desktop.png"
+    },
+    {
+      "slug": "bent-template",
+      "title": "Bent",
+      "url": "https://bent-template.webflow.io/",
+      "category": [
+        "ecommerce"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "3 kolom gap 64px · 3 kolom gap 64px · 3 kolom gap 64px · 3 kolom gap 64px",
+      "mood": [
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Inter 160px w600 ls-0.0437 lh0.9 — rasio 8.0× · 2 weight · ground #000000",
+      "path": "references/library/bent-template.md",
+      "thumb": "references/library/assets/bent-template-desktop.png"
+    },
+    {
+      "slug": "bittersweet",
+      "title": "Bittersweet",
+      "url": "https://bittersweet-agency-studio-template.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "BDO Grotesk",
+        "Playfair Display (Italic)"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "4 kolom gap 40px · 2 kolom gap 40px · 3 kolom gap 40px",
+      "mood": [
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "BDO Grotesk 216px w500 ls-0.0694 lh1 — rasio 10.3× · 4 weight · ground #ECE9E6",
+      "path": "references/library/bittersweet.md",
+      "thumb": "references/library/assets/bittersweet-desktop.png"
+    },
+    {
+      "slug": "boldish",
+      "title": "Boldish",
+      "url": "https://boldish.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Boldonse",
+        "Instrument Sans"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "3 kolom gap 16px · 2 kolom gap 16px · 6 kolom gap 16px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Boldonse 266px w700 ls0 lh1.5 — rasio 11.1× · 4 weight · ground #0E0E0E",
+      "path": "references/library/boldish.md",
+      "thumb": "references/library/assets/boldish-desktop.png"
+    },
+    {
+      "slug": "boldmark",
+      "title": "Boldmark",
+      "url": "https://boldmark.webflow.io/",
+      "category": [
+        "ecommerce"
+      ],
+      "style": [
+        "editorial",
+        "kinetic-type"
+      ],
+      "fonts": [
+        "Mango Grotesque",
+        "Instrument Sans",
+        "system-ui"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "3 kolom gap 16px · 2 kolom gap 16px · 6 kolom gap 16px",
+      "mood": [
+        "monumental",
+        "brutal",
+        "kinetic"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Mango Grotesque 416px w900 ls0 lh1 — rasio 26.0× · 5 weight · ground #111111",
+      "path": "references/library/boldmark.md",
+      "thumb": "references/library/assets/boldmark-desktop.png"
+    },
+    {
+      "slug": "bruno-simon",
+      "title": "Bruno Simon",
+      "url": "https://bruno-simon.com/",
+      "category": [
+        "portfolio",
+        "experimental"
+      ],
+      "style": [
+        "experimental",
+        "3d-immersive"
+      ],
+      "fonts": [],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "playful",
+        "kinetic"
+      ],
+      "libraries": [
+        "three",
+        "canvas ×1"
+      ],
+      "rating": null,
+      "summary": "? —px w— ls— lh— — rasio —× · 0 weight · ground #000000",
+      "path": "references/library/bruno-simon.md",
+      "thumb": "references/library/assets/bruno-simon-desktop.png"
+    },
+    {
+      "slug": "bymonolog",
+      "title": "MONOLOG (bymonolog.com)",
+      "url": "https://bymonolog.com/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial",
+        "cinematic"
+      ],
+      "fonts": [
+        "Animo",
+        "Khteka",
+        "Suisse Mono"
+      ],
+      "grid_type": [
+        "centered",
+        "editorial",
+        "full-bleed"
+      ],
+      "grid": "centered editorial copy + full-bleed masthead; section beralternasi dark/light",
+      "mood": [
+        "brutal",
+        "monumental",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "three",
+        "lenis",
+        "barba-js"
+      ],
+      "rating": null,
+      "summary": "background hero elegan, texture & detail bagus, typography logo & content bagus; paling suka font display section CTA 'LET'S BUILD ... -> PEOPLE' (Animo, uppercase, brutalist/creative).",
+      "path": "references/library/bymonolog.md",
+      "thumb": "references/library/assets/bymonolog-desktop.png"
+    },
+    {
+      "slug": "cadro",
+      "title": "Cadro",
+      "url": "https://cadro.com/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonik Regular",
+        "Aeonik Medium",
+        "Aeonik Bold"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "7 kolom gap 24px · 1 kolom gap 32px · 5 kolom gap 80px · 3 kolom gap 18px",
+      "mood": [
+        "austere",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonik Regular 90px w400 ls-0.0111 lh1.02 — rasio 3.8× · 3 weight · ground #FFFFFF · kelompok Aeonik",
+      "path": "references/library/cadro.md",
+      "thumb": "references/library/assets/cadro-desktop.png"
+    },
+    {
+      "slug": "chdartmaker",
+      "title": "chdartmaker.com",
+      "url": "https://www.chdartmaker.com/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "brutalism",
+        "cinematic"
+      ],
+      "fonts": [
+        "Bebas Neue",
+        "Okomito"
+      ],
+      "grid_type": [
+        "edge-anchored",
+        "full-bleed",
+        "asymmetric"
+      ],
+      "grid": "Poster edge-anchored: masthead BebasNeue fit-to-width di atas foto B&W full-bleed; nav kiri, FR/EN kanan, statement kiri-bawah, SCROLLER tengah, meta proyek kanan-bawah",
+      "mood": [
+        "premium",
+        "brutal",
+        "monumental"
+      ],
+      "libraries": [
+        "anime-js",
+        "locomotive-scroll",
+        "barba-js"
+      ],
+      "rating": null,
+      "summary": "backgroundnya hitam terasa premium, hero layout dan typographynya bold, effect pada fontnya ada pantulan abu seakan silver/kaca, scroll text hero mengenai layar putih terjadi mix blend warnanya premium unik, Conception -> Realisation arrow interaction bagus. Aspek yang saya suka adalah typography dan layoutnya saja.",
+      "path": "references/library/chdartmaker.md",
+      "thumb": "references/library/assets/chdartmaker-desktop.png"
+    },
+    {
+      "slug": "claire-astor",
+      "title": "Claire Astor",
+      "url": "https://claire-astor.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Switzer"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Switzer 160px w300 ls-0.0406 lh1.05 — rasio 10.0× · 1 weight · ground #000000",
+      "path": "references/library/claire-astor.md",
+      "thumb": "references/library/assets/claire-astor-desktop.png"
+    },
+    {
+      "slug": "clipzo-template",
+      "title": "Clipzo",
+      "url": "https://clipzo-template.webflow.io/",
+      "category": [
+        "portfolio",
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "kinetic-type"
+      ],
+      "fonts": [
+        "Host Grotesk"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "3 kolom gap normal · 3 kolom gap 12px · 3 kolom gap 12px",
+      "mood": [
+        "clinical",
+        "kinetic",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Host Grotesk 160px w500 ls-0.06 lh1.1 — rasio 6.7× · 2 weight · ground #040404",
+      "path": "references/library/clipzo-template.md",
+      "thumb": "references/library/assets/clipzo-template-desktop.png"
+    },
+    {
+      "slug": "collabcapitolium",
+      "title": "Capitolium — TéFéCé × Stade Toulousain",
+      "url": "https://www.collabcapitolium.fr/",
+      "category": [
+        "editorial",
+        "product"
+      ],
+      "style": [
+        "editorial",
+        "cinematic"
+      ],
+      "fonts": [
+        "Times",
+        "gin",
+        "Inter"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "2 kolom gap 8px · 2 kolom gap 15.7924px · 2 kolom gap 30.4432px",
+      "mood": [
+        "luxurious",
+        "monumental"
+      ],
+      "libraries": [
+        "lenis",
+        "canvas ×3",
+        "video ×11"
+      ],
+      "rating": null,
+      "summary": "Times 387.027px w400 ls0 lh1 — rasio 24.2× · 3 weight · ground #F0E3CF",
+      "path": "references/library/collabcapitolium.md",
+      "thumb": "references/library/assets/collabcapitolium-desktop.png"
+    },
+    {
+      "slug": "consult-pro-dark",
+      "title": "Consult Pro (Dark)",
+      "url": "https://consult-pro-dark.webflow.io/homepages/home-a",
+      "category": [
+        "ecommerce",
+        "saas"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Satoshi"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 64px · 3 kolom gap 40px · 2 kolom gap 0px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Satoshi 112px w700 ls0 lh1.1 — rasio 4.7× · 5 weight · ground #141414",
+      "path": "references/library/consult-pro-dark.md",
+      "thumb": "references/library/assets/consult-pro-dark-desktop.png"
+    },
+    {
+      "slug": "creativespirit",
+      "title": "Creative Spirit",
+      "url": "https://www.creativespirit.eu/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonik",
+        "Dahlia"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "12 kolom gap 48px · 12 kolom gap 48px · 12 kolom gap 48px · 12 kolom gap 48px",
+      "mood": [
+        "monumental",
+        "austere",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonik 240px w400 ls0 lh1 — rasio 12.0× · 3 weight · ground #000000 · kelompok Aeonik",
+      "path": "references/library/creativespirit.md",
+      "thumb": "references/library/assets/creativespirit-desktop.png"
+    },
+    {
+      "slug": "creativewebmanual",
+      "title": "The Creative Website Manual™",
+      "url": "https://www.creativewebmanual.com/",
+      "category": [
+        "editorial",
+        "product"
+      ],
+      "style": [
+        "editorial",
+        "swiss",
+        "minimalism"
+      ],
+      "fonts": [
+        "PP Neue Montreal",
+        "PP Mondwest",
+        "Rand Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "split-panel"
+      ],
+      "grid": "Angka bab 256px sebagai penanda; inisial 136px; body 24px lebar terkendali; ground terang",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "PP Neue Montreal 256px / PP Neue Montreal 400 / −0.02em / lh 1.00 — Tracking −0.02em identik di 256px, 136px, dan 24px. Konsistensi mengalahkan optimasi per tier.",
+      "path": "references/library/creativewebmanual.md",
+      "thumb": "references/library/assets/creativewebmanual-desktop.png"
+    },
+    {
+      "slug": "daspritam",
+      "title": "daspritam.in",
+      "url": "https://www.daspritam.in/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "liquid",
+        "kinetic-type"
+      ],
+      "fonts": [
+        "Satoshi"
+      ],
+      "grid_type": [
+        "swiss",
+        "asymmetric",
+        "edge-anchored"
+      ],
+      "grid": "Counter-position Swiss: nama kiri-atas, lokasi kanan, copy + CTA kiri-bawah, role kanan-bawah; negative space luas di tengah",
+      "mood": [
+        "kinetic",
+        "organic",
+        "premium"
+      ],
+      "libraries": [
+        "ogl",
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "effect liquid ketika mouse movement dan text effect ketika mengenai text... detail liquidnya membuat terasa mahal dan keren",
+      "path": "references/library/daspritam.md",
+      "thumb": "references/library/assets/daspritam-desktop.png"
+    },
+    {
+      "slug": "desyres",
+      "title": "Desyres",
+      "url": "https://desyres-portfolio-template.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Inter"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "monumental",
+        "brutal",
+        "clinical"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Inter 288px w700 ls0 lh1 — rasio 14.4× · 2 weight · ground #0A0A0A",
+      "path": "references/library/desyres.md",
+      "thumb": "references/library/assets/desyres-desktop.png"
+    },
+    {
+      "slug": "dtampe",
+      "title": "Dominik Tampe",
+      "url": "https://www.dtampe.com/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonik"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "12 kolom gap 22.752px · 12 kolom gap 22.752px · 24 kolom gap 22.8571px · 24 kolom gap 22.752px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonik 107px w400 ls-0.01 lh1 — rasio 6.3× · 1 weight · ground #FFFFFF · kelompok Aeonik",
+      "path": "references/library/dtampe.md",
+      "thumb": "references/library/assets/dtampe-desktop.png"
+    },
+    {
+      "slug": "dulcedo",
+      "title": "Dulcedo",
+      "url": "https://dulcedo.com/",
+      "category": [
+        "agency",
+        "editorial"
+      ],
+      "style": [
+        "editorial",
+        "swiss"
+      ],
+      "fonts": [
+        "Helvetica Now Display",
+        "Saol Display"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 12px · 12 kolom gap 20px · 12 kolom gap 20px",
+      "mood": [
+        "premium",
+        "luxurious"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis",
+        "canvas ×1",
+        "video ×2"
+      ],
+      "rating": null,
+      "summary": "Helvetica Now Display 140px w300 ls-0.03 lh0.7 — rasio 8.8× · 4 weight · ground #1A1A1A",
+      "path": "references/library/dulcedo.md",
+      "thumb": "references/library/assets/dulcedo-desktop.png"
+    },
+    {
+      "slug": "edge-studio",
+      "title": "Edge Studio",
+      "url": "https://edge-studio-template.webflow.io/homepage",
+      "category": [
+        "ecommerce",
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Satoshi"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "2 kolom gap 16px · 3 kolom gap 24px · 2 kolom gap 16px",
+      "mood": [
+        "austere",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Satoshi 102px w300 ls0 lh1.3 — rasio 4.3× · 3 weight · ground #141414",
+      "path": "references/library/edge-studio.md",
+      "thumb": "references/library/assets/edge-studio-desktop.png"
+    },
+    {
+      "slug": "elanor-template",
+      "title": "Elanor",
+      "url": "https://elanor-template.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Beautique Display Condensed",
+        "Gambarino",
+        "Aspekta"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 23.04px · 12 kolom gap 24px · 12 kolom gap 24px",
+      "mood": [
+        "monumental",
+        "austere",
+        "clinical"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Beautique Display Condensed 336px w400 ls-0.01 lh0.9 — rasio 18.7× · 2 weight · ground #101211",
+      "path": "references/library/elanor-template.md",
+      "thumb": "references/library/assets/elanor-template-desktop.png"
+    },
+    {
+      "slug": "elias-street",
+      "title": "Elias Street",
+      "url": "https://elias-street.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Archivo"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 16px · 2 kolom gap 16px · 2 kolom gap 16px",
+      "mood": [
+        "monumental",
+        "austere",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Archivo 259px w400 ls-0.05 lh0.85 — rasio 16.2× · 3 weight · ground #E4E0DE",
+      "path": "references/library/elias-street.md",
+      "thumb": "references/library/assets/elias-street-desktop.png"
+    },
+    {
+      "slug": "emotion-agency",
+      "title": "Emotion Agency (promo.emotion-agency.com)",
+      "url": "https://promo.emotion-agency.com/",
+      "category": [
+        "agency",
+        "experimental"
+      ],
+      "style": [
+        "3d-immersive",
+        "cinematic",
+        "experimental"
+      ],
+      "fonts": [
+        "Aeonik",
+        "Aeonik Fono"
+      ],
+      "grid_type": [
+        "asymmetric",
+        "split-panel"
+      ],
+      "grid": "counter-positioned split hero (diagonal tension) + narasi 3D kontinu antar-section",
+      "mood": [
+        "cinematic",
+        "mystic",
+        "tense"
+      ],
+      "libraries": [
+        "nuxt3",
+        "three",
+        "gsap",
+        "webgl",
+        "escroll"
+      ],
+      "rating": null,
+      "summary": "Situs promo agency WebGL imersif: scene 3D pilar + lantai reflektif + cahaya volumetrik ungu, hero counter-positioned (Cutting edge / Frontend solutions) Aeonik cream, audio-gate 'neural interface', narasi 3D kontinu Problem->Solution->Projects->About (figur wireframe menempuh journey, kamera scroll-scrub).",
+      "path": "references/library/emotion-agency.md",
+      "thumb": "references/library/assets/emotion-agency-desktop.png"
+    },
+    {
+      "slug": "equityedge",
+      "title": "Equity Edge Group",
+      "url": "https://equityedgegroup.com/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonik",
+        "Gt Pressura Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "3 kolom gap 20px · 2 kolom gap 20px · 3 kolom gap 20px · 1 kolom gap 0px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Aeonik 64px w400 ls0 lh1 — rasio 2.7× · 2 weight · ground #FFFFFF · kelompok Aeonik",
+      "path": "references/library/equityedge.md",
+      "thumb": "references/library/assets/equityedge-desktop.png"
+    },
+    {
+      "slug": "ethan-carter",
+      "title": "Ethan Carter",
+      "url": "https://ethan-carter.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Interdisplay"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 16px · 12 kolom gap 16px · 12 kolom gap 16px · 12 kolom gap 16px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Interdisplay 80px w400 ls-0.0225 lh1.15 — rasio 3.3× · 1 weight · ground #000000",
+      "path": "references/library/ethan-carter.md",
+      "thumb": "references/library/assets/ethan-carter-desktop.png"
+    },
+    {
+      "slug": "exvia",
+      "title": "Exvia",
+      "url": "https://exvia.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Geist",
+        "Geistmono",
+        "Inter"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "4 kolom gap 14px · 3 kolom gap 16px",
+      "mood": [
+        "monumental",
+        "austere",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Geist 307px w400 ls-0.04 lh1 — rasio 12.8× · 3 weight · ground #FFFFFF",
+      "path": "references/library/exvia.md",
+      "thumb": "references/library/assets/exvia-desktop.png"
+    },
+    {
+      "slug": "facon-generale",
+      "title": "Façon Générale",
+      "url": "https://facon-generale-template.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Ortica Linear",
+        "Geist Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "3 kolom gap normal · 2 kolom gap 16px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Ortica Linear 144px w300 ls-0.0208 lh1 — rasio 9.0× · 1 weight · ground #1F1212",
+      "path": "references/library/facon-generale.md",
+      "thumb": "references/library/assets/facon-generale-desktop.png"
+    },
+    {
+      "slug": "filmax",
+      "title": "Filmax",
+      "url": "https://filmax.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Thicccboi",
+        "Playfair Display"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 17.28px · 3 kolom gap 17.28px · 3 kolom gap 17.28px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Thicccboi 187px w700 ls0 lh0.9 — rasio 11.7× · 3 weight · ground #000000",
+      "path": "references/library/filmax.md",
+      "thumb": "references/library/assets/filmax-desktop.png"
+    },
+    {
+      "slug": "finnfolio",
+      "title": "Finn Folio",
+      "url": "https://finnfolio.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Inter Tight"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "22 kolom gap 20px · 22 kolom gap 20px · 22 kolom gap 20px",
+      "mood": [
+        "monumental",
+        "brutal",
+        "clinical"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Inter Tight 242px w700 ls-0.03 lh0.78 — rasio 13.4× · 2 weight · ground #0F0F0F",
+      "path": "references/library/finnfolio.md",
+      "thumb": "references/library/assets/finnfolio-desktop.png"
+    },
+    {
+      "slug": "floema",
+      "title": "Floema",
+      "url": "https://www.floema.com/en",
+      "category": [
+        "product"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Zimula",
+        "sans-serif"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "serene",
+        "premium"
+      ],
+      "libraries": [
+        "lenis",
+        "canvas ×3"
+      ],
+      "rating": null,
+      "summary": "Zimula 57.2px w400 ls-0.04 lh1.05 — rasio 3.8× · 3 weight · ground #F2EFEA",
+      "path": "references/library/floema.md",
+      "thumb": "references/library/assets/floema-desktop.png"
+    },
+    {
+      "slug": "flshfrm",
+      "title": "Flashform",
+      "url": "https://www.flshfrm.com/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "NeueHaas",
+        "Aeonik",
+        "Recife"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "12 kolom gap 15px · 12 kolom gap 15px · 12 kolom gap 15px · 12 kolom gap 15px",
+      "mood": [
+        "monumental",
+        "kinetic",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "NeueHaas 465px w600 ls0 lh1 — rasio 19.4× · 4 weight · ground #111606 · kelompok Aeonik",
+      "path": "references/library/flshfrm.md",
+      "thumb": "references/library/assets/flshfrm-desktop.png"
+    },
+    {
+      "slug": "folioncy-template",
+      "title": "Folioncy",
+      "url": "https://folioncy-template.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Librebodoni - Italic",
+        "PP Mori - Semibold",
+        "PP Mori - Regular"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "2 kolom gap normal · 2 kolom gap 0px · 2 kolom gap 0px",
+      "mood": [
+        "austere",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Librebodoni - Italic 156px w400 ls-0.0308 lh0.99 — rasio 6.0× · 3 weight · ground #FFFFFF",
+      "path": "references/library/folioncy-template.md",
+      "thumb": "references/library/assets/folioncy-template-desktop.png"
+    },
+    {
+      "slug": "framehaus",
+      "title": "Framehaus",
+      "url": "https://framehaus.webflow.io/",
+      "category": [
+        "portfolio",
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Satoshi"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "3 kolom gap 40px · 2 kolom gap 32px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Satoshi 212px w900 ls0 lh1 — rasio 11.8× · 3 weight · ground #10100E",
+      "path": "references/library/framehaus.md",
+      "thumb": "references/library/assets/framehaus-desktop.png"
+    },
+    {
+      "slug": "genesis-template",
+      "title": "Genesis",
+      "url": "https://genesis-template.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Red hat display"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "3 kolom gap 14.4px · 2 kolom gap 21.6px · 4 kolom gap 0px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Red hat display 115px w700 ls-0.03 lh0.9 — rasio 5.2× · 4 weight · ground #0D0D0D",
+      "path": "references/library/genesis-template.md",
+      "thumb": "references/library/assets/genesis-template-desktop.png"
+    },
+    {
+      "slug": "grabfy",
+      "title": "Grabfy",
+      "url": "https://grabfy.webflow.io/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Inter Tight"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 24px · 2 kolom gap 24px · 2 kolom gap 24px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Inter Tight 168px w700 ls-0.0119 lh0.95 — rasio 7.0× · 4 weight · ground #FFFFFF",
+      "path": "references/library/grabfy.md",
+      "thumb": "references/library/assets/grabfy-desktop.png"
+    },
+    {
+      "slug": "hashgraphvc",
+      "title": "Hashgraph Ventures",
+      "url": "https://hashgraphvc.com/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "cinematic",
+        "3d-immersive"
+      ],
+      "fonts": [
+        "NeueMontrealWeb",
+        "HashgraphWeb"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "premium",
+        "serene",
+        "monumental"
+      ],
+      "libraries": [
+        "three",
+        "canvas ×2"
+      ],
+      "rating": null,
+      "summary": "NeueMontrealWeb 36px w700 ls-0.02 lh1 — rasio —× · 1 weight · ground #000209",
+      "path": "references/library/hashgraphvc.md",
+      "thumb": "references/library/assets/hashgraphvc-desktop.png"
+    },
+    {
+      "slug": "hhhusher",
+      "title": "HHHusher",
+      "url": "https://www.hhhusher.com/",
+      "category": [
+        "product"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Aeonik-Black",
+        "UniversalSansDisplay",
+        "UniversalSansText"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "3 kolom gap 96px · 8 kolom gap 40px · 2 kolom gap 215px · 2 kolom gap 96px",
+      "mood": [
+        "monumental",
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonik-Black 290px w900 ls0 lh0.8 — rasio 12.1× · 6 weight · ground #000000 · kelompok Aeonik",
+      "path": "references/library/hhhusher.md",
+      "thumb": "references/library/assets/hhhusher-desktop.png"
+    },
+    {
+      "slug": "hustler-template",
+      "title": "Hustler",
+      "url": "https://hustler-template.webflow.io/",
+      "category": [
+        "ecommerce"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Poppins",
+        "Satoshi"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "6 kolom gap 0px · 2 kolom gap 4px · 6 kolom gap 0px",
+      "mood": [
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Poppins 222px w500 ls0 lh1 — rasio 8.5× · 2 weight · ground #090909",
+      "path": "references/library/hustler-template.md",
+      "thumb": "references/library/assets/hustler-template-desktop.png"
+    },
+    {
+      "slug": "isabel-moranta",
+      "title": "Isabel Moranta",
+      "url": "https://www.isabelmoranta.com/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "cinematic",
+        "minimalism",
+        "kinetic-type"
+      ],
+      "fonts": [
+        "Ogg",
+        "CentSchbook Mono BT"
+      ],
+      "grid_type": [
+        "editorial",
+        "asymmetric",
+        "edge-anchored",
+        "modular"
+      ],
+      "grid": "Gutter 20px kiri/kanan (konten 1385px di vw 1440). Hero: blok mono 260x63px persis di pusat viewport (x 583-843, y 418-481), sisanya kosong total. Statement: type 237.76px full-width 1385px, per-huruf jadi node (A=160px, L=135px, E=138px, X=153px, T=147px). Work: 3 kolom asimetris 428px judul (x=50) / 193px body (x=631) / 425px media (x=980), dipisah hairline horizontal 1px #848484 selebar 1385px + rule vertikal 1px tinggi 150px sebagai bracket kiri. Archive: modular 8 kolom x 129px, gap 50px, tinggi sel natural 80-161px (top-aligned). Footer: 3 zona edge-anchored x=20 / center 626-799 / flush kanan 1405.",
+      "mood": [
+        "austere",
+        "mystic",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "scrolltrigger",
+        "lenis",
+        "ogl",
+        "barba",
+        "webgl",
+        "wordpress"
+      ],
+      "rating": null,
+      "summary": "Portfolio art director dengan ground #080808 nyaris kosong: hero cuma blok mono 12px seukuran 260x63px di pusat void bergrain, karya disembunyikan di balik smoke WebGL (OGL) yang hanya terungkap saat kursor bergerak; lalu meledak jadi Ogg 237.76px (leading 0.758, tracking -0.04em) mengutip Virginia Woolf. Rasio display:body 19.8x. Huruf pada label sengaja dihapus (DESIGN -> 'D S GN').",
+      "path": "references/library/isabel-moranta.md",
+      "thumb": "references/library/assets/isabel-moranta-desktop.png"
+    },
+    {
+      "slug": "jasonbergh",
+      "title": "Jason Bergh",
+      "url": "https://www.jasonbergh.com/",
+      "category": [
+        "portfolio",
+        "editorial"
+      ],
+      "style": [
+        "editorial",
+        "cinematic"
+      ],
+      "fonts": [
+        "MonumentgroteskMono",
+        "Monumentgrotesk",
+        "Abcsimonmono"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "3 kolom gap 0px · 3 kolom gap 0px · 2 kolom gap 0px",
+      "mood": [
+        "premium",
+        "nocturnal",
+        "serene"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis",
+        "canvas ×1",
+        "video ×134",
+        "webflow"
+      ],
+      "rating": null,
+      "summary": "MonumentgroteskMono 95.04px w200 ls-0.05 lh1.2 — rasio —× · 3 weight · ground #1E1E1C",
+      "path": "references/library/jasonbergh.md",
+      "thumb": "references/library/assets/jasonbergh-desktop.png"
+    },
+    {
+      "slug": "jeskojets",
+      "title": "Jesko Jets",
+      "url": "https://jeskojets.com/",
+      "category": [
+        "product"
+      ],
+      "style": [
+        "editorial",
+        "3d-immersive"
+      ],
+      "fonts": [
+        "GT America Extended",
+        "GT America Expanded"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "7 kolom gap 11.9952px · 7 kolom gap 11.9952px · 6 kolom gap 11.9952px",
+      "mood": [
+        "premium",
+        "kinetic"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis",
+        "three",
+        "canvas ×1",
+        "webflow"
+      ],
+      "rating": null,
+      "summary": "GT America Extended 72px w500 ls-0.08 lh0.88 — rasio —× · 2 weight · ground #FFF8ED",
+      "path": "references/library/jeskojets.md",
+      "thumb": "references/library/assets/jeskojets-desktop.png"
+    },
+    {
+      "slug": "kaitonote",
+      "title": "kaitonote.com",
+      "url": "https://kaitonote.com/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "cinematic",
+        "minimalism"
+      ],
+      "fonts": [
+        "Kumbh Sans",
+        "Noto Serif Display"
+      ],
+      "grid_type": [
+        "swiss",
+        "edge-anchored"
+      ],
+      "grid": "Swiss geometris: orb gradient kanan-tengah + SVG circle grid sebagai konstruksi; corner labels di empat penjuru, wordmark kiri-atas, heading kiri-bawah",
+      "mood": [
+        "premium",
+        "cinematic",
+        "calm"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis",
+        "alpine-js",
+        "lottie"
+      ],
+      "rating": null,
+      "summary": "circle transisi masuk ke hero lalu memudar, warna biru dan gradasinya stunning, accent grid dan lingkaran premium di atas hitam + biru, typography dan layout bagus, scroll motion circle membesar + manifesto blending sangat suka, circle biru pallettenya sangat suka, services section vibrant nuansa premium + thin object yang berubah-ubah di sebelah kiri",
+      "path": "references/library/kaitonote.md",
+      "thumb": "references/library/assets/kaitonote-desktop.png"
+    },
+    {
+      "slug": "katerina-template",
+      "title": "Katerina",
+      "url": "https://katerina-template.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Geist",
+        "PT Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "8 kolom gap 24px · 8 kolom gap 24px · 8 kolom gap 24px",
+      "mood": [
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Geist 140px w500 ls-0.04 lh0.9 — rasio 7.8× · 2 weight · ground #E6E6E6",
+      "path": "references/library/katerina-template.md",
+      "thumb": "references/library/assets/katerina-template-desktop.png"
+    },
+    {
+      "slug": "kitpro-audrey",
+      "title": "Audrey",
+      "url": "https://kitpro-audrey.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter",
+        "Material Symbols Rounded"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Inter 230px w400 ls-0.0313 lh1 — rasio 10.5× · 2 weight · ground #FFFFFF",
+      "path": "references/library/kitpro-audrey.md",
+      "thumb": "references/library/assets/kitpro-audrey-desktop.png"
+    },
+    {
+      "slug": "kitpro-bestbefore",
+      "title": "BestBefore",
+      "url": "https://kitpro-bestbefore.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Inter Tight",
+        "Material Icons",
+        "Arial"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "monumental",
+        "brutal",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Inter Tight 288px w900 ls-0.03 lh0.85 — rasio 13.1× · 6 weight · ground #FFFFFF",
+      "path": "references/library/kitpro-bestbefore.md",
+      "thumb": "references/library/assets/kitpro-bestbefore-desktop.png"
+    },
+    {
+      "slug": "kitpro-colby",
+      "title": "Colby",
+      "url": "https://kitpro-colby.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter Tight",
+        "Material Icons"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "3 kolom gap 16px · 3 kolom gap 16px · 3 kolom gap 16px",
+      "mood": [
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Inter Tight 72px w500 ls0 lh1.06 — rasio 2.9× · 3 weight · ground #FFFFFF",
+      "path": "references/library/kitpro-colby.md",
+      "thumb": "references/library/assets/kitpro-colby-desktop.png"
+    },
+    {
+      "slug": "kitpro-fractal",
+      "title": "Fractal",
+      "url": "https://kitpro-fractal.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter Tight"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "monumental",
+        "austere",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter Tight 288px w400 ls-0.035 lh0.85 — rasio 13.1× · 4 weight · ground #000000",
+      "path": "references/library/kitpro-fractal.md",
+      "thumb": "references/library/assets/kitpro-fractal-desktop.png"
+    },
+    {
+      "slug": "kitpro-juke",
+      "title": "Juke",
+      "url": "https://kitpro-juke.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Poppins",
+        "Merriweather",
+        "Inter Tight"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 14.4px · 2 kolom gap 14.4px · 2 kolom gap 14.4px",
+      "mood": [
+        "austere",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Poppins 144px w400 ls0 lh1.25 — rasio 6.5× · 3 weight · ground #111111",
+      "path": "references/library/kitpro-juke.md",
+      "thumb": "references/library/assets/kitpro-juke-desktop.png"
+    },
+    {
+      "slug": "kitpro-roux",
+      "title": "Roux",
+      "url": "https://kitpro-roux.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter Tight"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter Tight 144px w500 ls0 lh0.8 — rasio 5.8× · 2 weight · ground #FFFFFF",
+      "path": "references/library/kitpro-roux.md",
+      "thumb": "references/library/assets/kitpro-roux-desktop.png"
+    },
+    {
+      "slug": "kitpro-silentlab",
+      "title": "Silentlab",
+      "url": "https://kitpro-silentlab.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Public Sans",
+        "DM Mono",
+        "Material Icons"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "monumental",
+        "brutal",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Public Sans 266px w700 ls-0.0324 lh0.73 — rasio 12.1× · 3 weight · ground #FFFFFF",
+      "path": "references/library/kitpro-silentlab.md",
+      "thumb": "references/library/assets/kitpro-silentlab-desktop.png"
+    },
+    {
+      "slug": "kvs",
+      "title": "KVS Studio",
+      "url": "https://www.kvs.services/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "experimental",
+        "minimalism"
+      ],
+      "fonts": [
+        "SF Mono"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "3 kolom gap 57.6px · 3 kolom gap 57.6px",
+      "mood": [
+        "clinical",
+        "kinetic"
+      ],
+      "libraries": [
+        "lenis",
+        "three",
+        "canvas ×9"
+      ],
+      "rating": null,
+      "summary": "SF Mono 16px w400 ls0 lh1.5 — rasio 1.1× · 4 weight · ground #000000",
+      "path": "references/library/kvs.md",
+      "thumb": "references/library/assets/kvs-desktop.png"
+    },
+    {
+      "slug": "lacete",
+      "title": "Lacete",
+      "url": "https://lacete-wcopilot.webflow.io/",
+      "category": [
+        "ecommerce"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Manrope",
+        "system-ui",
+        "Arial"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "3 kolom gap 0px · 3 kolom gap 50px · 3 kolom gap 30px",
+      "mood": [
+        "monumental",
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Manrope 370px w800 ls-0.01 lh0.8 — rasio 15.4× · 5 weight · ground #000000",
+      "path": "references/library/lacete.md",
+      "thumb": "references/library/assets/lacete-desktop.png"
+    },
+    {
+      "slug": "lanes-pro",
+      "title": "Lanes",
+      "url": "https://lanes-pro.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Utara",
+        "Interdisplay",
+        "Chivo Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 32px · 2 kolom gap 40px · 2 kolom gap 24px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Utara 272px w900 ls-0.07 lh0.9 — rasio 11.3× · 3 weight · ground #0E0E0F",
+      "path": "references/library/lanes-pro.md",
+      "thumb": "references/library/assets/lanes-pro-desktop.png"
+    },
+    {
+      "slug": "lapetitejumelle",
+      "title": "La Petite Jumelle",
+      "url": "https://www.lapetitejumelle.com/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Aeonik Pro"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "brutal",
+        "kinetic",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonik Pro 197px w700 ls0 lh0.9 — rasio 10.9× · 3 weight · ground #FFFFFF · kelompok Aeonik",
+      "path": "references/library/lapetitejumelle.md",
+      "thumb": "references/library/assets/lapetitejumelle-desktop.png"
+    },
+    {
+      "slug": "latchezarboyadjiev",
+      "title": "latchezarboyadjiev.com",
+      "url": "https://www.latchezarboyadjiev.com/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "glass",
+        "sculptural"
+      ],
+      "fonts": [
+        "Maximanouva"
+      ],
+      "grid_type": [
+        "asymmetric",
+        "edge-anchored",
+        "full-bleed"
+      ],
+      "grid": "Counter-position: nama terbelah kiri (hitam) / kanan (cyan) over video glass full-bleed; sub-nav atas, menu kanan, copy kiri-bawah",
+      "mood": [
+        "premium",
+        "monumental",
+        "clinical"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis",
+        "swiper"
+      ],
+      "rating": null,
+      "summary": "layout heronya saya suka, typography boldnya saya suka, effect pantulan pada text heronya terlihat seperti glass/prisma/silver dan blendingnya di hero dan beberapa section, assets hero yang seperti kaca saya suka. Background warna putih saya tidak begitu suka. Hanya itu saja yang saya suka.",
+      "path": "references/library/latchezarboyadjiev.md",
+      "thumb": "references/library/assets/latchezarboyadjiev-desktop.png"
+    },
+    {
+      "slug": "lyniq",
+      "title": "Lyniq Studio",
+      "url": "https://lyniq.framer.website/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial",
+        "kinetic-type"
+      ],
+      "fonts": [
+        "Inter",
+        "Bebas Neue"
+      ],
+      "grid_type": [
+        "full-bleed",
+        "edge-anchored"
+      ],
+      "grid": "Dua baris display 427px memenuhi lebar; body 22px dengan tracking negatif",
+      "mood": [
+        "monumental",
+        "brutal",
+        "premium"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter 427px / Inter 700 / −0.06em / lh 0.80 — Tracking negatif dipakai di SEMUA tier — display −0.06em, body −0.05em, label −0.04em. Bukan hanya display.",
+      "path": "references/library/lyniq.md",
+      "thumb": "references/library/assets/lyniq-desktop.png"
+    },
+    {
+      "slug": "madeinevolve",
+      "title": "Evolve",
+      "url": "https://madeinevolve.com/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "brutalism"
+      ],
+      "fonts": [
+        "neue-haas-grotesk-text"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "48 kolom gap 0px · 48 kolom gap 0px · 48 kolom gap 0px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis",
+        "canvas ×1",
+        "video ×1",
+        "webflow"
+      ],
+      "rating": null,
+      "summary": "neue-haas-grotesk-text 187.2px w500 ls-0.04 lh0.8 — rasio —× · 2 weight · ground #111111",
+      "path": "references/library/madeinevolve.md",
+      "thumb": "references/library/assets/madeinevolve-desktop.png"
+    },
+    {
+      "slug": "martin-r",
+      "title": "Martin.R",
+      "url": "https://martin-r.webflow.io/",
+      "category": [
+        "ecommerce",
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Neuehaasdisplaymediu",
+        "Poppins",
+        "Inter"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "2 kolom gap 40px · 2 kolom gap 40px · 2 kolom gap 40px",
+      "mood": [
+        "austere",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Neuehaasdisplaymediu 230px w400 ls-0.05 lh1.1 — rasio 9.6× · 3 weight · ground #FFFFFF",
+      "path": "references/library/martin-r.md",
+      "thumb": "references/library/assets/martin-r-desktop.png"
+    },
+    {
+      "slug": "maxx-template",
+      "title": "Max Bennet",
+      "url": "https://maxx-template.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "kinetic-type"
+      ],
+      "fonts": [
+        "Humane",
+        "Coolvetica Rg Cond",
+        "Inter"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "6 kolom gap 10px · 4 kolom gap 10px · 2 kolom gap 10px",
+      "mood": [
+        "monumental",
+        "austere",
+        "kinetic"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Humane 485px w400 ls0.015 lh0.91 — rasio 22.0× · 4 weight · ground #FBE7E4",
+      "path": "references/library/maxx-template.md",
+      "thumb": "references/library/assets/maxx-template-desktop.png"
+    },
+    {
+      "slug": "miles-everett",
+      "title": "Everett",
+      "url": "https://miles-everett.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Bdogrotesk",
+        "Inter"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 15px · 12 kolom gap 15px · 12 kolom gap 15px",
+      "mood": [
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Bdogrotesk 70px w500 ls-0.06 lh1.07 — rasio 3.9× · 1 weight · ground #FFFFFF",
+      "path": "references/library/miles-everett.md",
+      "thumb": "references/library/assets/miles-everett-desktop.png"
+    },
+    {
+      "slug": "mill3",
+      "title": "MILL3",
+      "url": "https://mill3.studio/en/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Basel Grotesk",
+        "Times Now"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "8 kolom gap 30px · 8 kolom gap 30px · 2 kolom gap 16px · 1 kolom gap 12px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Basel Grotesk 63px w400 ls0 lh1 — rasio 2.6× · 1 weight · ground #000000",
+      "path": "references/library/mill3.md",
+      "thumb": "references/library/assets/mill3-desktop.png"
+    },
+    {
+      "slug": "mobius",
+      "title": "Möbius",
+      "url": "https://mobius.framer.website/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "brutalism",
+        "swiss"
+      ],
+      "fonts": [
+        "Inter Display",
+        "Inter"
+      ],
+      "grid_type": [
+        "asymmetric",
+        "edge-anchored",
+        "full-bleed",
+        "broken-grid"
+      ],
+      "grid": "Wordmark full-bleed terpotong tepi bawah; paragraf kiri-atas 6 baris; foto tumpang tindih di tengah; meta kanan-bawah",
+      "mood": [
+        "brutal",
+        "monumental",
+        "energetic"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter Display 326px / Inter Display 900 / −0.03em / lh 0.80 — Komposisi empat kuadran: teks kiri-atas, foto tengah, wordmark bawah menembus tepi, meta kanan-bawah. Bukan tumpukan rata kiri.",
+      "path": "references/library/mobius.md",
+      "thumb": "references/library/assets/mobius-desktop.png"
+    },
+    {
+      "slug": "monod",
+      "title": "Mōno™",
+      "url": "https://monod.framer.website/",
+      "category": [
+        "portfolio",
+        "agency"
+      ],
+      "style": [
+        "minimalism",
+        "editorial",
+        "swiss"
+      ],
+      "fonts": [
+        "Inter"
+      ],
+      "grid_type": [
+        "centered",
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "Wordmark per-karakter 176px; body 19px; hanya tiga weight di seluruh situs",
+      "mood": [
+        "austere",
+        "premium",
+        "calm"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter 176px / Inter 600 / −0.0455em / lh 0.85 — Single-family Inter, tiga weight (500/600/700), nol warna aksen — dan tetap tidak terasa kosong.",
+      "path": "references/library/monod.md",
+      "thumb": "references/library/assets/monod-desktop.png"
+    },
+    {
+      "slug": "moon-mansion",
+      "title": "Moon Mansion",
+      "url": "https://moon-mansion.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter Tight"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "4 kolom gap 20px · 4 kolom gap 20px · 4 kolom gap 20px · 4 kolom gap 20px",
+      "mood": [
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Inter Tight 178px w600 ls-0.04 lh1 — rasio 7.4× · 3 weight · ground #FFFFFF",
+      "path": "references/library/moon-mansion.md",
+      "thumb": "references/library/assets/moon-mansion-desktop.png"
+    },
+    {
+      "slug": "moore-template",
+      "title": "Moore",
+      "url": "https://moore-template.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Interdisplay",
+        "Inter Display"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 40px · 12 kolom gap 40px · 12 kolom gap 40px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Interdisplay 259px w700 ls0 lh0.78 — rasio 10.8× · 3 weight · ground #FAF8F2",
+      "path": "references/library/moore-template.md",
+      "thumb": "references/library/assets/moore-template-desktop.png"
+    },
+    {
+      "slug": "moyra-capsules",
+      "title": "Capsules® by Moyra (capsules.moyra.co)",
+      "url": "https://capsules.moyra.co/",
+      "category": [
+        "product",
+        "editorial",
+        "experimental"
+      ],
+      "style": [
+        "editorial",
+        "swiss",
+        "minimalism",
+        "cinematic"
+      ],
+      "fonts": [
+        "Host Grotesk"
+      ],
+      "grid_type": [
+        "swiss",
+        "editorial",
+        "asymmetric",
+        "split-panel",
+        "full-bleed"
+      ],
+      "grid": "Tanpa CSS Grid sama sekali (display:grid = 0). Sistem satuan fluid: prefix @ = px pada design base 1920, dikali vw/1920 (=0.75 @1440, =0.2031 @390). Margin @px-[40] -> 30px kiri+kanan, content band 1380px. Welcome: 2 kolom flex-1 masing-masing 690px, batas tepat 720px = vw/2, gutter 0. Discover: kolom A 559px (@w-[745]) + gutter 141px (@ml-[188]) + kolom B 680px (@max-w-[907]) mulai x=730. Capsules: split-panel 2x709px, gutter @gap-[10] = 7.5px, outer inset 7.5px. Hero: card inset 7.5px + inner padding 22.5px = teks mendarat di x=30 (sama dengan margin section), radius @rounded-[60] -> 45px. Marquee track 8014px, pitch 1325px per unit, keluar viewport kiri -267px. Grid disembunyikan; satu-satunya garis adalah hairline data-row Discover 1.5px (@h-[2]) #F4EFE7 opacity 0.2 dengan fill 40%/80%/60%. Tanpa baseline grid: ritme vertikal dibuat negative margin per tier (@mt-[-130] -> -97.5px pada display, @mt-[-20] -> -15px pada statement)",
+      "mood": [
+        "serene",
+        "luxurious",
+        "cinematic"
+      ],
+      "libraries": [
+        "nuxt3",
+        "gsap",
+        "scrolltrigger",
+        "splittext",
+        "lenis",
+        "mousefollower",
+        "google-maps",
+        "video ×7"
+      ],
+      "rating": null,
+      "summary": "saya suka motionnya, dan suka typography juga grid dan layoutnya",
+      "path": "references/library/moyra-capsules.md",
+      "thumb": "references/library/assets/moyra-capsules-desktop.png"
+    },
+    {
+      "slug": "mugenstudio",
+      "title": "Mugen Design Studio",
+      "url": "https://mugenstudio.framer.website/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial",
+        "cinematic"
+      ],
+      "fonts": [
+        "Inter Display"
+      ],
+      "grid_type": [
+        "full-bleed",
+        "edge-anchored",
+        "asymmetric"
+      ],
+      "grid": "Dua baris mega-type bertumpuk (MUGEN 294px / STUDIO 333px) dengan nilai abu berbeda; section case study 96px",
+      "mood": [
+        "brutal",
+        "monumental",
+        "premium"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter Display 294–333px / Inter Display 700 / −0.04em / lh 0.80 — Hierarki lewat NILAI, bukan ukuran: dua kata seukuran, satu putih satu abu #B8B8B8.",
+      "path": "references/library/mugenstudio.md",
+      "thumb": "references/library/assets/mugenstudio-desktop.png"
+    },
+    {
+      "slug": "neuf-delpire",
+      "title": "NEUF — delpire & co",
+      "url": "https://neuf.delpireandco.com/",
+      "category": [
+        "editorial",
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Didot",
+        "Apercu Pro"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Didot 100px w400 ls0 lh1 — rasio 4.2× · 1 weight · ground #F6F6ED",
+      "path": "references/library/neuf-delpire.md",
+      "thumb": "references/library/assets/neuf-delpire-desktop.png"
+    },
+    {
+      "slug": "nexola",
+      "title": "NEXOLA®",
+      "url": "https://nexola.framer.website/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism",
+        "swiss"
+      ],
+      "fonts": [
+        "Inter Display"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "split-panel"
+      ],
+      "grid": "Masthead 200px; heading section 120px; kutipan 21px; struktur dua-ground bergantian gelap-terang",
+      "mood": [
+        "premium",
+        "austere",
+        "clinical"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Inter Display 200px / Inter Display 800 / 0em / lh 0.80 — Tracking 0 pun sah bila weight display sangat berat (800) dan leading dikunci 0.80. Tidak ada satu nilai tracking yang benar.",
+      "path": "references/library/nexola.md",
+      "thumb": "references/library/assets/nexola-desktop.png"
+    },
+    {
+      "slug": "nikolamiselpuklin",
+      "title": "Nikola Mišel Puklin",
+      "url": "https://www.nikolamiselpuklin.com/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Aeonik Black"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "brutal",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonik Black 18px w900 ls0 lh1 — rasio 1.0× · 1 weight · ground #FFFFFF · kelompok Aeonik",
+      "path": "references/library/nikolamiselpuklin.md",
+      "thumb": "references/library/assets/nikolamiselpuklin-desktop.png"
+    },
+    {
+      "slug": "noctura-theme",
+      "title": "Noctura",
+      "url": "https://noctura-theme.webflow.io/",
+      "category": [
+        "portfolio",
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Geist",
+        "Geist Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "3 kolom gap 32px · 3 kolom gap 32px · 3 kolom gap 32px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Geist 144px w300 ls-0.04 lh1 — rasio 6.0× · 2 weight · ground #040404",
+      "path": "references/library/noctura-theme.md",
+      "thumb": "references/library/assets/noctura-theme-desktop.png"
+    },
+    {
+      "slug": "nomore-agency",
+      "title": "Nomore",
+      "url": "https://nomore-agency.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Interdisplay"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Interdisplay 250px w600 ls-0.07 lh1.2 — rasio 10.4× · 4 weight · ground #FFFFFF",
+      "path": "references/library/nomore-agency.md",
+      "thumb": "references/library/assets/nomore-agency-desktop.png"
+    },
+    {
+      "slug": "noomo-labs",
+      "title": "Noomo Labs (labs.noomoagency.com)",
+      "url": "https://labs.noomoagency.com/",
+      "category": [
+        "agency",
+        "experimental"
+      ],
+      "style": [
+        "3d-immersive",
+        "glass",
+        "experimental"
+      ],
+      "fonts": [
+        "DrukMedium",
+        "IBM Plex Mono"
+      ],
+      "grid_type": [
+        "centered",
+        "full-bleed",
+        "edge-anchored"
+      ],
+      "grid": "Hero satu layar 1440x660 tanpa kolom: bola kaca terpusat di sumbu optis (diameter ~660px = penuh tinggi viewport) menindih wordmark full-bleed yang di-render DI DALAM scene 3D; sisanya edge-anchored — logo kiri-atas, nav bracket kanan-atas, rail label AR/3D/AI/XR di x9 dengan jarak vertikal 92px, counter progress di x1376, tombol hold + progress bar 1152px di baseline bawah",
+      "mood": [
+        "playful",
+        "luxurious",
+        "surreal"
+      ],
+      "libraries": [
+        "three",
+        "nuxt3",
+        "webgl",
+        "swiper"
+      ],
+      "rating": null,
+      "summary": "HANYA MOTION/VISUAL EFFECT yang diambil (permintaan eksplisit Billy). Bola kaca faceted ala disco ball dari MeshTransmissionMaterial (thickness 5, backsideThickness 1.5, chromaticAberration 0.05, color #e392fe) yang membiaskan wordmark raksasa di dalam scene 3D — tiap facet jadi cermin yang memotong huruf. Typography, grid, dan palet situs ini TIDAK diendorse.",
+      "path": "references/library/noomo-labs.md",
+      "thumb": "references/library/assets/noomo-labs-desktop.png"
+    },
+    {
+      "slug": "nordex",
+      "title": "Nordex",
+      "url": "https://nordex.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Bdogrotesk",
+        "Ppeditorialnew Bf 644 B 214 Fb 0 C 0 A",
+        "Dmsans"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "2 kolom gap 16px · 2 kolom gap 16px · 4 kolom gap 20px",
+      "mood": [
+        "monumental",
+        "austere",
+        "clinical"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Bdogrotesk 650px w400 ls0 lh1 — rasio 27.1× · 2 weight · ground #FFFFFF",
+      "path": "references/library/nordex.md",
+      "thumb": "references/library/assets/nordex-desktop.png"
+    },
+    {
+      "slug": "normalisboring",
+      "title": "Normal is Boring",
+      "url": "https://normalisboring.es/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism",
+        "swiss"
+      ],
+      "fonts": [
+        "Juana",
+        "PP Editorial New",
+        "Izmir"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "split-panel"
+      ],
+      "grid": "Grid 2 kolom gap 0px (flush-gutter); wordmark dipecah per-karakter vertikal; body 25px kolom lebar",
+      "mood": [
+        "austere",
+        "premium",
+        "serene"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Juana serif 180px w400 ls-0.007 lh1.23 uppercase + PP Editorial New Ultralight 25px body — satu-satunya referensi dengan display SERIF, dan memakai font yang sudah ada di repo.",
+      "path": "references/library/normalisboring.md",
+      "thumb": "references/library/assets/normalisboring-desktop.png"
+    },
+    {
+      "slug": "norvin",
+      "title": "Norvin",
+      "url": "https://norvin.framer.website/",
+      "category": [
+        "agency",
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism",
+        "cinematic"
+      ],
+      "fonts": [
+        "Inter Display",
+        "Clash Display"
+      ],
+      "grid_type": [
+        "editorial",
+        "asymmetric",
+        "edge-anchored"
+      ],
+      "grid": "Masthead 300px; angka section 372px sebagai elemen grafis; kutipan 24px lebar terbatas",
+      "mood": [
+        "premium",
+        "austere",
+        "monumental"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Inter Display 300px / Inter Display 600 / −0.06em / lh 0.93 — Tracking display −0.06em pada Inter 600 — jauh lebih rapat dari ambang lama −0.035em.",
+      "path": "references/library/norvin.md",
+      "thumb": "references/library/assets/norvin-desktop.png"
+    },
+    {
+      "slug": "oaperformance",
+      "title": "Over+Above",
+      "url": "https://www.oaperformance.com/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonik",
+        "Aeonik Medium",
+        "Aeonik Fono"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "12 kolom gap 24px · 12 kolom gap 24px · 12 kolom gap 24px · 3 kolom gap 24px",
+      "mood": [
+        "premium"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Aeonik 80px w500 ls-0.025 lh1 — rasio 3.6× · 4 weight · ground #000000 · kelompok Aeonik",
+      "path": "references/library/oaperformance.md",
+      "thumb": "references/library/assets/oaperformance-desktop.png"
+    },
+    {
+      "slug": "obsidianassembly",
+      "title": "The Obsidian Assembly",
+      "url": "https://obsidianassembly.com/",
+      "category": [
+        "editorial",
+        "experimental"
+      ],
+      "style": [
+        "editorial",
+        "sculptural"
+      ],
+      "fonts": [
+        "Switzer-Regular",
+        "OTJubilee-Platinum",
+        "Switzer-Medium"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 20px · 12 kolom gap 20px · 12 kolom gap 20px",
+      "mood": [
+        "luxurious",
+        "monumental"
+      ],
+      "libraries": [
+        "canvas ×2"
+      ],
+      "rating": null,
+      "summary": "Switzer-Regular 460.8px w400 ls0 lh0.78 — rasio 32.9× · 1 weight · ground #151415",
+      "path": "references/library/obsidianassembly.md",
+      "thumb": "references/library/assets/obsidianassembly-desktop.png"
+    },
+    {
+      "slug": "oharchitecture",
+      "title": "OH Architecture (oharchitecture.com.au)",
+      "url": "https://www.oharchitecture.com.au/",
+      "category": [
+        "agency",
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "PP Neue Montreal Variable"
+      ],
+      "grid_type": [
+        "swiss",
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "Swiss editorial: wordmark kiri + nav tengah + meta-row proyek edge-anchored; kolom body terpusat; heading raksasa + counter + image grid",
+      "mood": [
+        "austere",
+        "monumental",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis",
+        "barba-js"
+      ],
+      "rating": null,
+      "summary": "Firma arsitektur Brisbane — editorial Swiss PP Neue Montreal, foto full-bleed, meta-row proyek edge-anchored, heading raksasa + counter (FEATURED WORKS (06)); Billy suka typography & grid/layout.",
+      "path": "references/library/oharchitecture.md",
+      "thumb": "references/library/assets/oharchitecture-desktop.png"
+    },
+    {
+      "slug": "olivierguillard",
+      "title": "Olivier Guillard",
+      "url": "https://olivierguillard.dev/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "ampersand",
+        "aeonik pro"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "monumental",
+        "austere",
+        "clinical"
+      ],
+      "libraries": [
+        "gsap",
+        "three"
+      ],
+      "rating": null,
+      "summary": "ampersand 223px w400 ls-0.02 lh0.81 — rasio 12.4× · 1 weight · ground #EFEBE8 · kelompok Aeonik",
+      "path": "references/library/olivierguillard.md",
+      "thumb": "references/library/assets/olivierguillard-desktop.png"
+    },
+    {
+      "slug": "origin-studio",
+      "title": "Origin Studio",
+      "url": "https://origin-studio-template.webflow.io/",
+      "category": [
+        "agency",
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism",
+        "swiss"
+      ],
+      "fonts": [
+        "Inter"
+      ],
+      "grid_type": [
+        "swiss",
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "Grid 4 kolom gap 32px; wordmark per-karakter 173px uppercase; body 22px weight 300; label 13px tracking +0.16em",
+      "mood": [
+        "austere",
+        "premium",
+        "clinical"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter satu famili di weight 200-500 saja — display 173px weight 500, body 22px weight 300, label +0.1625em uppercase. Bukti bahwa Inter ringan pun disukai.",
+      "path": "references/library/origin-studio.md",
+      "thumb": "references/library/assets/origin-studio-desktop.png"
+    },
+    {
+      "slug": "oryzo",
+      "title": "Oryzo AI",
+      "url": "https://oryzo.ai/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "3d-immersive",
+        "minimalism"
+      ],
+      "fonts": [
+        "halyard-display-variable",
+        "Arial"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "16 kolom gap 18px",
+      "mood": [
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "three",
+        "canvas ×6",
+        "video ×2"
+      ],
+      "rating": null,
+      "summary": "halyard-display-variable 40.8px w500 ls0 lh0.9 — rasio —× · 2 weight · ground #000000",
+      "path": "references/library/oryzo.md",
+      "thumb": "references/library/assets/oryzo-desktop.png"
+    },
+    {
+      "slug": "oscar-agency",
+      "title": "Oscar®",
+      "url": "https://oscar-agency-template.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Bdogrotesk",
+        "Inter"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 23.9976px · 12 kolom gap 23.9976px · 1 kolom gap 0px",
+      "mood": [
+        "monumental",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Bdogrotesk 372px w500 ls-0.058 lh0.8 — rasio 20.7× · 1 weight · ground #FFFFFF",
+      "path": "references/library/oscar-agency.md",
+      "thumb": "references/library/assets/oscar-agency-desktop.png"
+    },
+    {
+      "slug": "palazzomonti",
+      "title": "Palazzo Monti",
+      "url": "https://palazzomonti.org/",
+      "category": [
+        "editorial"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonik",
+        "Helvetica",
+        "-apple-system"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "2 kolom gap normal · 2 kolom gap normal",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Aeonik 216px w400 ls0 lh1 — rasio 10.3× · 2 weight · ground #000000 · kelompok Aeonik",
+      "path": "references/library/palazzomonti.md",
+      "thumb": "references/library/assets/palazzomonti-desktop.png"
+    },
+    {
+      "slug": "pasqua",
+      "title": "Pasqua Wines",
+      "url": "https://pasqua.it/",
+      "category": [
+        "product"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Wulkan Display",
+        "Acid Grotesk"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "monumental",
+        "austere",
+        "clinical"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Wulkan Display 270px w400 ls0 lh1 — rasio 15.0× · 2 weight · ground #BBBBAD",
+      "path": "references/library/pasqua.md",
+      "thumb": "references/library/assets/pasqua-desktop.png"
+    },
+    {
+      "slug": "patriziagarganti",
+      "title": "Patrizia Garganti",
+      "url": "https://www.patriziagarganti.com/",
+      "category": [
+        "product"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "F37 Bergman",
+        "Tiempos Fine",
+        "Acid Grotesk"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "3 kolom gap normal · 2 kolom gap 16px · 3 kolom gap 8px · 1 kolom gap normal",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "F37 Bergman 86px w400 ls0 lh1 — rasio 3.9× · 2 weight · ground #EDECE7",
+      "path": "references/library/patriziagarganti.md",
+      "thumb": "references/library/assets/patriziagarganti-desktop.png"
+    },
+    {
+      "slug": "pebblelife",
+      "title": "Pebble",
+      "url": "https://pebblelife.com/",
+      "category": [
+        "product"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Youth",
+        "Aeonik",
+        "Lato"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "12 kolom gap 10px · 12 kolom gap 10px · 12 kolom gap 10px · 12 kolom gap 10px",
+      "mood": [
+        "austere",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Youth 164px w400 ls-0.06 lh0.74 — rasio 7.5× · 4 weight · ground #F2EFE9 · kelompok Aeonik",
+      "path": "references/library/pebblelife.md",
+      "thumb": "references/library/assets/pebblelife-desktop.png"
+    },
+    {
+      "slug": "play-x",
+      "title": "Play X",
+      "url": "https://playtemplate.webflow.io/home",
+      "category": [
+        "ecommerce",
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Onest",
+        "Line Square Icons",
+        "Social Icons Font"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 64px · 3 kolom gap 32px · 3 kolom gap 32px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Onest 120px w700 ls0 lh1 — rasio 5.0× · 3 weight · ground #030303",
+      "path": "references/library/play-x.md",
+      "thumb": "references/library/assets/play-x-desktop.png"
+    },
+    {
+      "slug": "plutarch",
+      "title": "Plutarch Films",
+      "url": "https://plutarch.framer.website/works",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "cinematic",
+        "swiss"
+      ],
+      "fonts": [
+        "Switzer"
+      ],
+      "grid_type": [
+        "editorial",
+        "modular",
+        "swiss"
+      ],
+      "grid": "Grid 3–4 kolom gap 5–10px; angka indeks 260px; judul section 160px; meta 14px uppercase",
+      "mood": [
+        "austere",
+        "cinematic",
+        "monumental"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Switzer 260px / Switzer 300 / −0.04em / lh 0.90 uppercase — Teks display besar diberi warna abu gelap (#4A4A4A) agar mundur — hierarki lewat nilai, bukan ukuran saja.",
+      "path": "references/library/plutarch.md",
+      "thumb": "references/library/assets/plutarch-desktop.png"
+    },
+    {
+      "slug": "portfi",
+      "title": "Portfi",
+      "url": "https://portfi.webflow.io/",
+      "category": [
+        "ecommerce",
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Satoshi"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 0px · 1 kolom gap 38.5632px · 4 kolom gap 29.664px",
+      "mood": [
+        "monumental",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Satoshi 890px w500 ls0 lh1.1 — rasio 37.1× · 4 weight · ground #000000",
+      "path": "references/library/portfi.md",
+      "thumb": "references/library/assets/portfi-desktop.png"
+    },
+    {
+      "slug": "porto-template",
+      "title": "Porto",
+      "url": "https://porto-template.framer.website/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "brutalism",
+        "editorial",
+        "cinematic"
+      ],
+      "fonts": [
+        "Clash Display",
+        "Inter Display"
+      ],
+      "grid_type": [
+        "swiss",
+        "full-bleed",
+        "edge-anchored"
+      ],
+      "grid": "Masthead 397px uppercase; heading section 120px; garis vertikal grid terlihat sebagai elemen",
+      "mood": [
+        "brutal",
+        "monumental",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Clash Display 397px / Clash Display 600 / −0.0075em / lh 0.80 uppercase — Clash Display butuh tracking hampir netral (−0.0075em) karena sudah rapat secara bawaan — bukti bahwa tracking bergantung famili, bukan hanya ukuran.",
+      "path": "references/library/porto-template.md",
+      "thumb": "references/library/assets/porto-template-desktop.png"
+    },
+    {
+      "slug": "portrixe",
+      "title": "Portrixe",
+      "url": "https://portrixe.framer.website/",
+      "category": [
+        "portfolio",
+        "agency"
+      ],
+      "style": [
+        "minimalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Satoshi"
+      ],
+      "grid_type": [
+        "centered",
+        "editorial"
+      ],
+      "grid": "Wordmark per-karakter 162px; statement 24px; single family di seluruh situs",
+      "mood": [
+        "premium",
+        "calm",
+        "clinical"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Satoshi 162px / Satoshi 700 / −0.02em / lh 1.15 — Satu-satunya di set ini dengan leading display longgar (1.15). Tracking −0.02em identik di display dan body — konsistensi sebagai sistem.",
+      "path": "references/library/portrixe.md",
+      "thumb": "references/library/assets/portrixe-desktop.png"
+    },
+    {
+      "slug": "prime-exits",
+      "title": "Prime Exits",
+      "url": "https://prime-exits.bigly.studio/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonik"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "3 kolom gap normal · 12 kolom gap 25.2px · 12 kolom gap 25.2px · 12 kolom gap 25.2px",
+      "mood": [
+        "monumental",
+        "austere",
+        "clinical"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonik 216px w400 ls0 lh1.2 — rasio 12.0× · 1 weight · ground #FFFFFF · kelompok Aeonik",
+      "path": "references/library/prime-exits.md",
+      "thumb": "references/library/assets/prime-exits-desktop.png"
+    },
+    {
+      "slug": "production-x",
+      "title": "Production X",
+      "url": "https://productiontemplate.webflow.io/home-pages/home-v1",
+      "category": [
+        "ecommerce",
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Mona Sans Wide",
+        "Icon Rounded",
+        "Social Media Icon Font BRIX"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 48px · 3 kolom gap 48px · 1 kolom gap 20px",
+      "mood": [
+        "monumental",
+        "brutal",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Mona Sans Wide 331px w800 ls0 lh1 — rasio 13.8× · 3 weight · ground #040404",
+      "path": "references/library/production-x.md",
+      "thumb": "references/library/assets/production-x-desktop.png"
+    },
+    {
+      "slug": "quantumbody",
+      "title": "Quantum Body (quantumbody.io)",
+      "url": "https://www.quantumbody.io/",
+      "category": [
+        "product",
+        "editorial"
+      ],
+      "style": [
+        "editorial",
+        "cinematic",
+        "minimalism"
+      ],
+      "fonts": [
+        "Neue Haas Display"
+      ],
+      "grid_type": [
+        "editorial",
+        "asymmetric",
+        "edge-anchored",
+        "split-panel"
+      ],
+      "grid": "Container 20px gutter (konten 1405px di viewport 1425px); display flush-left ke gutter, gambar bleed lewat tepi; baris asimetris 3-kolom (image bleed kiri / kolom angka 356px / portrait bleed kanan); pillars = tabel editorial 2-kolom 356px + 1069px dengan hairline rules; education = split 50/50 panel warna + media",
+      "mood": [
+        "austere",
+        "serene",
+        "premium"
+      ],
+      "libraries": [
+        "lenis",
+        "lottie",
+        "webflow",
+        "jquery"
+      ],
+      "rating": null,
+      "summary": "Situs brand wellness (Webflow, by Denys Verholomchuk) — Neue Haas Display 400 SATU famili di 8 ukuran, palet hangat muted cream #FFEBC4 / bone #D7D1C3 / paper #FFFDF5 / warm-black #201914 / forest #2D3622, grid editorial flush-gutter dengan objek line-art sacred-geometry (Lottie) sebagai aksen; Billy suka typography, color set, grid, dan objek SVG/Lottie-nya.",
+      "path": "references/library/quantumbody.md",
+      "thumb": "references/library/assets/quantumbody-desktop.png"
+    },
+    {
+      "slug": "qubix",
+      "title": "Qubix Studio",
+      "url": "https://qubix-flowdevz.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "kinetic-type"
+      ],
+      "fonts": [
+        "Interdisplay"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "2 kolom gap 16px · 3 kolom gap 48px · 2 kolom gap 64px",
+      "mood": [
+        "kinetic",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Interdisplay 128px w500 ls-0.03 lh1.54 — rasio 5.3× · 3 weight · ground #000000",
+      "path": "references/library/qubix.md",
+      "thumb": "references/library/assets/qubix-desktop.png"
+    },
+    {
+      "slug": "raxo",
+      "title": "Raxo",
+      "url": "https://raxo.co/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "__Inter_8b3a0b",
+        "Space Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "monumental",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "__Inter_8b3a0b 240px w500 ls-0.02 lh0.9 — rasio 13.3× · 4 weight · ground #FFFFFF · kelompok Aeonik",
+      "path": "references/library/raxo.md",
+      "thumb": "references/library/assets/raxo-desktop.png"
+    },
+    {
+      "slug": "renok",
+      "title": "Renok",
+      "url": "https://renok.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter Tight",
+        "Instrument Serif"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "3 kolom gap 16px · 3 kolom gap normal · 3 kolom gap normal",
+      "mood": [
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Inter Tight 216px w600 ls-0.0556 lh1 — rasio 9.0× · 5 weight · ground #FFFFFF",
+      "path": "references/library/renok.md",
+      "thumb": "references/library/assets/renok-desktop.png"
+    },
+    {
+      "slug": "revana",
+      "title": "Revana",
+      "url": "https://revana.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter Tight",
+        "Revalia"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Inter Tight 210px w500 ls-0.05 lh0.85 — rasio 9.5× · 2 weight · ground #FFFFFF",
+      "path": "references/library/revana.md",
+      "thumb": "references/library/assets/revana-desktop.png"
+    },
+    {
+      "slug": "rhythminfluence",
+      "title": "Rhythm Influence",
+      "url": "https://www.rhythminfluence.com/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Aeonik",
+        "Workhorse"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Aeonik 140px w700 ls0 lh0.84 — rasio 5.6× · 4 weight · ground #000000 · kelompok Aeonik",
+      "path": "references/library/rhythminfluence.md",
+      "thumb": "references/library/assets/rhythminfluence-desktop.png"
+    },
+    {
+      "slug": "rocketair",
+      "title": "RocketAir",
+      "url": "https://www.rocketair.com/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonikpro",
+        "Maisonneuemonoweb",
+        "Aeonikmono"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "4 kolom gap 24px · 4 kolom gap 24px",
+      "mood": [
+        "monumental",
+        "austere",
+        "clinical"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonikpro 432px w400 ls0 lh0.85 — rasio 21.6× · 2 weight · ground #000000 · kelompok Aeonik",
+      "path": "references/library/rocketair.md",
+      "thumb": "references/library/assets/rocketair-desktop.png"
+    },
+    {
+      "slug": "rosa-template",
+      "title": "Rosa",
+      "url": "https://rosa-template.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Bdogrotesk"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 24px · 12 kolom gap 24px · 12 kolom gap 24px",
+      "mood": [
+        "monumental",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Bdogrotesk 331px w500 ls-0.05 lh0.82 — rasio 16.6× · 1 weight · ground #120F10",
+      "path": "references/library/rosa-template.md",
+      "thumb": "references/library/assets/rosa-template-desktop.png"
+    },
+    {
+      "slug": "rowan-template",
+      "title": "Rowan",
+      "url": "https://rowan-template.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Inter Tight",
+        "PT Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 32px · 12 kolom gap 32px · 12 kolom gap 32px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Inter Tight 64px w400 ls0 lh1.5 — rasio 2.7× · 2 weight · ground #0F0F0F",
+      "path": "references/library/rowan-template.md",
+      "thumb": "references/library/assets/rowan-template-desktop.png"
+    },
+    {
+      "slug": "saisei",
+      "title": "Saisei",
+      "url": "https://saisei-sbj.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "PP – Fragment",
+        "Aeonik"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "3 kolom gap 118px · 3 kolom gap 118px · 10 kolom gap 16px · 10 kolom gap 44.4px",
+      "mood": [
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "PP – Fragment 180px w500 ls-0.03 lh0.65 — rasio 7.2× · 2 weight · ground #1E1005 · kelompok Aeonik",
+      "path": "references/library/saisei.md",
+      "thumb": "references/library/assets/saisei-desktop.png"
+    },
+    {
+      "slug": "sandclock",
+      "title": "Sandclock",
+      "url": "https://sandclock.madebyburo.com/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "aeonik-regular",
+        "aeonik-regular-italic",
+        "aeonik-light"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "aeonik-regular 130px w400 ls-0.02 lh1 — rasio 5.4× · 1 weight · ground #1D211E · kelompok Aeonik",
+      "path": "references/library/sandclock.md",
+      "thumb": "references/library/assets/sandclock-desktop.png"
+    },
+    {
+      "slug": "savage-studio",
+      "title": "Savage Studio",
+      "url": "https://savage-studio-portfolio.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Instrumentserif",
+        "Intertight"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Instrumentserif 41px w400 ls0 lh1 — rasio 1.7× · 1 weight · ground #FFFFFF",
+      "path": "references/library/savage-studio.md",
+      "thumb": "references/library/assets/savage-studio-desktop.png"
+    },
+    {
+      "slug": "sign-zano",
+      "title": "Zano",
+      "url": "https://sign-zano.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "kinetic-type"
+      ],
+      "fonts": [
+        "Orbitron",
+        "Work Sans",
+        "Material Icons"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "flex-based, tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "austere",
+        "clinical",
+        "kinetic"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Orbitron 130px w300 ls0 lh0.78 — rasio 9.3× · 2 weight · ground #000000",
+      "path": "references/library/sign-zano.md",
+      "thumb": "references/library/assets/sign-zano-desktop.png"
+    },
+    {
+      "slug": "silent-house",
+      "title": "Silent House",
+      "url": "https://silent-house.com/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "minimalism",
+        "editorial"
+      ],
+      "fonts": [
+        "aktiv_grotesk"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "13 kolom gap 18px · 12 kolom gap 18px · 12 kolom gap 18px",
+      "mood": [
+        "serene",
+        "premium"
+      ],
+      "libraries": [
+        "lenis",
+        "video ×2"
+      ],
+      "rating": null,
+      "summary": "aktiv_grotesk 160px w450 ls-0.04 lh1 — rasio 10.7× · 4 weight · ground #000000",
+      "path": "references/library/silent-house.md",
+      "thumb": "references/library/assets/silent-house-desktop.png"
+    },
+    {
+      "slug": "sonido-studios",
+      "title": "Sonido Studios",
+      "url": "https://sonido-studios.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Host Grotesk",
+        "Satoshi"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "3 kolom gap 14.58px · 2 kolom gap 12.96px · 6 kolom gap 6.48px",
+      "mood": [
+        "austere",
+        "premium"
+      ],
+      "libraries": [
+        "gsap",
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Host Grotesk 194px w400 ls0 lh0.75 — rasio 7.5× · 3 weight · ground #D3D8DA",
+      "path": "references/library/sonido-studios.md",
+      "thumb": "references/library/assets/sonido-studios-desktop.png"
+    },
+    {
+      "slug": "steven",
+      "title": "Steven",
+      "url": "https://steven.com/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "minimalism",
+        "3d-immersive"
+      ],
+      "fonts": [
+        "Host Grotesk",
+        "Field Gothic Trimmed"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "tanpa CSS grid eksplisit di viewport awal",
+      "mood": [
+        "premium",
+        "clinical"
+      ],
+      "libraries": [
+        "lenis",
+        "three",
+        "canvas ×2",
+        "webflow"
+      ],
+      "rating": null,
+      "summary": "Host Grotesk 51px w400 ls-0.01 lh1 — rasio —× · 3 weight · ground #121212",
+      "path": "references/library/steven.md",
+      "thumb": "references/library/assets/steven-desktop.png"
+    },
+    {
+      "slug": "studio-brave",
+      "title": "Brave",
+      "url": "https://studio-brave.webflow.io/",
+      "category": [
+        "ecommerce",
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Overused-Grotesk"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 27px · 12 kolom gap 27px · 12 kolom gap 27px",
+      "mood": [
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Overused-Grotesk 226px w600 ls-0.0225 lh0.8 — rasio 9.4× · 2 weight · ground #FFFFFF",
+      "path": "references/library/studio-brave.md",
+      "thumb": "references/library/assets/studio-brave-desktop.png"
+    },
+    {
+      "slug": "studio-rydge",
+      "title": "Rydge",
+      "url": "https://studio-rydge.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Overused-Grotesk"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 27px · 12 kolom gap 27px · 12 kolom gap 27px",
+      "mood": [
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Overused-Grotesk 217px w600 ls-0.0302 lh0.75 — rasio 9.9× · 2 weight · ground #FFFFFF",
+      "path": "references/library/studio-rydge.md",
+      "thumb": "references/library/assets/studio-rydge-desktop.png"
+    },
+    {
+      "slug": "studio-verno",
+      "title": "Studio Verno",
+      "url": "https://studio-verno.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Host Grotesk",
+        "Ballet"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 20px · 3 kolom gap 16px · 3 kolom gap 16px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Host Grotesk 187px w700 ls-0.0026 lh0.89 — rasio 11.7× · 3 weight · ground #E8E7DC",
+      "path": "references/library/studio-verno.md",
+      "thumb": "references/library/assets/studio-verno-desktop.png"
+    },
+    {
+      "slug": "studiodado",
+      "title": "Studio DADO",
+      "url": "https://www.studiodado.com/",
+      "category": [
+        "agency",
+        "editorial"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "serif display (alias \"disp\")",
+        "grotesk (alias \"sans\")"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "24 kolom gap 19.2px · 24 kolom gap 19.2px · 24 kolom gap 19.2px",
+      "mood": [
+        "premium",
+        "luxurious",
+        "serene"
+      ],
+      "libraries": [
+        "video ×2"
+      ],
+      "rating": null,
+      "summary": "serif display 211.2px w400 ls-0.02 lh0.80 UPPERCASE — rasio 11.0x · 3 weight · ground foto interior hangat",
+      "path": "references/library/studiodado.md",
+      "thumb": "references/library/assets/studiodado-desktop.png"
+    },
+    {
+      "slug": "studioflow",
+      "title": "Studio Flow",
+      "url": "https://studioflow.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Anek Latin",
+        "Fa Solid 900",
+        "Fa Brands 400"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "2 kolom gap 150px · 3 kolom gap 30px",
+      "mood": [
+        "austere",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Anek Latin 200px w400 ls0 lh1 — rasio 7.7× · 4 weight · ground #DDDDDD",
+      "path": "references/library/studioflow.md",
+      "thumb": "references/library/assets/studioflow-desktop.png"
+    },
+    {
+      "slug": "synergy-studio",
+      "title": "Synergy",
+      "url": "https://synergy-studio.webflow.io/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Overused-Grotesk"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "12 kolom gap 27px · 3 kolom gap 16px · 12 kolom gap 27px",
+      "mood": [
+        "monumental",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Overused-Grotesk 408px w600 ls-0.0425 lh0.8 — rasio 17.7× · 2 weight · ground #FFFFFF",
+      "path": "references/library/synergy-studio.md",
+      "thumb": "references/library/assets/synergy-studio-desktop.png"
+    },
+    {
+      "slug": "thorgal",
+      "title": "Thorgal",
+      "url": "https://www.thorgal.com/",
+      "category": [
+        "editorial",
+        "experimental"
+      ],
+      "style": [
+        "cinematic",
+        "editorial"
+      ],
+      "fonts": [
+        "Artifex Hand CF-046c0ff99cd55ef3",
+        "Mulish-9c8e18cc8744f1a9",
+        "ui-sans-serif"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "7 kolom gap normal · 54 kolom gap normal",
+      "mood": [
+        "tense",
+        "nocturnal"
+      ],
+      "libraries": [
+        "canvas ×2"
+      ],
+      "rating": null,
+      "summary": "Artifex Hand CF-046c0ff99cd55ef3 42px w700 ls-0.0476 lh1 — rasio —× · 4 weight · ground #EFEEED",
+      "path": "references/library/thorgal.md",
+      "thumb": "references/library/assets/thorgal-desktop.png"
+    },
+    {
+      "slug": "tokara",
+      "title": "Tokara",
+      "url": "https://tokara.dk/",
+      "category": [
+        "saas"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Amerigo Bt",
+        "Aeonik"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "1 kolom gap 13.6px · 1 kolom gap normal · 1 kolom gap normal · 3 kolom gap normal",
+      "mood": [
+        "monumental",
+        "austere",
+        "clinical"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Amerigo Bt 238px w400 ls0 lh0.73 — rasio 14.0× · 1 weight · ground #000000 · kelompok Aeonik",
+      "path": "references/library/tokara.md",
+      "thumb": "references/library/assets/tokara-desktop.png"
+    },
+    {
+      "slug": "trucknroll",
+      "title": "Truck'N Roll",
+      "url": "https://trucknroll.com/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial"
+      ],
+      "fonts": [
+        "Helvetica Now Display",
+        "National 2 Condensed"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "2 kolom gap 12.0007px · 2 kolom gap 12.0007px · 12 kolom gap 10px",
+      "mood": [
+        "brutal",
+        "kinetic"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Helvetica Now Display 420.025px w900 ls-0.03 lh0.7 — rasio 26.2× · 3 weight · ground #000000",
+      "path": "references/library/trucknroll.md",
+      "thumb": "references/library/assets/trucknroll-desktop.png"
+    },
+    {
+      "slug": "unesco-museum",
+      "title": "UNESCO Virtual Museum of Stolen Cultural Objects",
+      "url": "https://museum.unesco.org/",
+      "category": [
+        "experimental",
+        "editorial"
+      ],
+      "style": [
+        "3d-immersive",
+        "editorial"
+      ],
+      "fonts": [
+        "Inter",
+        "Unbounded"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "12 kolom gap 20px · 12 kolom gap 20px · 12 kolom gap 20px",
+      "mood": [
+        "serene",
+        "monumental"
+      ],
+      "libraries": [
+        "canvas ×2"
+      ],
+      "rating": null,
+      "summary": "Inter 112px w300 ls-0.05 lh1.2 — rasio 7.0× · 2 weight · ground #442D26",
+      "path": "references/library/unesco-museum.md",
+      "thumb": "references/library/assets/unesco-museum-desktop.png"
+    },
+    {
+      "slug": "valterox",
+      "title": "Valtero X",
+      "url": "https://valterox.framer.website/",
+      "category": [
+        "portfolio",
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "experimental",
+        "kinetic-type"
+      ],
+      "fonts": [
+        "Humane",
+        "Coolvetica Condensed",
+        "Inter"
+      ],
+      "grid_type": [
+        "full-bleed",
+        "broken-grid",
+        "edge-anchored"
+      ],
+      "grid": "Wordmark Humane 513px sebagai outline; daftar layanan Coolvetica Condensed 259px uppercase bertumpuk",
+      "mood": [
+        "brutal",
+        "monumental",
+        "raw"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Humane 513px / Humane 400 / +0.015em / lh 0.91 — Pairing tiga famili dengan pembagian peran tegas: Humane (ultra-condensed) display, Coolvetica statement, Inter body/label.",
+      "path": "references/library/valterox.md",
+      "thumb": "references/library/assets/valterox-desktop.png"
+    },
+    {
+      "slug": "veauly",
+      "title": "Veauly",
+      "url": "https://veaulytemplate.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Neutralsans",
+        "Beautiquedisplay",
+        "Inter"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "1 kolom gap 80px · 2 kolom gap 16px",
+      "mood": [
+        "monumental",
+        "austere",
+        "premium"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Neutralsans 360px w300 ls0 lh1 — rasio 15.0× · 5 weight · ground #000000",
+      "path": "references/library/veauly.md",
+      "thumb": "references/library/assets/veauly-desktop.png"
+    },
+    {
+      "slug": "vertical",
+      "title": "Vertical — Editorial-Style Portfolio",
+      "url": "https://vertical.framer.media/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "brutalism",
+        "swiss"
+      ],
+      "fonts": [
+        "Inter",
+        "IBM Plex Mono",
+        "Fragment Mono"
+      ],
+      "grid_type": [
+        "swiss",
+        "editorial",
+        "broken-grid"
+      ],
+      "grid": "Grid 12 kolom; wordmark dipecah tiga blok (VER/TI/CAL) 409px; mono untuk meta",
+      "mood": [
+        "energetic",
+        "brutal",
+        "monumental"
+      ],
+      "libraries": [
+        "lenis"
+      ],
+      "rating": null,
+      "summary": "Inter 409px / Inter 700 / −0.08em / lh 0.80 — Tracking −0.08em pada Inter 700 di 409px — paling rapat di antara referensi Inter. Grid 12 kolom sebagai fondasi.",
+      "path": "references/library/vertical.md",
+      "thumb": "references/library/assets/vertical-desktop.png"
+    },
+    {
+      "slug": "viper-template",
+      "title": "Viper",
+      "url": "https://viper-template.framer.website/",
+      "category": [
+        "portfolio",
+        "agency"
+      ],
+      "style": [
+        "brutalism",
+        "editorial",
+        "maximalism"
+      ],
+      "fonts": [
+        "Inter Display"
+      ],
+      "grid_type": [
+        "full-bleed",
+        "asymmetric",
+        "modular"
+      ],
+      "grid": "Nama 260px dengan asterisk aksen berwarna; angka statistik 128px tracking −0.078em",
+      "mood": [
+        "energetic",
+        "brutal",
+        "playful"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Inter Display 260px / Inter Display 700 / −0.0346em / lh 0.77 — Leading display 0.77 — lebih rapat dari 0.85 yang dipakai sebagai standar. Satu glyph (*) diberi warna aksen sebagai satu-satunya titik warna pada tipografi.",
+      "path": "references/library/viper-template.md",
+      "thumb": "references/library/assets/viper-template-desktop.png"
+    },
+    {
+      "slug": "vitaeresume",
+      "title": "Vitae®",
+      "url": "https://vitaeresume.framer.website/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "experimental",
+        "swiss"
+      ],
+      "fonts": [
+        "Switzer",
+        "DM Mono",
+        "Cormorant"
+      ],
+      "grid_type": [
+        "editorial",
+        "asymmetric",
+        "edge-anchored"
+      ],
+      "grid": "Wordmark 240px; daftar kontak 264px sebagai navigasi; meta DM Mono 12–14px uppercase",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Switzer 264px / Switzer 300 / −0.10em / lh 0.70 — Weight 300 + tracking −0.10em + leading 0.70 pada 264px. Kombinasi paling ekstrem di seluruh set — dan tetap terbaca.",
+      "path": "references/library/vitaeresume.md",
+      "thumb": "references/library/assets/vitaeresume-desktop.png"
+    },
+    {
+      "slug": "vortex-studio",
+      "title": "Vortex Studio",
+      "url": "https://vortex-studio.webflow.io/home",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Octane",
+        "Oak Sans"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "3 kolom gap 8px",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Octane 490px w100 ls0 lh1 — rasio ?× · 2 weight · ground #000000",
+      "path": "references/library/vortex-studio.md",
+      "thumb": "references/library/assets/vortex-studio-desktop.png"
+    },
+    {
+      "slug": "williamss",
+      "title": "Williams",
+      "url": "https://williamss.webflow.io/",
+      "category": [
+        "portfolio"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aspekta 600",
+        "Aspekta 400",
+        "Aspekta 500"
+      ],
+      "grid_type": [
+        "editorial",
+        "swiss",
+        "asymmetric"
+      ],
+      "grid": "3 kolom gap 20px · 2 kolom gap 20px · 2 kolom gap 0px",
+      "mood": [
+        "austere",
+        "premium"
+      ],
+      "libraries": [
+        "gsap"
+      ],
+      "rating": null,
+      "summary": "Aspekta 600 224px w400 ls-0.02 lh1 — rasio 9.3× · 3 weight · ground #FFFFFF",
+      "path": "references/library/williamss.md",
+      "thumb": "references/library/assets/williamss-desktop.png"
+    },
+    {
+      "slug": "wolverineworldwide",
+      "title": "Wolverine Worldwide",
+      "url": "https://wolverineworldwide.com/",
+      "category": [
+        "product"
+      ],
+      "style": [
+        "editorial",
+        "brutalism"
+      ],
+      "fonts": [
+        "ABCDiatype",
+        "ABCDiatype-Mono"
+      ],
+      "grid_type": [
+        "editorial"
+      ],
+      "grid": "2 kolom gap 24px · 2 kolom gap 20px · 2 kolom gap 20px",
+      "mood": [
+        "brutal",
+        "premium"
+      ],
+      "libraries": [
+        "lenis",
+        "video ×1"
+      ],
+      "rating": null,
+      "summary": "ABCDiatype 168px w700 ls-0.05 lh0.79 — rasio 8.8× · 2 weight · ground #000000",
+      "path": "references/library/wolverineworldwide.md",
+      "thumb": "references/library/assets/wolverineworldwide-desktop.png"
+    },
+    {
+      "slug": "xscape",
+      "title": "XSCAPE",
+      "url": "https://xscape.studio/",
+      "category": [
+        "agency"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonik-Medium",
+        "Xscape",
+        "OffBitTrial-Dot"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "12 kolom gap 16px · 12 kolom gap 16px · 12 kolom gap 16px · 8 kolom gap normal",
+      "mood": [
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonik-Medium 172px w500 ls0 lh1.28 — rasio 7.2× · 3 weight · ground #000000 · kelompok Aeonik",
+      "path": "references/library/xscape.md",
+      "thumb": "references/library/assets/xscape-desktop.png"
+    },
+    {
+      "slug": "zajno-motion",
+      "title": "motion.ed by Zajno (motion.zajno.com)",
+      "url": "https://motion.zajno.com/",
+      "category": [
+        "editorial",
+        "agency",
+        "experimental"
+      ],
+      "style": [
+        "swiss",
+        "editorial",
+        "kinetic-type",
+        "minimalism",
+        "experimental"
+      ],
+      "fonts": [
+        "PP Neue Machina Plain",
+        "PP Neue Machina Inktrap",
+        "Magilio"
+      ],
+      "grid_type": [
+        "swiss",
+        "editorial",
+        "full-bleed",
+        "edge-anchored"
+      ],
+      "grid": "Gutter chrome 34px (logo/menu/sound pill flush ke 4 sudut); kolom editorial inset 133px (lebar 1174px = 3 x 391.34px, gap 0); display h3 full-bleed x=0 w=1440; marquee 215px meluber ke 2816px (196% viewport); rail interactive 2292px digeser -852px horizontal; root font-size fluid 6.94444vw desktop (=100px @1440) / 26.6667vw mobile (=104px @390)",
+      "mood": [
+        "kinetic",
+        "clinical",
+        "playful"
+      ],
+      "libraries": [
+        "gsap",
+        "scrolltrigger",
+        "motionpath",
+        "customease",
+        "observer",
+        "lenis",
+        "matter-js",
+        "lottie",
+        "webflow",
+        "jquery",
+        "splide"
+      ],
+      "rating": null,
+      "summary": "saya suka motionnya",
+      "path": "references/library/zajno-motion.md",
+      "thumb": "references/library/assets/zajno-motion-desktop.png"
+    },
+    {
+      "slug": "zeekr-ava",
+      "title": "Zeekr — AVA Case",
+      "url": "https://zkr.ava-case.com/",
+      "category": [
+        "experimental"
+      ],
+      "style": [
+        "editorial",
+        "minimalism"
+      ],
+      "fonts": [
+        "Aeonik Pro",
+        "IBMPlex Mono"
+      ],
+      "grid_type": [
+        "editorial",
+        "edge-anchored"
+      ],
+      "grid": "1 kolom gap 4px · 12 kolom gap normal · 12 kolom gap normal",
+      "mood": [
+        "austere",
+        "clinical",
+        "premium"
+      ],
+      "libraries": [],
+      "rating": null,
+      "summary": "Aeonik Pro 78px w400 ls0 lh1.0 — rasio 4.1x · 1 weight · ground #020003 · kelompok Aeonik",
+      "path": "references/library/zeekr-ava.md",
+      "thumb": "references/library/assets/zeekr-ava-desktop.png"
+    }
+  ]
+}

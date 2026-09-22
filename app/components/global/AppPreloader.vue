@@ -124,8 +124,10 @@ async function runCinematic() {
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PHASE 2: GOO RESOLVE — LOGO EMERGES (1.2s → 6.2s)
-  // CRZ-style: explode 3→0, strength 1.2→residual.
+  // PHASE 2: GOO RESOLVE — LOGO EMERGES (1.2s → ~4.2s)
+  // CRZ-style: explode 3→0, strength 1.2→residual. Resolve dipadatkan ~0.6x
+  // dari versi 5s: logo terbaca ~2.5s masuk resolve (bukan ~4.3s) — muncul
+  // lebih cepat, koreografi/easing per-kuantitas dipertahankan agar tetap smooth.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   /*
@@ -164,17 +166,17 @@ async function runCinematic() {
    */
   tl.to(shader, {
     explode: 0,
-    duration: 3.2,
+    duration: 1.9,
     ease: 'power3.out',
     onUpdate: () => blob.setExplode(shader.explode),
   }, 'resolve')
 
   tl.to(shader, {
     strength: 0.12,
-    duration: 3.4,
+    duration: 2.0,
     ease: 'power3.out',
     onUpdate: () => blob.setStrength(shader.strength),
-  }, 'resolve+=0.4')
+  }, 'resolve+=0.25')
 
   /*
    * Surface-tension overshoot lives on uStrength because uConverge and
@@ -186,45 +188,45 @@ async function runCinematic() {
    */
   tl.to(shader, {
     strength: -0.04,
-    duration: 0.4,
+    duration: 0.25,
     ease: 'expo.inOut',
     onUpdate: () => blob.setStrength(shader.strength),
-  }, 'resolve+=3.8')
+  }, 'resolve+=2.25')
 
   tl.to(shader, {
     strength: 0.05,
-    duration: 0.8,
+    duration: 0.5,
     ease: 'power3.out',
     onUpdate: () => blob.setStrength(shader.strength),
-  }, 'resolve+=4.2')
+  }, 'resolve+=2.5')
 
   tl.to(shader, {
     converge: 0.97,
-    duration: 2.8,
+    duration: 1.7,
     ease: 'expo.inOut',
     onUpdate: () => blob.setConverge(shader.converge),
-  }, 'resolve+=0.6')
+  }, 'resolve+=0.35')
 
   tl.to(shader, {
     converge: 1.0,
-    duration: 0.9,
+    duration: 0.55,
     ease: 'power3.out',
     onUpdate: () => blob.setConverge(shader.converge),
-  }, 'resolve+=3.4')
+  }, 'resolve+=2.05')
 
   tl.to(shader, {
     flow: 0.03,
-    duration: 4.6,
+    duration: 2.8,
     ease: 'power3.out',
     onUpdate: () => blob.setFlowIntensity(shader.flow),
   }, 'resolve')
 
   tl.to(shader, {
     fill: 1.0,
-    duration: 2.2,
+    duration: 1.3,
     ease: 'power3.out',
     onUpdate: () => blob.setFill(shader.fill),
-  }, 'resolve+=1.6')
+  }, 'resolve+=0.95')
 
   /*
    * Dim pulse masks the recognition threshold; sine of eased progress
@@ -232,22 +234,22 @@ async function runCinematic() {
    */
   tl.to(shader, {
     pulse: 1,
-    duration: 2.6,
+    duration: 1.55,
     ease: 'expo.inOut',
     onUpdate: () => blob.setFadeToBlack(Math.sin(shader.pulse * Math.PI) * 0.05),
-  }, 'resolve+=0.4')
+  }, 'resolve+=0.25')
 
   // Vignette focuses attention on center during resolve
   if (vignetteRef.value) {
     tl.to(vignetteRef.value, {
       opacity: 0.3,
-      duration: 5.0,
+      duration: 3.0,
       ease: 'expo.inOut',
     }, 'resolve')
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // PHASE 3: LOGO HOLDS — RECOGNITION (6.2s → 7.05s)
+  // PHASE 3: LOGO HOLDS — RECOGNITION (~4.2s → ~5.05s)
   // Clear BM logo, brief cinematic pause.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

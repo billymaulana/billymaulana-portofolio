@@ -40,12 +40,9 @@ let animId = 0
 const RING_LERP = 0.15
 
 // ─── Ring sizes per state ───
-const RING_SIZES: Record<CursorState, number> = {
-  default: 40,
-  hover: 64,
-  text: 24,
-  hidden: 0,
-}
+/* Wrapper ring berukuran tetap 40px; perubahan ukuran per state dilakukan lewat scale pada
+   SVG di dalamnya, jadi offset pemusatan tidak lagi bergantung state. */
+const RING_BASE = 40
 
 // ─── Label text mapping ───
 const CURSOR_LABELS: Record<string, string> = {
@@ -156,8 +153,7 @@ function animate() {
   }
 
   if (ringRef.value) {
-    const size = RING_SIZES[cursorState.value]
-    const offset = size / 2
+    const offset = RING_BASE / 2
     ringRef.value.style.transform = `translate(${ringX - offset}px, ${ringY - offset}px)`
   }
 
@@ -207,24 +203,31 @@ onUnmounted(() => {
     aria-hidden="true"
   >
     <!-- Layer 1: Inner dot — 6px, instant position -->
-    <div
-      ref="dotRef"
-      class="cursor__dot"
-      :class="{
-        'cursor__dot--hover': cursorState === 'hover',
-        'cursor__dot--text': cursorState === 'text',
-      }"
-    />
+    <div ref="dotRef" class="cursor__dot">
+      <div
+        class="cursor__dot-shape"
+        :class="{
+          'cursor__dot-shape--hover': cursorState === 'hover',
+          'cursor__dot-shape--text': cursorState === 'text',
+        }"
+      />
+    </div>
 
     <!-- Layer 2: Outer ring — 40px default, lerp inertia -->
-    <div
-      ref="ringRef"
-      class="cursor__ring"
-      :class="{
-        'cursor__ring--hover': cursorState === 'hover',
-        'cursor__ring--text': cursorState === 'text',
-      }"
-    />
+    <div ref="ringRef" class="cursor__ring">
+      <svg
+        class="cursor__ring-shape"
+        :class="{
+          'cursor__ring-shape--hover': cursorState === 'hover',
+          'cursor__ring-shape--text': cursorState === 'text',
+        }"
+        viewBox="0 0 40 40"
+        width="40"
+        height="40"
+      >
+        <circle cx="20" cy="20" r="19.5" fill="none" stroke="currentColor" stroke-width="1" vector-effect="non-scaling-stroke" />
+      </svg>
+    </div>
 
     <!-- Layer 3: Label — appears on hover states -->
     <div
@@ -258,6 +261,10 @@ onUnmounted(() => {
   opacity: 0;
 }
 
+/* Posisi dan skala dipisah ke dua elemen: posisi ditulis tiap frame oleh RAF, skala
+   ditransisikan CSS. Menggabungkannya dalam satu transform membuat transisi ikut menahan
+   posisi dan kursor terasa tertinggal dari pointer. */
+
 /* ═══ Layer 1: Inner Dot — 6px circle ═══ */
 .cursor__dot {
   position: absolute;
@@ -265,24 +272,27 @@ onUnmounted(() => {
   left: 0;
   width: 6px;
   height: 6px;
+  will-change: transform;
+}
+
+.cursor__dot-shape {
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   background: white;
-  will-change: transform;
+  will-change: transform, opacity;
   transition:
-    width var(--duration-fast) var(--ease-out-expo),
-    height var(--duration-fast) var(--ease-out-expo),
+    transform var(--duration-fast) var(--ease-out-expo),
     opacity var(--duration-fast) var(--ease-out-expo);
 }
 
-.cursor__dot--hover {
-  width: 4px;
-  height: 4px;
+.cursor__dot-shape--hover {
+  transform: scale(0.667);
   opacity: 0.6;
 }
 
-.cursor__dot--text {
-  width: 2px;
-  height: 2px;
+.cursor__dot-shape--text {
+  transform: scale(0.333);
   opacity: 0.4;
 }
 
@@ -293,26 +303,30 @@ onUnmounted(() => {
   left: 0;
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  will-change: transform;
+}
+
+/* SVG dengan non-scaling-stroke: garis tetap 1px berapa pun skalanya, sesuatu yang tidak
+   bisa dicapai border CSS tanpa menganimasikan border-width. */
+.cursor__ring-shape {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.4);
   will-change: transform;
   transition:
-    width 0.4s var(--ease-out-expo),
-    height 0.4s var(--ease-out-expo),
-    border-color var(--duration-fast) var(--ease-out-expo),
-    border-width var(--duration-fast) var(--ease-out-expo);
+    transform 0.4s var(--ease-out-expo),
+    color var(--duration-fast) var(--ease-out-expo);
 }
 
-.cursor__ring--hover {
-  width: 64px;
-  height: 64px;
-  border-color: rgba(255, 255, 255, 0.6);
+.cursor__ring-shape--hover {
+  transform: scale(1.6);
+  color: rgba(255, 255, 255, 0.6);
 }
 
-.cursor__ring--text {
-  width: 24px;
-  height: 24px;
-  border-color: rgba(255, 255, 255, 0.2);
+.cursor__ring-shape--text {
+  transform: scale(0.6);
+  color: rgba(255, 255, 255, 0.2);
 }
 
 /* ═══ Layer 3: Label ═══ */
@@ -337,8 +351,8 @@ onUnmounted(() => {
 
 /* ═══ Reduced Motion ═══ */
 @media (prefers-reduced-motion: reduce) {
-  .cursor__dot,
-  .cursor__ring,
+  .cursor__dot-shape,
+  .cursor__ring-shape,
   .cursor__label {
     transition: none;
   }

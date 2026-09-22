@@ -6,9 +6,10 @@
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
 @import '@fontsource/bebas-neue/400.css';
-@import '@fontsource/instrument-serif/400-italic.css';
 @import '@fontsource/cormorant/500-italic.css';
 @import '@fontsource/cormorant/600-italic.css';
+@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource/instrument-serif/400-italic.css';
 
 /* ─── Font Face: Clash Display Variable (200-700) — Display/Headlines ─── */
 
@@ -75,6 +76,30 @@
   font-weight: 300 900;
   font-display: swap;
   font-style: italic;
+}
+@font-face {
+  font-family: 'Suisse';
+  src: url('/assets/fonts/suisse/SuisseIntl-Book.otf') format('opentype');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Apparel';
+  src: url('/assets/fonts/apparel/Apparel-RegularIt.woff2') format('woff2'),
+       url('/assets/fonts/apparel/Apparel-RegularIt.woff') format('woff');
+  font-weight: 400;
+  font-display: swap;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'Obviously';
+  src: url('/assets/fonts/obviously/Obviously-CondensedBlack.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
 }
 
 /* ─── Reset ─── */
@@ -353,7 +378,7 @@ ul, ol {
 
 .skip-link {
   position: absolute;
-  top: -100%;
+  top: 0;
   left: 0;
   z-index: 1000;
   padding: 1rem 1.5rem;
@@ -361,11 +386,12 @@ ul, ol {
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: var(--text-small);
-  transition: top 0.2s;
+  transform: translateY(-200%);
+  transition: transform 0.4s var(--ease-out-expo);
 }
 
 .skip-link:focus {
-  top: 0;
+  transform: translateY(0);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

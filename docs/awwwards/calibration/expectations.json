@@ -1,0 +1,48 @@
+{
+  "version": 3,
+  "updated": "2026-08-02",
+  "note": "Sesi 2. Setiap varian adalah rekonstruksi komposisi dari satu situs di references/library/ yang Billy sudah sebut bagus, jadi kedua sisi layak dipilih. 'expects' = pilihan yang diprediksi aturan sistem saat ini; kalau Billy memilih sebaliknya, aturan di 'rule' terbantah dan wajib direvisi bertanggal. Sesi 3 (2026-08-02): dua pasangan yang dibantah diselesaikan. 'accent-single-vs-none' aturannya direvisi mengikuti pilihan Billy (personal-taste-profile.md sec Revisi aturan yang terbantah, poin 2). 'weight-heavy-vs-light' ditandai inconclusive karena varian A dan B mengubah famili DAN weight sekaligus, dan bukti tandingan origin-studio membatalkan revisinya di hari yang sama — membalik 'expects' akan mengunci kesimpulan yang datanya tidak topang.",
+  "pairs": {
+    "composition-bleed-vs-blocks": {
+      "expects": "a",
+      "rule": "Komposisi terbukti disukai — wordmark menembus tepi disebut pertama (anti-slop-rules.md 2026-07-26)",
+      "ifContradicted": "Wordmark dipecah blok lebih disukai daripada menembus tepi — naikkan urutannya di daftar pola komposisi dan pakai sebagai default hero."
+    },
+    "weight-heavy-vs-light": {
+      "expects": "b",
+      "rule": "Weight bukan diskriminator tunggal di display — yang konsisten pada semua referensi yang disukai adalah tracking negatif -0.03..-0.04em dan disiplin 2-4 weight per situs (personal-taste-profile.md, revisi dibatalkan 2026-07-26).",
+      "ifContradicted": "Weight berat tetap lebih disukai di display — batasi rule weight-ringan hanya untuk famili Switzer/PP Neue Montreal, bukan sebagai prinsip umum.",
+      "inconclusive": "Varian A (Inter 800) dan B (Switzer 300) mengubah famili sekaligus weight, jadi pilihan Billy tidak bisa diatribusikan ke salah satunya. Bukti tandingan: beberapa menit setelah sesi, Billy memuji origin-studio yang memakai Inter 500 display / 300 body tanpa satu pun weight >=600 (\"saya suka typographynya\"). Uji ulang wajib mengunci famili, ukuran, dan layout, lalu mengubah weight saja."
+    },
+    "leading-tight-vs-open": {
+      "expects": "a",
+      "rule": "Leading display median 0.85, condong rapat (personal-taste-profile.md)",
+      "ifContradicted": "Leading display longgar lebih disukai — geser median target ke 1.0 dan sesuaikan LEADING_RANGES di taste-lint."
+    },
+    "hierarchy-value-vs-scale": {
+      "expects": "a",
+      "rule": "Hierarki lewat nilai abu pada ukuran sama, salah satu dari enam pola komposisi terbukti",
+      "ifContradicted": "Lompatan ukuran lebih kuat daripada nilai abu — prioritaskan rasio ekstrem dan turunkan pola nilai-abu."
+    },
+    "ground-dark-vs-light": {
+      "expects": "a",
+      "rule": "12 dari 15 referensi memakai ground hampir-hitam",
+      "ifContradicted": "Ground terang bukan lagi sekadar pergantian ritme — pertimbangkan sebagai ground utama, revisi bagian Color di profil taste."
+    },
+    "accent-single-vs-none": {
+      "expects": "b",
+      "rule": "Tipografi default monokrom; warna hadir lewat interaksi dan material, bukan lewat mewarnai glyph (personal-taste-profile.md, direvisi 2026-07-26). TIDAK mencabut chromatic event pada interaksi dan TIDAK mengubah palet identity #0047FF.",
+      "ifContradicted": "Aksen pada glyph ternyata disukai — kembalikan satu-glyph-beraksen sebagai teknik default dan tinjau ulang revisi 2026-07-26."
+    },
+    "case-sentence-vs-upper": {
+      "expects": "a",
+      "rule": "Mayoritas referensi Inter memakai sentence case; label mono uppercase ber-tracking lebar = AI slop (2026-07-25)",
+      "ifContradicted": "UPPERCASE penuh justru disukai pada display — batasi larangan uppercase hanya untuk label kecil."
+    },
+    "density-minimal-vs-editorial": {
+      "expects": "b",
+      "rule": "Kepadatan editorial harus berasal dari konten NYATA: nama proyek, tahun, klien, angka (2026-07-25)",
+      "ifContradicted": "Minimalisme lebih disukai daripada kepadatan editorial — kurangi tuntutan konten padat dan prioritaskan ruang."
+    }
+  }
+}

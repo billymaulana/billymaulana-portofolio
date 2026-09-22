@@ -3,13 +3,44 @@ name: awwwards
 description: Design vocabulary dan sensibilitas dari studio award-winning. Bukan checklist — ini cara berpikir yang membedakan situs biasa dari SOTD. Evolves dengan taste DNA user.
 metadata:
   author: billymaulana
-  version: "5.0"
-  sources: tympanus.net/codrops, awwwards.com, medium.com, blog.maximeheckel.com
+  version: "6.3"
+  sources: tympanus.net/codrops, awwwards.com, medium.com, blog.maximeheckel.com, practicaltypography.com, developer.mozilla.org, emilkowal.ski
 ---
 
 # Awwwards Design Vocabulary
 
 Ini bukan aturan. Ini vocabulary — kumpulan teknik, sensibilitas, dan cara berpikir yang dipelajari dari praktisi nyata. Gunakan sebagai referensi saat membuat keputusan desain, bukan sebagai checklist yang harus dipenuhi.
+
+## Router — baca ini dulu, jangan seluruh sistem
+
+Taste Engine berisi **85 file / 156.254 kata** di luar 147 entri `references/library/`. Itu di atas
+kapasitas satu sesi, jadi "baca semuanya" bukan instruksi yang bisa dijalankan — dan sistem yang
+tidak bisa dimuat berakhir diabaikan seluruhnya. Diukur 2026-08-02: containment tekstual antar file
+maksimal **7,6%**, jadi volume ini **bukan duplikasi** dan tidak boleh dipangkas. Yang dibutuhkan
+jalur masuk, bukan penghapusan.
+
+**Inti — dibaca setiap sesi visual, apa pun pekerjaannya (11.266 kata):**
+
+| File | Kata | Isi |
+|---|---|---|
+| `personal-taste-profile.md` | 5.428 | sumber kanonik taste |
+| `anti-slop-rules.md` | 5.838 | 87 rule dari kegagalan nyata |
+
+**Lalu tambahkan SATU jalur sesuai pekerjaan:**
+
+| Pekerjaan | Tambahan | Kata | Gate mesin |
+|---|---|---|---|
+| Shader · WebGL · efek prosedural | `references/visual/README.md` | +904 | `effect-audit` (idle + active, `--ref` bila meniru rute lain) |
+| Tipografi · masthead · pemilihan font | `references/editorial/01-typography-fundamentals.md` + `references/typography-execution-patterns.md` | +4.504 | `taste-lint` · `ink-audit` |
+| Layout · grid · komposisi section | `references/editorial/02-grid-fundamentals.md` + `references/editorial/04-hierarchy-spacing-balance.md` | +3.700 | `layout-audit` (7 viewport) |
+| Motion · scroll · transisi | `references/motion-architecture.md` + `references/math-for-motion.md` | +3.902 | `taste-lint` (easing, animated-props) |
+| Menilai hasil · Billy menolak | `references/editorial/03-art-direction.md` §7C + `failures/INDEX.md` | +3.852 | adjective decoder → `evaluation-system.md` |
+| Billy mengirim URL referensi | `references/library/SCHEMA.md` | +600 | `taste-index.mjs` |
+
+Satu jalur = 12–16 ribu kata. Muat dalam satu sesi dengan sisa ruang untuk kode.
+
+Sisa file di bawah adalah **lookup** — dibuka saat sebuah pertanyaan spesifik muncul, bukan dibaca
+di muka. Tidak satu pun dari mereka wajib.
 
 ## Mindset Inti
 
@@ -56,9 +87,91 @@ Setiap click dan hover harus terasa mahal. Subtle easing: `power4.out` atau `exp
 ### 5. Storytelling Flow
 Preloader = opening scene. Sections = chapters. Footer = closing credits. User harus MERASAKAN perjalanan, bukan "scrolling through blocks". Seamless transitions antar section.
 
+### 6. Editorial Craft — Lapisan Tak Terlihat (NEW v6.0)
+Teknik Level 5 dengan fondasi editorial yang lemah tetap ditolak — sudah terbukti dua kali
+(`failures/2026-07-25-specimen-001.md`). Yang membedakan "demo keren" dari "terasa mahal"
+adalah lapisan yang tidak disadari user: **tracking per ambang ukuran, leading terkunci per
+tier, hukum spacing antar grup, measure, widow/orphan, karakter tipografi yang benar,
+`tabular-nums`, optical alignment.**
+
+Aturan: sebelum menambah efek baru, pastikan lapisan ini sudah benar. Efek baru di atas
+fondasi yang salah hanya memperbesar masalah. Baca `references/editorial/`.
+
 ---
 
-## File Reference
+## File Reference — LOOKUP, bukan bacaan wajib
+
+Tabel-tabel di bawah adalah katalog: dibuka saat ada pertanyaan spesifik, tidak dibaca di muka.
+Jalur wajib per pekerjaan sudah ditetapkan di § Router. Kalau sebuah file di bawah tidak menjawab
+pertanyaan yang sedang dihadapi, tutup dan lanjutkan — membaca lebih banyak referensi bukan
+pengganti mengukur hasil.
+
+### Kalibrasi & Testing (NEW v6.1) — SISTEM PENGUKURAN
+Sebelumnya sistem ini punya knowledge dan enforcement tapi tidak punya **pengukuran** — skor
+critic tidak pernah divalidasi terhadap penilaian Billy, dan dua hero lolos semua gate lalu
+ditolak. Tiga lapis di bawah menutup lubang itu.
+
+| File | Kapan Pakai |
+|------|-----------|
+| `calibration/README.md` | **Baca sebelum menilai apa pun.** Prosedur ketiga lapis + peringatan bahwa lint hijau ≠ lolos taste |
+| `scripts/layout-audit.mjs` | **WAJIB sebelum klaim selesai untuk kerja visual.** Mengukur tabrakan bounding box antar elemen di 7 viewport (termasuk 1440×780 dan 1366×768 yang paling sering terlewat), teks keluar viewport, scroll-x, tap target, font terlalu kecil. `taste-lint` TIDAK menggantikannya — 15 rule-nya semua properti satu elemen, nol geometri antar-elemen |
+| `scripts/ink-audit.mjs` | **WAJIB bersama `layout-audit`, tidak menggantikannya.** Mengukur dari `TextMetrics`, bukan dari `getBoundingClientRect`: tabrakan tinta antar baris, jarak nol antar elemen berperan berbeda, dan leading yang jatuh di bawah rasio tinta famili. **`layout-audit` meluluskan `/hero-explore-3` v3 di 7 dari 7 viewport; `ink-audit` menemukan 11 kegagalan pada halaman yang sama.** Kotak CSS lebih pendek daripada glyph saat `line-height` < 1, jadi audit berbasis kotak secara struktural buta terhadap apa yang dilihat mata |
+| `scripts/effect-audit.mjs` | **WAJIB untuk kerja shader/WebGL/efek prosedural — satu-satunya audit yang membaca PIKSEL.** Tiga audit lain bersumber dari elemen teks, jadi pada rute tanpa teks ketiganya **lolos secara kosong**; `/explore/liquid/liquid-1` mendapat "semua audit hijau" persis lewat lubang itu. Enam rule: kerapatan detail, bidang rata, cakupan saat idle, disiplin hue, kehadiran warna identitas, dan **kesetiaan terhadap sumber** (`--ref`). Terbukti memisahkan `hero-2` yang disetujui (4 pass · 0 fail) dari dua rute yang ditolak (2 dan 3 fail) |
+| `scripts/taste-lint.mjs` | **Pre-flight tiap review.** 15 rule deterministik dari computed style: tracking per ambang, leading per tier, rasio display:body, measure, `text-wrap`, `tabular-nums`, opacity floor, easing & properti animasi. `--emit` untuk kolektor browser, `--script` untuk IIFE |
+| `references/evaluation-system.md` | **A-score + T-score.** Rubrik Awwwards DAN rubrik taste. Gate = `min(A,T) ≥ 8.0`, bukan rata-rata |
+| `calibration/expectations.json` | Pilihan yang diprediksi aturan sistem untuk tiap pasangan uji — dasar deteksi aturan yang terbantah |
+| `scripts/taste-calibration.mjs` | Metrik: false-positive rate (utama), accuracy, MAE, mood Jaccard, drift + validasi rubrik retrospektif |
+| `calibration/predictions.jsonl` | Prediksi tersegel critic sebelum hasil ditunjukkan, diisi `actual` setelah verdict Billy |
+| `calibration/assertions.jsonl` | Hasil sesi A/B di route `/calibration` — dataset preferensi berlabel |
+
+**Alur wajib per review**: `layout-audit` (7 viewport) → **`ink-audit` (7 viewport)** → `taste-lint`
+→ **`effect-audit` bila ada shader/WebGL/efek prosedural** → dua skor → prediksi tersegel →
+presentasi → isi `actual` → `taste-calibration`. Melewati langkah prediksi membuat sistem tidak
+bisa membuktikan ia membaik; melewati `layout-audit` membuat elemen bertabrakan lolos ke mata
+Billy — sudah terjadi 2026-07-26 dan dua iterasi berturut-turut tidak menangkapnya.
+
+**Hijau di satu audit BUKAN bukti untuk audit yang lain.** Keempatnya mengukur hal yang berbeda
+dan sudah terbukti tidak saling menutupi:
+
+| Audit | Sumber data | Buta terhadap |
+|---|---|---|
+| `taste-lint` | computed style satu elemen | hubungan antar elemen |
+| `layout-audit` | `getBoundingClientRect` | tinta glyph di luar line-box |
+| `ink-audit` | `TextMetrics` | warna, kontras, komposisi |
+| `effect-audit` | piksel screenshot | tipografi, semantik, struktur DOM |
+
+**Tiga yang pertama membaca DOM teks.** Pada halaman tanpa teks ketiganya lolos tanpa memeriksa
+apa pun — bukan hijau, melainkan kosong. Setiap kali sebuah rute dilaporkan "semua audit hijau",
+periksa dulu apakah ada elemen yang benar-benar diperiksa; kalau jumlah elemen nol, laporan itu
+tidak bernilai. Ini akar `/explore/liquid/liquid-1` (2026-08-02).
+
+Tidak satu pun mengukur kualitas desain. Keempatnya hanya membuktikan tidak ada cacat mekanis.
+
+**Prosedur `effect-audit`** (butuh dua screenshot, bukan satu):
+
+```bash
+# 1. idle — reload, tunggu 2-3s TANPA menyentuh mouse
+node docs/awwwards/scripts/effect-audit.mjs shot-idle.png --idle --identity "#0047FF"
+
+# 2. active — gerakkan kursor, screenshot saat efek hidup
+node docs/awwwards/scripts/effect-audit.mjs shot-active.png --identity "#0047FF"
+
+# 3. kalau efek diklaim diambil dari rute lain, WAJIB bandingkan
+node docs/awwwards/scripts/effect-audit.mjs shot-active.png --ref sumber-active.png
+```
+
+### Editorial Foundations (NEW v6.0) — BACA DULUAN
+Lapisan fundamental. Referensi lain mengajarkan teknik; folder ini menentukan apakah teknik
+itu terlihat mahal atau terlihat seperti demo.
+
+| File | Kapan Baca |
+|------|-----------|
+| `references/editorial/README.md` | **Peta + gate editorial 9 poin.** Mulai dari sini |
+| `references/editorial/01-typography-fundamentals.md` | **Sebelum memilih font apa pun** — klasifikasi typeface (serif 4 grup, sans 4 grup), anatomi, display vs text cut / optical size, 3 jalur pairing + 5 dimensi kontras, type scale ganda (text 1.2 · display 1.5–1.618), tabel tracking/leading per ambang ukuran, micro-typography (karakter benar, OpenType, widow/orphan, hanging punctuation, optical alignment) |
+| `references/editorial/02-grid-fundamentals.md` | **Sebelum menentukan layout** — anatomi 7 bagian, konstruksi Müller-Brockmann (measure → gutter → margin → kolom), 7 tipe grid, compound grid, 10 kesalahan umum, angka grid portfolio ini, baseline grid + debug overlay + `text-box-trim` |
+| `references/editorial/03-art-direction.md` | **Di awal setiap project/redesign** — intake 9 pertanyaan, peta kompetitor, 8 slider kepribadian, brand values yang mengikat, aturan moodboard, dan **adjective decoder**: menerjemahkan "AI slop"/"biasa saja"/"terasa mahal" jadi dimensi terukur |
+| `references/editorial/04-hierarchy-spacing-balance.md` | **Saat menyusun section** — hukum tiga alat, hukum spacing (antar grup ≥ 2× dalam grup), skala spacing terikat baseline, rumus bobot visual, kurva ritme 5 gerakan, aturan skala (rasio display:body ≥ 5×) |
+| `references/editorial/05-developing-taste.md` | **Saat evaluasi & capture referensi** — taste gap, tiga praktik, **mood taxonomy 18 token + 5 anti-mood** dengan penanda terukur, mood target per section, filter referensi 3 pertanyaan, loop mingguan |
 
 ### Industry & Strategy (NEW v3.0)
 | File | Kapan Baca |
@@ -68,6 +181,20 @@ Preloader = opening scene. Sections = chapters. Footer = closing credits. User h
 | `references/tech-stack-blueprint.md` | **Tech stack pemenang**: Next.js/Nuxt/Astro, GSAP (sekarang gratis), Lenis, Three.js/OGL, Barba.js, performance optimization, ideal stack blueprint |
 | `references/soty-winners-analysis.md` | **SOTY 2019-2024**: Setiap winner dianalisis, scoring system detail, submission strategy ($60), tips timing, kenapa sites tidak menang, SOTD→SOTM→SOTY progression |
 | `references/creative-dev-techniques.md` | **Code patterns**: Scroll storytelling, page transitions, cursor, text animation (SplitText, scramble, variable font), image effects, WebGL post-processing, preloader, sound design — dengan code snippets |
+
+### Taste Feedback Loop (WAJIB)
+| File | Kapan Baca |
+|------|-----------|
+| `anti-slop-rules.md` | **Setiap awal job visual.** Rule append-only dari kegagalan nyata |
+| `failures/INDEX.md` | **Sebelum memilih font/teknik.** Daftar font & pola yang sudah ditolak Billy |
+| `failures/SCHEMA.md` | Saat Billy menolak output — format wajib failure note + screenshot |
+| `references/library/SCHEMA.md` | Saat Billy memberi link referensi baru — field wajib + 5 dimensi analisis |
+| `references/visual/README.md` | **Sebelum memilih palet atau teknik shader.** 26 poster/artwork yang Billy kirim, dipecah 7 kategori. Berisi ramp termal terkonsolidasi dan tabel teknik→shader |
+| `references/typography-execution-patterns.md` | **Sebelum menetapkan tracking/leading/weight.** Pola terukur dari 104 situs; membantah asumsi monotonik tracking |
+| `personal-taste-profile.md` | Sumber kanonik taste. Cek sebelum keputusan desain apa pun |
+
+Protokol pemicunya ada di `CLAUDE.md`: **Rejection Protocol** (Billy bilang "jelek")
+dan **Reference Capture Protocol** (Billy kirim URL).
 
 ### Design & Theory
 | File | Kapan Baca |
@@ -117,12 +244,32 @@ Preloader = opening scene. Sections = chapters. Footer = closing credits. User h
 ## Quick Decision Guide
 
 ### Sebelum Implement Apapun
-1. Baca `taste-dna.md` — apa preferensi user saat ini?
-2. Tanyakan: "Apa yang ingin DIRASAKAN user di section ini?" (baca `emotional-design.md`)
-3. Pilih teknik dari vocabulary yang cocok dengan intent
-4. Check 3 levels: visceral (terlihat wow?), behavioral (terasa smooth?), reflective (diingat?)
-5. Check persuasion layer: bias mana yang aktif di section ini? (baca `dark-psychology-for-portfolio.md`)
-6. Jangan paksa teknik hanya karena "award-winning"
+1. Baca `personal-taste-profile.md` — sumber kanonik taste
+2. Tulis **mood target** 2–3 token dari `references/editorial/05-developing-taste.md` §4
+3. Tanyakan: "Apa yang ingin DIRASAKAN user di section ini?" (baca `emotional-design.md`)
+4. Pilih teknik dari vocabulary yang cocok dengan intent
+5. Check 3 levels: visceral (terlihat wow?), behavioral (terasa smooth?), reflective (diingat?)
+6. Check persuasion layer: bias mana yang aktif di section ini? (baca `dark-psychology-for-portfolio.md`)
+7. Jangan paksa teknik hanya karena "award-winning"
+
+### Setelah Build, Sebelum Klaim Selesai
+1. **`taste-lint` dulu** — `node docs/awwwards/scripts/taste-lint.mjs .nuxt/snap-<slug>.json` (prosedur: `calibration/README.md`)
+2. **Gate editorial 9 poin** — `references/editorial/README.md` § Gate editorial
+3. **5 tes anti-slop** — OBJECT / SWAP / EMPTY / WOW / NEIGHBOR (`anti-slop-rules.md`)
+4. Squint test + grayscale test per section (`references/editorial/04-*.md` §1)
+5. Verifikasi mood yang keluar = mood target; kalau meleset, sebutkan **penanda mana** yang gagal
+6. **Dua skor + gate `min(A,T) ≥ 8.0`** — `references/evaluation-system.md`
+7. **Prediksi tersegel** ke `calibration/predictions.jsonl` SEBELUM presentasi
+8. Browser review wajib (Chrome DevTools MCP) — screenshot + console bersih
+
+`taste-lint` hijau mengukur kebenaran eksekusi, **bukan** selera — dua route yang sudah ditolak
+Billy mendapat jumlah PASS yang mirip dengan halaman utama. Jangan pernah menyajikannya sebagai
+bukti kualitas desain.
+
+### Saat User Menolak ("jelek" / "AI slop" / "biasa saja")
+Jangan langsung memperbaiki. Terjemahkan dulu lewat **adjective decoder**
+(`references/editorial/03-art-direction.md` §7C) → identifikasi baris mana yang benar-benar
+gagal beserta angkanya → baru perbaiki yang itu. Lalu jalankan Rejection Protocol di `CLAUDE.md`.
 
 ### Saat Riset Inspirasi dari Website Lain
 **Rule: Don't Copy, Understand** (baca `site-analysis-framework.md`)
@@ -187,6 +334,20 @@ Preloader = opening scene. Sections = chapters. Footer = closing credits. User h
 | Pixeldarts (Swiss Web) | https://www.pixeldarts.com/post/swiss-style-web-design-a-comprehensive-guide | Swiss style applied to web — CSS Grid implementation, responsive, modern adaptation |
 | Aguayo (Zeigarnik) | https://aguayo.co/en/blog-aguayo-user-experience/zeigarnik-effect-how-to-apply-it-in-ux/ | Zeigarnik Effect di UX — cognitive tension, progress indicators, incomplete task hooks |
 | LearningLoop (Authority) | https://learningloop.io/plays/psychology/authority-bias | Authority bias — credential stacking, visual authority signals, ethical trust-building |
+| Zajno motion.ed | https://motion.zajno.com/ | Kurikulum motion 8 bab (easing, offset/delay, fade, morph, masking, dimension, parallax, zoom) + pemetaan prinsip Disney; arsitektur scrub-first GSAP+Lenis terukur (bobot durasi sebagai rasio, tiga tingkat `scrub`, disiplin 0.3/0.4/0.7s). Bedah lengkap: `references/library/zajno-motion.md` |
+| Practical Typography (Butterick) | https://practicaltypography.com/typography-in-ten-minutes.html | Angka fondasi: point size 15–25px web, line spacing 120–145%, measure 45–90 karakter |
+| MDN — text-wrap | https://developer.mozilla.org/en-US/docs/Web/CSS/text-wrap | `balance` (≤6 baris Chromium / ≤10 Firefox) & `pretty` — Baseline sejak Maret 2024 |
+| MDN — text-box-trim | https://developer.mozilla.org/en-US/docs/Web/CSS/text-box | Cap-height trimming untuk baseline presisi — Limited Availability, butuh fallback |
+| MDN — hanging-punctuation | https://developer.mozilla.org/en-US/docs/Web/CSS/hanging-punctuation | Optical alignment tanda kutip — BUKAN Baseline, wajib fallback `text-indent` |
+| Pixelambacht (Optical Size) | https://pixelambacht.nl/2021/optical-size-hidden-superpower/ | Sumbu `opsz` variable font — display vs text cut |
+| Google Fonts Knowledge (OpenType) | https://fonts.google.com/knowledge/choosing_type/implementing_open_type_features_on_the_web | `font-variant-*` vs `font-feature-settings`, tabular-nums, ligature |
+| Awwwards Academy (Cuchillo) | https://www.awwwards.com/academy/course/from-poster-to-screen-designing-editorial-based-websites | From Poster to Screen — editorial web design, know the rules & break them |
+| Emil Kowalski (Taste) | https://emilkowal.ski/ui/developing-taste | Tiga praktik pengembangan taste — paparan, analisis, repetisi |
+| Readymag (Train Taste) | https://blog.readymag.com/how-to-train-your-taste/ | Filter referensi spark/strength/service, moodboard sebagai alat berpikir |
+| Grid Maker Pro (Baseline) | https://gridmakerpro.com/grids/typography-grids/baseline-grid/ | Baseline grid & vertical rhythm — unit, snapping, kapan dilonggarkan |
+| Moyra Capsules | https://capsules.moyra.co/ | Single-family Host Grotesk 20 KB, rasio 12.8×, tracking dikunci px bukan em; sistem satuan fluid `@`-prefix pada design base 1920 tanpa CSS Grid; 7 easing tanpa CustomEase. Bedah lengkap: `references/library/moyra-capsules.md` |
+| Texture & pattern sources | `references/texture-resources.md` | 14 sumber tekstur dengan lisensi terkutip verbatim + status curl, argumen prosedural vs raster berangka, pemetaan 5 kebutuhan tekstur proyek, snippet SVG `feTurbulence` & Bayer 8×8 GLSL |
+| Texture asset manifest | `public/assets/textures/CREDITS.md` | Provenance + lisensi + SHA-256 tiap berkas tekstur yang di-commit; aturan CC0-only selama repo publik |
 
 *(User akan menambahkan lebih banyak source seiring waktu)*
 

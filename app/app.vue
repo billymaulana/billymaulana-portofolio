@@ -2,6 +2,9 @@
 import { useFaviconPulse } from '~/composables/useFaviconPulse'
 import { useSmoothScroll } from '~/composables/useSmoothScroll'
 
+const route = useRoute()
+const isStandalone = computed(() => route.meta.standalone === true)
+
 const isLoaded = ref(false)
 const showContent = ref(false)
 const { init: initScroll } = useSmoothScroll()
@@ -21,6 +24,12 @@ function onPreloaderDone() {
 }
 
 onMounted(() => {
+  if (isStandalone.value) {
+    isLoaded.value = true
+    showContent.value = true
+    return
+  }
+
   document.body.style.overflow = 'hidden'
 
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -42,20 +51,22 @@ onMounted(() => {
 
     <!-- Preloader: SVG Logo Stroke Draw + Counter -->
     <AppPreloader
-      v-if="!isLoaded"
+      v-if="!isLoaded && !isStandalone"
       @complete="onPreloaderComplete"
       @done="onPreloaderDone"
     />
 
     <!-- Navigation -->
-    <AppNavigation v-if="showContent" />
+    <AppNavigation v-if="showContent && !isStandalone" />
 
     <!-- Custom Cursor: 3-layer (dot + circle + label) -->
     <AppCursor />
 
     <!-- Atmospheric overlays -->
-    <div class="atmosphere-noise" aria-hidden="true" />
-    <div class="atmosphere-vignette" aria-hidden="true" />
+    <template v-if="!isStandalone">
+      <div class="atmosphere-noise" aria-hidden="true" />
+      <div class="atmosphere-vignette" aria-hidden="true" />
+    </template>
 
     <!-- Main Content -->
     <NuxtLayout>

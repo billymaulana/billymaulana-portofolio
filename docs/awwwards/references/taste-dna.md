@@ -1,8 +1,51 @@
 # Taste DNA — Billy Maulana
 
+> Profil taste personal kanonik: `docs/awwwards/personal-taste-profile.md`. Bagian taste di bawah adalah arsip — edit di file kanonik.
+
 Living document. Berkembang setiap kali user memberikan reference baru, feedback, atau preferensi.
 
-**Terakhir diupdate**: 2026-02-28 (48 new Framer partials added, pattern summary updated, taste profile expanded with text blending + hologram cursor + marquee footer patterns)
+**Terakhir diupdate**: 2026-07-26 (mood taxonomy 6 → 18 token, brand personality slider, editorial craft standards, lima lesson editorial ditambahkan)
+
+---
+
+## Mood — Kosakata Diperluas (2026-07-26)
+
+Kosakata lama hanya 6 token dan tidak mampu membedakan referensi yang rasanya jauh berbeda.
+Taxonomy penuh (18 token + 5 anti-mood, dengan penanda terukur) ada di
+`editorial/05-developing-taste.md` §4. Ringkasan:
+
+| Keluarga | Token |
+| --- | --- |
+| Ketegangan | `calm` · `tense` · `austere` · `serene` |
+| Status | `premium` · `luxurious` · `clinical` · `raw` |
+| Energi | `kinetic` · `brutal` · `playful` · `monumental` · `energetic` |
+| Atmosfer | `cinematic` · `mystic` · `organic` · `nostalgic` · `surreal` |
+| ANTI (haram) | `corporate` · `sterile` · `cute` · `sporty` · `template` |
+
+**Temuan terpenting**: token `austere` selama ini hilang, dan itu menjelaskan banyak salah
+baca. Yang Billy sebut "premium" pada `oharchitecture` / `quantumbody` / `wolverineworldwide`
+sebenarnya **austere** — hening, ≤ 3 warna, tanpa dekorasi, grid ketat — bukan `luxurious`.
+Membaca `austere` sebagai `luxurious` menghasilkan output yang terlalu ramai, dan itu salah
+satu akar penolakan "AI slop".
+
+Mood inti Billy sebagai default identity: **`premium` + `austere` + `monumental`**, ditambah
+satu token Atmosfer (`cinematic`/`mystic`) sebagai pembeda per section.
+
+## Yang Sebelumnya Tidak Ada di Taste DNA (ditutup 2026-07-26)
+
+| Gap | Sekarang ada di |
+| --- | --- |
+| Klasifikasi typeface & anatomi huruf | `editorial/01` §1–2 |
+| Display vs text cut (optical size) | `editorial/01` §3 |
+| Micro-typography (widow/orphan, karakter benar, OpenType, optical alignment) | `editorial/01` §6 |
+| Konstruksi grid dari measure (bukan pilih 12 kolom duluan) | `editorial/02` §1 |
+| Baseline grid + `text-box-trim` | `editorial/02` §6 |
+| Art direction sebagai proses + intake 9 pertanyaan | `editorial/03` §2 |
+| Brand personality slider & values yang mengikat | `editorial/03` §4–5, profil kanonik |
+| **Adjective decoder** — menerjemahkan verdict jadi angka | `editorial/03` §7C |
+| Hukum spacing antar grup | `editorial/04` §3A |
+| Kurva ritme halaman 5 gerakan | `editorial/04` §5 |
+| Mood taxonomy + mood target per section | `editorial/05` §4 |
 
 ---
 ## Preferensi yang Teridentifikasi

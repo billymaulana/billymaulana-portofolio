@@ -258,6 +258,7 @@ onUnmounted(() => {
   <template v-if="!isNavHidden">
     <!-- BM Logo — top-left -->
     <a
+      v-if="false"
       class="nav-logo"
       href="#"
       aria-label="Back to top"
@@ -275,6 +276,7 @@ onUnmounted(() => {
 
     <!-- Hamburger trigger — top-right -->
     <button
+      v-if="false"
       ref="triggerRef"
       class="nav-burger"
       :class="{ 'is-open': isOpen }"
