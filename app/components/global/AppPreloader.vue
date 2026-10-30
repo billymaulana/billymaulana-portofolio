@@ -40,8 +40,14 @@ async function runCinematic() {
   // Init canvas liquid (hidden, running in background)
   if (canvasRef.value) {
     const ok = await blob.init(canvasRef.value)
-    if (ok)
-      blob.start()
+    if (!ok) {
+      /* The whole cinematic is drawn on this canvas, so without WebGL it would only be a black wait. */
+      emit('complete')
+      await nextTick()
+      emit('done')
+      return
+    }
+    blob.start()
   }
 
   const isDebug = new URLSearchParams(window.location.search).has('debug')

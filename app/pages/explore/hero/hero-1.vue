@@ -123,13 +123,15 @@ function layoutMasthead() {
 function buildDistortionLines() {
   const width = sectionRef.value?.clientWidth ?? window.innerWidth
   const m = measureMasthead(width)
-  return [{
-    text: MASTHEAD_TEXT,
-    xAlign: 'left' as const,
-    yFrac: NAME_Y_FRAC,
-    fontSize: m.fontSize,
-    indent: (m.left - m.pad) * (200 / m.fontSize),
-  }]
+  return [
+    {
+      text: MASTHEAD_TEXT,
+      xAlign: 'left' as const,
+      yFrac: NAME_Y_FRAC,
+      fontSize: m.fontSize,
+      indent: (m.left - m.pad) * (200 / m.fontSize),
+    },
+  ]
 }
 
 function uploadMasthead() {
@@ -221,7 +223,9 @@ onMounted(async () => {
   await mastheadFont
   await document.fonts.ready
   layoutMasthead()
-  nameChars = nameRef.value ? buildNameChars(nameRef.value) : []
+  nameChars = nameRef.value
+    ? buildNameChars(nameRef.value)
+    : []
 
   uploadMasthead()
 
@@ -248,7 +252,9 @@ onMounted(async () => {
       { autoAlpha: 1 },
     )
 
-    const tl = gsapLib.timeline({ defaults: { ease: 'expo.out' } })
+    const tl = gsapLib.timeline({
+      defaults: { ease: 'expo.out' },
+    })
 
     if (nameChars.length) {
       tl.to(nameChars, {
@@ -282,7 +288,8 @@ onMounted(async () => {
     if (fluidReady && fluidCanvasRef.value)
       tl.to(fluidCanvasRef.value, { opacity: 1, duration: 0.6, ease: 'power3.out' }, 1.35)
 
-    if (namesRef.value) {
+    /* The DOM masthead only leaves once the fluid display can redraw it; without WebGL it stays. */
+    if (fluidReady && namesRef.value) {
       tl.to(namesRef.value, { autoAlpha: 0, duration: 0.6, ease: 'power3.out' }, 1.40)
       tl.set(namesRef.value, { display: 'none' }, 2.15)
     }
@@ -309,14 +316,23 @@ onMounted(async () => {
 
       gsapLib.to(
         [taglineRef.value, metaRef.value].filter(Boolean),
-        { opacity: 0, ease: 'none', scrollTrigger: fadeTrigger() },
+        {
+          opacity: 0,
+          ease: 'none',
+          scrollTrigger: fadeTrigger(),
+        },
       )
 
       if (fluidCanvasRef.value) {
         gsapLib.fromTo(
           fluidCanvasRef.value,
           { opacity: 1 },
-          { opacity: 0, ease: 'none', immediateRender: false, scrollTrigger: fadeTrigger() },
+          {
+            opacity: 0,
+            ease: 'none',
+            immediateRender: false,
+            scrollTrigger: fadeTrigger(),
+          },
         )
       }
     }

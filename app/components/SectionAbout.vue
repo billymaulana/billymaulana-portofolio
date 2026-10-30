@@ -37,7 +37,9 @@ function parseStatValue(value: string): OdoChar[] {
   return value.split('').map(char => ({
     char,
     isDigit: /\d/.test(char),
-    digit: /\d/.test(char) ? Number.parseInt(char, 10) : 0,
+    digit: /\d/.test(char)
+      ? Number.parseInt(char, 10)
+      : 0,
   }))
 }
 
@@ -48,14 +50,24 @@ const parsedStats = computed(() =>
   })),
 )
 
-const TECH = ['Vue.js', 'Nuxt', 'TypeScript', 'GSAP', 'WebGL', 'Three.js', 'Figma']
+const TECH = [
+  'Vue.js',
+  'Nuxt',
+  'TypeScript',
+  'GSAP',
+  'WebGL',
+  'Three.js',
+  'Figma',
+]
 
 const bioParagraphs = computed(() =>
   profile.bio.split('\n\n').filter(Boolean),
 )
 
 function formatYear(start: number, end: number | null): string {
-  return end === null ? `${start} — Present` : `${start} — ${end}`
+  return end === null
+    ? `${start} — Present`
+    : `${start} — ${end}`
 }
 
 // Template refs

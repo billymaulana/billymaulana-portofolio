@@ -34,7 +34,10 @@ function buildPermutation(): number[] {
     p[i] = p[j]!
     p[j] = tmp
   }
-  return [...p, ...p]
+  return [
+    ...p,
+    ...p,
+  ]
 }
 
 const F2 = 0.5 * (Math.sqrt(3) - 1)

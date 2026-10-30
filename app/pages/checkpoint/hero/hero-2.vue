@@ -98,7 +98,10 @@ function distortionTextPadding(width: number): number {
 }
 
 function useMastheadRaster(config: MastheadRasterConfig) {
-  const cfg = { ...config, lines: [...config.lines] }
+  const cfg = {
+    ...config,
+    lines: [...config.lines],
+  }
   const canvas = document.createElement('canvas')
 
   function applyFont(ctx: CanvasRenderingContext2D, fontSize: number) {
@@ -351,7 +354,9 @@ function useFluidSimulation() {
 
   function hexToRgb(hex: string): [number, number, number] {
     const h = hex.replace('#', '')
-    const int = Number.parseInt(h.length === 3 ? h.replace(/./g, c => c + c) : h, 16)
+    const int = Number.parseInt(h.length === 3
+      ? h.replace(/./g, c => c + c)
+      : h, 16)
     return [(int >> 16 & 255) / 255, (int >> 8 & 255) / 255, (int & 255) / 255]
   }
 
@@ -1136,7 +1141,13 @@ function useFluidSimulation() {
   // ══════════════════════════════════════════════════════════════════════
 
   function getWebGLContext(c: HTMLCanvasElement): { gl: WebGL2RenderingContext | WebGLRenderingContext, ext: GLFormats } | null {
-    const params: WebGLContextAttributes = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false }
+    const params: WebGLContextAttributes = {
+      alpha: true,
+      depth: false,
+      stencil: false,
+      antialias: false,
+      preserveDrawingBuffer: false,
+    }
 
     let context: WebGL2RenderingContext | WebGLRenderingContext | null = c.getContext('webgl2', params) as WebGL2RenderingContext | null
     isWebGL2 = !!context
@@ -1180,7 +1191,13 @@ function useFluidSimulation() {
 
     return {
       gl: context,
-      ext: { formatRGBA, formatRG, formatR, halfFloatTexType, supportLinearFiltering },
+      ext: {
+        formatRGBA,
+        formatRG,
+        formatR,
+        halfFloatTexType,
+        supportLinearFiltering,
+      },
     }
   }
 
@@ -1463,8 +1480,12 @@ function useFluidSimulation() {
 
   function drawDisplay(target: FBO | null) {
     const g = gl!
-    const width = target == null ? g.drawingBufferWidth : target.width
-    const height = target == null ? g.drawingBufferHeight : target.height
+    const width = target == null
+      ? g.drawingBufferWidth
+      : target.width
+    const height = target == null
+      ? g.drawingBufferHeight
+      : target.height
 
     displayMaterial!.bind()
     if (config.SHADING)
@@ -2048,7 +2069,11 @@ function useFluidSimulation() {
     interpolateSegments = options?.interpolateSegments ?? false
     contentDisplayEnabled = options?.contentDisplay ?? false
     pointerGate = options?.pointerGate ?? null
-    contentDisplay.mode = options?.displayMode === 'dye' ? 1 : options?.displayMode === 'thermal' ? 2 : 0
+    contentDisplay.mode = options?.displayMode === 'dye'
+      ? 1
+      : options?.displayMode === 'thermal'
+        ? 2
+        : 0
     if (options?.displace !== undefined)
       contentDisplay.displace = options.displace
     if (options?.chromatic !== undefined)
@@ -2100,7 +2125,9 @@ function useFluidSimulation() {
 
     advectionProgram = createProgramObj(
       baseVertexShader,
-      compileShader(gl.FRAGMENT_SHADER, advectionShaderSource, ext.supportLinearFiltering ? null : ['MANUAL_FILTERING']),
+      compileShader(gl.FRAGMENT_SHADER, advectionShaderSource, ext.supportLinearFiltering
+        ? null
+        : ['MANUAL_FILTERING']),
     )
 
     displayMaterial = createMaterial(baseVertexShader, displayShaderSource)
@@ -2187,7 +2214,14 @@ function useFluidSimulation() {
     splatSegments.length = 0
   }
 
-  return { init, resize, destroy, multipleSplats, emitSplat, setContentCanvas }
+  return {
+    init,
+    resize,
+    destroy,
+    multipleSplats,
+    emitSplat,
+    setContentCanvas,
+  }
 }
 
 /* ── halaman ────────────────────────────────────────────── */
@@ -2294,13 +2328,15 @@ function layoutMasthead() {
 function buildDistortionLines() {
   const width = sectionRef.value?.clientWidth ?? window.innerWidth
   const m = measureMasthead(width)
-  return [{
-    text: MASTHEAD_TEXT,
-    xAlign: 'left' as const,
-    yFrac: NAME_Y_FRAC,
-    fontSize: m.fontSize,
-    indent: (m.left - m.pad) * (200 / m.fontSize),
-  }]
+  return [
+    {
+      text: MASTHEAD_TEXT,
+      xAlign: 'left' as const,
+      yFrac: NAME_Y_FRAC,
+      fontSize: m.fontSize,
+      indent: (m.left - m.pad) * (200 / m.fontSize),
+    },
+  ]
 }
 
 function uploadMasthead() {
@@ -2386,7 +2422,9 @@ onMounted(async () => {
   await mastheadFont
   await document.fonts.ready
   layoutMasthead()
-  nameChars = nameRef.value ? buildNameChars(nameRef.value) : []
+  nameChars = nameRef.value
+    ? buildNameChars(nameRef.value)
+    : []
 
   uploadMasthead()
 
@@ -2413,7 +2451,9 @@ onMounted(async () => {
       { autoAlpha: 1 },
     )
 
-    const tl = gsapLib.timeline({ defaults: { ease: 'expo.out' } })
+    const tl = gsapLib.timeline({
+      defaults: { ease: 'expo.out' },
+    })
 
     if (nameChars.length) {
       tl.to(nameChars, {
@@ -2447,7 +2487,8 @@ onMounted(async () => {
     if (fluidReady && fluidCanvasRef.value)
       tl.to(fluidCanvasRef.value, { opacity: 1, duration: 0.6, ease: 'power3.out' }, 1.35)
 
-    if (namesRef.value) {
+    /* The DOM masthead only leaves once the fluid display can redraw it; without WebGL it stays. */
+    if (fluidReady && namesRef.value) {
       tl.to(namesRef.value, { autoAlpha: 0, duration: 0.6, ease: 'power3.out' }, 1.40)
       tl.set(namesRef.value, { display: 'none' }, 2.15)
     }
@@ -2474,14 +2515,23 @@ onMounted(async () => {
 
       gsapLib.to(
         [taglineRef.value, metaRef.value].filter(Boolean),
-        { opacity: 0, ease: 'none', scrollTrigger: fadeTrigger() },
+        {
+          opacity: 0,
+          ease: 'none',
+          scrollTrigger: fadeTrigger(),
+        },
       )
 
       if (fluidCanvasRef.value) {
         gsapLib.fromTo(
           fluidCanvasRef.value,
           { opacity: 1 },
-          { opacity: 0, ease: 'none', immediateRender: false, scrollTrigger: fadeTrigger() },
+          {
+            opacity: 0,
+            ease: 'none',
+            immediateRender: false,
+            scrollTrigger: fadeTrigger(),
+          },
         )
       }
     }

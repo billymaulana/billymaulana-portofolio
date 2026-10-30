@@ -199,7 +199,10 @@ const distortionFragmentShader = `
 `
 
 function useHeroTextWarp(config: Partial<DistortionConfig> = {}) {
-  const cfg = { ...defaultDistortionConfig, ...config }
+  const cfg = {
+    ...defaultDistortionConfig,
+    ...config,
+  }
   let gl: WebGL2RenderingContext | WebGLRenderingContext | null = null
   let canvas: HTMLCanvasElement | null = null
   let program: WebGLProgram | null = null
@@ -285,7 +288,9 @@ function useHeroTextWarp(config: Partial<DistortionConfig> = {}) {
   }
 
   function renderSource(): HTMLCanvasElement {
-    return cfg.renderText ? cfg.renderText(cfg.fontSize) : renderTextToCanvas()
+    return cfg.renderText
+      ? cfg.renderText(cfg.fontSize)
+      : renderTextToCanvas()
   }
 
   function createTexture(source: HTMLCanvasElement): WebGLTexture | null {
@@ -318,7 +323,9 @@ function useHeroTextWarp(config: Partial<DistortionConfig> = {}) {
     const rawVelocity = Math.sqrt(rawDeltaX * rawDeltaX + rawDeltaY * rawDeltaY)
     const targetVel = Math.min(rawVelocity * 8, 1.0)
     // Asymmetric smoothing: fast attack, slow decay for viscous persistence
-    const velLerp = targetVel > smoothVelocity ? 0.3 : 0.05
+    const velLerp = targetVel > smoothVelocity
+      ? 0.3
+      : 0.05
     smoothVelocity += (targetVel - smoothVelocity) * velLerp
     rawDeltaX *= 0.45
     rawDeltaY *= 0.45
@@ -1322,7 +1329,13 @@ function useFluidSimulation() {
   // ══════════════════════════════════════════════════════════════════════
 
   function getWebGLContext(c: HTMLCanvasElement): { gl: WebGL2RenderingContext | WebGLRenderingContext, ext: GLFormats } | null {
-    const params: WebGLContextAttributes = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false }
+    const params: WebGLContextAttributes = {
+      alpha: true,
+      depth: false,
+      stencil: false,
+      antialias: false,
+      preserveDrawingBuffer: false,
+    }
 
     let context: WebGL2RenderingContext | WebGLRenderingContext | null = c.getContext('webgl2', params) as WebGL2RenderingContext | null
     isWebGL2 = !!context
@@ -1366,7 +1379,13 @@ function useFluidSimulation() {
 
     return {
       gl: context,
-      ext: { formatRGBA, formatRG, formatR, halfFloatTexType, supportLinearFiltering },
+      ext: {
+        formatRGBA,
+        formatRG,
+        formatR,
+        halfFloatTexType,
+        supportLinearFiltering,
+      },
     }
   }
 
@@ -1642,8 +1661,12 @@ function useFluidSimulation() {
 
   function drawDisplay(target: FBO | null) {
     const g = gl!
-    const width = target == null ? g.drawingBufferWidth : target.width
-    const height = target == null ? g.drawingBufferHeight : target.height
+    const width = target == null
+      ? g.drawingBufferWidth
+      : target.width
+    const height = target == null
+      ? g.drawingBufferHeight
+      : target.height
 
     displayMaterial!.bind()
     if (config.SHADING)
@@ -2076,7 +2099,9 @@ function useFluidSimulation() {
 
     advectionProgram = createProgramObj(
       baseVertexShader,
-      compileShader(gl.FRAGMENT_SHADER, advectionShaderSource, ext.supportLinearFiltering ? null : ['MANUAL_FILTERING']),
+      compileShader(gl.FRAGMENT_SHADER, advectionShaderSource, ext.supportLinearFiltering
+        ? null
+        : ['MANUAL_FILTERING']),
     )
 
     displayMaterial = createMaterial(baseVertexShader, displayShaderSource)
@@ -2258,7 +2283,9 @@ function renderMasthead(fontSize: number): HTMLCanvasElement {
   const padTop = Math.round(cap * INK_TOP_PER_CAP)
   const padBottom = Math.max(0, Math.round(cap * NAV_GAP_PER_CAP - navInkTopOffset()))
 
-  canvas.width = canSpace ? target : Math.ceil(natural)
+  canvas.width = canSpace
+    ? target
+    : Math.ceil(natural)
   canvas.height = Math.ceil(padTop + cap + padBottom)
 
   applyFont(spacing)
@@ -2318,7 +2345,9 @@ onMounted(async () => {
       fontWeight: 400,
       intensity: 0.06,
       chromaticSpread: 0,
-      lines: [{ text: MASTHEAD_TEXT, indent: 0 }],
+      lines: [
+        { text: MASTHEAD_TEXT, indent: 0 },
+      ],
       renderText: renderMasthead,
     })
     if (sim.init(textCanvasRef.value)) {
@@ -2329,6 +2358,12 @@ onMounted(async () => {
         sim.start()
         isTextReady.value = true
       }, 300)
+    }
+    else {
+      paintStaticMasthead()
+      textResizeHandler = paintStaticMasthead
+      window.addEventListener('resize', textResizeHandler)
+      isTextReady.value = true
     }
   }
 
@@ -2355,10 +2390,15 @@ onMounted(async () => {
       ? Array.from(footRef.value.querySelectorAll<HTMLElement>('.chd__foot-block'))
       : []
 
-    gsap.set([...navItems, ...footBlocks], { autoAlpha: 0 })
+    gsap.set([
+      ...navItems,
+      ...footBlocks,
+    ], { autoAlpha: 0 })
     gsap.set([navRef.value, footRef.value].filter(Boolean), { autoAlpha: 1 })
 
-    const tl = gsap.timeline({ defaults: { ease: 'expo.out' } })
+    const tl = gsap.timeline({
+      defaults: { ease: 'expo.out' },
+    })
 
     navItems.forEach((item, i) => {
       tl.to(item, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, 0.5 + i * 0.08)

@@ -12,7 +12,9 @@ interface LiquidTypeConfig {
 }
 
 const defaults: LiquidTypeConfig = {
-  lines: [{ text: 'VOID', indent: 0 }],
+  lines: [
+    { text: 'VOID', indent: 0 },
+  ],
   fontSize: 240,
   fontFamily: '\'PP Editorial New\', Georgia, serif',
   fontWeight: 800,
@@ -33,7 +35,10 @@ interface Target {
 }
 
 export function useLiquidType(config: Partial<LiquidTypeConfig> = {}) {
-  const cfg = { ...defaults, ...config }
+  const cfg = {
+    ...defaults,
+    ...config,
+  }
   const fps = ref(0)
 
   let gl: WebGLRenderingContext | null = null
@@ -129,7 +134,9 @@ export function useLiquidType(config: Partial<LiquidTypeConfig> = {}) {
     })
 
     canvas!.style.aspectRatio = `${off.width} / ${off.height}`
-    const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1.5 : 2)
+    const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 768
+      ? 1.5
+      : 2)
     canvas!.width = Math.floor(canvas!.clientWidth * dpr)
     canvas!.height = Math.floor(canvas!.clientHeight * dpr)
 
@@ -222,7 +229,12 @@ export function useLiquidType(config: Partial<LiquidTypeConfig> = {}) {
 
   function init(el: HTMLCanvasElement): boolean {
     canvas = el
-    gl = el.getContext('webgl', { alpha: true, depth: false, antialias: false, premultipliedAlpha: true })
+    gl = el.getContext('webgl', {
+      alpha: true,
+      depth: false,
+      antialias: false,
+      premultipliedAlpha: true,
+    })
     if (!gl)
       return false
 

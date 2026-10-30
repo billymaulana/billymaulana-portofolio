@@ -126,10 +126,24 @@ function openMenu() {
   if (timeline)
     timeline.kill()
 
-  timeline = gsapModule.timeline({ defaults: { ease: 'expo.inOut' } })
+  timeline = gsapModule.timeline({
+    defaults: { ease: 'expo.inOut' },
+  })
   timeline.set(overlayRef.value, { visibility: 'visible' })
-  timeline.fromTo(overlayRef.value, { clipPath: circleClip('0%') }, { clipPath: circleClip('150%'), duration: 0.8 })
-  timeline.fromTo(itemRefs.value, { yPercent: 40, opacity: 0, filter: 'blur(8px)' }, { yPercent: 0, opacity: 1, filter: 'blur(0px)', duration: 0.5, ease: 'expo.out', stagger: 0.08 }, '-=0.25')
+  timeline.fromTo(overlayRef.value, {
+    clipPath: circleClip('0%'),
+  }, {
+    clipPath: circleClip('150%'),
+    duration: 0.8,
+  })
+  timeline.fromTo(itemRefs.value, { yPercent: 40, opacity: 0, filter: 'blur(8px)' }, {
+    yPercent: 0,
+    opacity: 1,
+    filter: 'blur(0px)',
+    duration: 0.5,
+    ease: 'expo.out',
+    stagger: 0.08,
+  }, '-=0.25')
 }
 
 function closeMenu() {
@@ -163,7 +177,12 @@ function closeMenu() {
     ease: 'expo.in',
     stagger: 0.04,
   })
-  timeline.fromTo(overlayRef.value, { clipPath: circleClip('150%') }, { clipPath: circleClip('0%'), duration: 0.6 }, '-=0.15')
+  timeline.fromTo(overlayRef.value, {
+    clipPath: circleClip('150%'),
+  }, {
+    clipPath: circleClip('0%'),
+    duration: 0.6,
+  }, '-=0.15')
   timeline.set(overlayRef.value, { visibility: 'hidden' })
 }
 

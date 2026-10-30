@@ -119,15 +119,22 @@ function inkGap(el: HTMLElement, edge: 'left' | 'right'): number {
     return 0
   const text = style.textTransform === 'uppercase'
     ? raw.toUpperCase()
-    : style.textTransform === 'lowercase' ? raw.toLowerCase() : raw
+    : style.textTransform === 'lowercase'
+      ? raw.toLowerCase()
+      : raw
   ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
-  if ('letterSpacing' in ctx)
-    ctx.letterSpacing = style.letterSpacing === 'normal' ? '0px' : style.letterSpacing
+  if ('letterSpacing' in ctx) {
+    ctx.letterSpacing = style.letterSpacing === 'normal'
+      ? '0px'
+      : style.letterSpacing
+  }
   const metrics = ctx.measureText(text)
   const gap = edge === 'left'
     ? -metrics.actualBoundingBoxLeft
     : metrics.width - metrics.actualBoundingBoxRight
-  return Number.isFinite(gap) ? gap : 0
+  return Number.isFinite(gap)
+    ? gap
+    : 0
 }
 
 const INK_EDGES: [selector: string, cssVar: string, edge: 'left' | 'right'][] = [
@@ -175,13 +182,15 @@ function layoutMasthead() {
 function buildDistortionLines(): DistortionLine[] {
   const width = sectionRef.value?.clientWidth ?? window.innerWidth
   const m = measureMasthead(width)
-  return [{
-    text: MASTHEAD_TEXT,
-    xAlign: 'left',
-    yFrac: NAME_Y_FRAC,
-    fontSize: m.fontSize,
-    indent: (m.left - m.pad) * (200 / m.fontSize),
-  }]
+  return [
+    {
+      text: MASTHEAD_TEXT,
+      xAlign: 'left',
+      yFrac: NAME_Y_FRAC,
+      fontSize: m.fontSize,
+      indent: (m.left - m.pad) * (200 / m.fontSize),
+    },
+  ]
 }
 
 function buildNameChars(el: HTMLElement): HTMLElement[] {
@@ -220,7 +229,13 @@ onMounted(async () => {
   gsap.registerPlugin(ScrollTrigger)
 
   gsap.set(
-    [namesRef.value, taglineRef.value, monoBRef.value, monoMRef.value, metaRef.value].filter(Boolean),
+    [
+      namesRef.value,
+      taglineRef.value,
+      monoBRef.value,
+      monoMRef.value,
+      metaRef.value,
+    ].filter(Boolean),
     { autoAlpha: 0 },
   )
 
@@ -256,7 +271,9 @@ onMounted(async () => {
   await document.fonts.ready
   layoutMasthead()
   layoutInkEdges()
-  nameChars = nameRef.value ? buildNameChars(nameRef.value) : []
+  nameChars = nameRef.value
+    ? buildNameChars(nameRef.value)
+    : []
 
   uploadMasthead()
 
@@ -293,7 +310,9 @@ onMounted(async () => {
       { autoAlpha: 1 },
     )
 
-    const tl = gsap.timeline({ defaults: { ease: 'expo.out' } })
+    const tl = gsap.timeline({
+      defaults: { ease: 'expo.out' },
+    })
 
     if (nameChars.length) {
       tl.to(nameChars, {
@@ -317,8 +336,14 @@ onMounted(async () => {
     }
 
     for (const mono of [monoBRef.value, monoMRef.value]) {
-      if (mono)
-        tl.to(mono, { autoAlpha: 1, x: 0, duration: 0.8, ease: 'power3.out' }, 0.8)
+      if (mono) {
+        tl.to(mono, {
+          autoAlpha: 1,
+          x: 0,
+          duration: 0.8,
+          ease: 'power3.out',
+        }, 0.8)
+      }
     }
 
     metaBlocks.forEach((block, i) => {
@@ -355,7 +380,13 @@ onMounted(async () => {
       })
 
       gsap.to(
-        [contentRef.value, taglineRef.value, monoBRef.value, monoMRef.value, metaRef.value].filter(Boolean),
+        [
+          contentRef.value,
+          taglineRef.value,
+          monoBRef.value,
+          monoMRef.value,
+          metaRef.value,
+        ].filter(Boolean),
         {
           opacity: 0,
           ease: 'none',

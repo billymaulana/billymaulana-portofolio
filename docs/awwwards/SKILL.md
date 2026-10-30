@@ -122,7 +122,7 @@ ditolak. Tiga lapis di bawah menutup lubang itu.
 | `calibration/expectations.json` | Pilihan yang diprediksi aturan sistem untuk tiap pasangan uji — dasar deteksi aturan yang terbantah |
 | `scripts/taste-calibration.mjs` | Metrik: false-positive rate (utama), accuracy, MAE, mood Jaccard, drift + validasi rubrik retrospektif |
 | `calibration/predictions.jsonl` | Prediksi tersegel critic sebelum hasil ditunjukkan, diisi `actual` setelah verdict Billy |
-| `calibration/assertions.jsonl` | Hasil sesi A/B di route `/calibration` — dataset preferensi berlabel |
+| `calibration/assertions.jsonl` | Hasil sesi A/B dari route `/calibration` (dihapus 2026-10-30) — dataset preferensi berlabel |
 
 **Alur wajib per review**: `layout-audit` (7 viewport) → **`ink-audit` (7 viewport)** → `taste-lint`
 → **`effect-audit` bila ada shader/WebGL/efek prosedural** → dua skor → prediksi tersegel →

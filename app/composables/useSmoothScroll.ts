@@ -60,5 +60,12 @@ export function useSmoothScroll() {
     return lenisInstance.value
   }
 
-  return { init, scrollTo, stop, start, destroy, getInstance }
+  return {
+    init,
+    scrollTo,
+    stop,
+    start,
+    destroy,
+    getInstance,
+  }
 }

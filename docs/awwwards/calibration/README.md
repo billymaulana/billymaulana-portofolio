@@ -15,7 +15,7 @@ Folder ini menutup lubang itu dengan tiga lapis.
 | Lapis | Alat | Menjawab |
 |---|---|---|
 | 1 · Mekanis | `../scripts/taste-lint.mjs` | Apakah eksekusinya benar? (deterministik, tanpa judgment) |
-| 2 · Preferensi | `/calibration` + `assertions.jsonl` | Apakah aturan sistem cocok dengan pilihan nyata Billy? |
+| 2 · Preferensi | `assertions.jsonl` (route `/calibration` dihapus 2026-10-30) | Apakah aturan sistem cocok dengan pilihan nyata Billy? |
 | 3 · Prediktif | `predictions.jsonl` + `../scripts/taste-calibration.mjs` | Apakah penilaian sistem makin selaras dari waktu ke waktu? |
 
 **Peringatan yang mengikat**: `taste-lint` hijau mengukur **kebenaran eksekusi**, bukan selera.
@@ -65,10 +65,9 @@ Baseline pertama ada di `baseline/2026-07-26-*.txt`.
 
 ## Lapis 2 — Sesi kalibrasi A/B
 
-```bash
-pnpm dev
-# buka http://localhost:3000/calibration
-```
+> Route `/calibration` dan `app/calibration/` dihapus 2026-10-30 atas permintaan Billy. Kodenya
+> tersedia di riwayat git; `assertions.jsonl` dan `taste-calibration.mjs` tetap berlaku. Bagian
+> di bawah menjelaskan cara kerja sesi itu saat masih ada.
 
 Delapan pasangan, masing-masing berbeda pada **satu dimensi saja**, motion tetap hidup.
 Keyboard `A` / `B` / `S` (skip), `←` untuk mundur. Jawaban tersimpan di localStorage.
@@ -87,7 +86,7 @@ taste paling akurat yang dimiliki sistem ini.
 
 Sesi 1 menguji typography. Yang belum diuji dan layak jadi sesi lanjutan:
 ground & palet · densitas/ritme · material (refraksi optik vs prosedural) · easing & durasi.
-Tambahkan pasangan baru di `app/calibration/pairs.ts` dan ekspektasinya di `expectations.json`.
+Sesi baru butuh route baru; ekspektasinya tetap dicatat di `expectations.json`.
 
 ---
 

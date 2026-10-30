@@ -111,7 +111,10 @@ onMounted(async () => {
       const links = socialsRef.value.querySelectorAll('.cta__social-link')
       const separators = socialsRef.value.querySelectorAll('.cta__social-sep')
 
-      gsap.from([...links, ...separators], {
+      gsap.from([
+        ...links,
+        ...separators,
+      ], {
         opacity: 0,
         yPercent: 60,
         duration: 0.6,

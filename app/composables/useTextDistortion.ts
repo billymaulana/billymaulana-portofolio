@@ -25,7 +25,10 @@ export function distortionTextPadding(width: number): number {
 }
 
 export function useMastheadRaster(config: MastheadRasterConfig) {
-  const cfg = { ...config, lines: [...config.lines] }
+  const cfg = {
+    ...config,
+    lines: [...config.lines],
+  }
   const canvas = document.createElement('canvas')
 
   function applyFont(ctx: CanvasRenderingContext2D, fontSize: number) {

@@ -826,7 +826,13 @@ function useFluidSimulation() {
   // ══════════════════════════════════════════════════════════════════════
 
   function getWebGLContext(c: HTMLCanvasElement): { gl: WebGL2RenderingContext | WebGLRenderingContext, ext: GLFormats } | null {
-    const params: WebGLContextAttributes = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false }
+    const params: WebGLContextAttributes = {
+      alpha: true,
+      depth: false,
+      stencil: false,
+      antialias: false,
+      preserveDrawingBuffer: false,
+    }
 
     let context: WebGL2RenderingContext | WebGLRenderingContext | null = c.getContext('webgl2', params) as WebGL2RenderingContext | null
     isWebGL2 = !!context
@@ -870,7 +876,13 @@ function useFluidSimulation() {
 
     return {
       gl: context,
-      ext: { formatRGBA, formatRG, formatR, halfFloatTexType, supportLinearFiltering },
+      ext: {
+        formatRGBA,
+        formatRG,
+        formatR,
+        halfFloatTexType,
+        supportLinearFiltering,
+      },
     }
   }
 
@@ -1146,8 +1158,12 @@ function useFluidSimulation() {
 
   function drawDisplay(target: FBO | null) {
     const g = gl!
-    const width = target == null ? g.drawingBufferWidth : target.width
-    const height = target == null ? g.drawingBufferHeight : target.height
+    const width = target == null
+      ? g.drawingBufferWidth
+      : target.width
+    const height = target == null
+      ? g.drawingBufferHeight
+      : target.height
 
     displayMaterial!.bind()
     if (config.SHADING)
@@ -1580,7 +1596,9 @@ function useFluidSimulation() {
 
     advectionProgram = createProgramObj(
       baseVertexShader,
-      compileShader(gl.FRAGMENT_SHADER, advectionShaderSource, ext.supportLinearFiltering ? null : ['MANUAL_FILTERING']),
+      compileShader(gl.FRAGMENT_SHADER, advectionShaderSource, ext.supportLinearFiltering
+        ? null
+        : ['MANUAL_FILTERING']),
     )
 
     displayMaterial = createMaterial(baseVertexShader, displayShaderSource)
@@ -1663,6 +1681,7 @@ function useFluidSimulation() {
 /* ── halaman ─────────────────────────────────────────────────────────────── */
 const canvasRef = ref<HTMLCanvasElement>()
 const fluid = useFluidSimulation()
+const showFallback = ref(false)
 
 let resizeObserver: ResizeObserver | null = null
 
@@ -1671,8 +1690,10 @@ onMounted(() => {
   if (!canvas)
     return
 
-  if (!fluid.init(canvas))
+  if (!fluid.init(canvas)) {
+    showFallback.value = true
     return
+  }
 
   resizeObserver = new ResizeObserver(() => fluid.resize())
   resizeObserver.observe(canvas)
@@ -1692,6 +1713,7 @@ onUnmounted(() => {
       class="lq__canvas"
       aria-hidden="true"
     />
+    <WebglFallback v-if="showFallback" />
   </div>
 </template>
 

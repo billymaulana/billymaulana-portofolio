@@ -393,10 +393,16 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
           uTime: { value: 0 },
           uExplode: { value: 3.0 },
           uStrength: { value: 1.2 },
-          uCenter: { value: new THREE.Vector2(0.5, 0.5) },
+          uCenter: {
+            value: new THREE.Vector2(0.5, 0.5),
+          },
           uFadeToBlack: { value: 0 },
-          uTint: { value: new THREE.Vector3(1, 1, 1) },
-          uBgColor: { value: new THREE.Vector3(0.024, 0.024, 0.063) }, // void-blue #060610
+          uTint: {
+            value: new THREE.Vector3(1, 1, 1),
+          },
+          uBgColor: {
+            value: new THREE.Vector3(0.024, 0.024, 0.063),
+          }, // void-blue #060610
           uConverge: { value: 0 },
           uAspect: { value: w / h },
           uFlowIntensity: { value: 0.12 },
@@ -512,5 +518,19 @@ export function useLiquidBlobs(): LiquidBlobsAPI {
     canvas = null
   }
 
-  return { init, start, setExplode, setStrength, setFill, setFadeToBlack, setTint, setConverge, setLimit, setOpacity, setFlowIntensity, setMelt, destroy }
+  return {
+    init,
+    start,
+    setExplode,
+    setStrength,
+    setFill,
+    setFadeToBlack,
+    setTint,
+    setConverge,
+    setLimit,
+    setOpacity,
+    setFlowIntensity,
+    setMelt,
+    destroy,
+  }
 }

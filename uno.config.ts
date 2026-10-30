@@ -37,10 +37,27 @@ export default defineConfig({
 
     // Typography structure — Swiss pairing
     fontFamily: {
-      sans: ['Apparel', 'Times New Roman', 'sans-serif', 'system-ui', '-apple-system'],
-      apparel: ['Apparel', 'Times New Roman', 'sans-serif', 'system-ui', '-apple-system'],
+      sans: [
+        'Apparel',
+        'Times New Roman',
+        'sans-serif',
+        'system-ui',
+        '-apple-system',
+      ],
+      apparel: [
+        'Apparel',
+        'Times New Roman',
+        'sans-serif',
+        'system-ui',
+        '-apple-system',
+      ],
       suisse: ['Suisse', 'Arial', 'sans-serif'],
-      display: ['Clash Display', 'Satoshi', 'system-ui', 'sans-serif'],
+      display: [
+        'Clash Display',
+        'Satoshi',
+        'system-ui',
+        'sans-serif',
+      ],
     },
 
     // Spacing extends Tailwind defaults
@@ -62,10 +79,16 @@ export default defineConfig({
       provider: 'fontshare',
       fonts: {
         satoshi: [
-          { name: 'Satoshi', weights: ['500', '700', '900'] },
+          {
+            name: 'Satoshi',
+            weights: ['500', '700', '900'],
+          },
         ],
         clash: [
-          { name: 'Clash Display', weights: ['500', '600', '700'] },
+          {
+            name: 'Clash Display',
+            weights: ['500', '600', '700'],
+          },
         ],
       },
     }),

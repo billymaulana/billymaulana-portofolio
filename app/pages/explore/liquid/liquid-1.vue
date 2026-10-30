@@ -212,7 +212,9 @@ function useFluidSimulation() {
 
   function hexToRgb(hex: string): [number, number, number] {
     const h = hex.replace('#', '')
-    const int = Number.parseInt(h.length === 3 ? h.replace(/./g, c => c + c) : h, 16)
+    const int = Number.parseInt(h.length === 3
+      ? h.replace(/./g, c => c + c)
+      : h, 16)
     return [(int >> 16 & 255) / 255, (int >> 8 & 255) / 255, (int & 255) / 255]
   }
 
@@ -997,7 +999,13 @@ function useFluidSimulation() {
   // ══════════════════════════════════════════════════════════════════════
 
   function getWebGLContext(c: HTMLCanvasElement): { gl: WebGL2RenderingContext | WebGLRenderingContext, ext: GLFormats } | null {
-    const params: WebGLContextAttributes = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false }
+    const params: WebGLContextAttributes = {
+      alpha: true,
+      depth: false,
+      stencil: false,
+      antialias: false,
+      preserveDrawingBuffer: false,
+    }
 
     let context: WebGL2RenderingContext | WebGLRenderingContext | null = c.getContext('webgl2', params) as WebGL2RenderingContext | null
     isWebGL2 = !!context
@@ -1041,7 +1049,13 @@ function useFluidSimulation() {
 
     return {
       gl: context,
-      ext: { formatRGBA, formatRG, formatR, halfFloatTexType, supportLinearFiltering },
+      ext: {
+        formatRGBA,
+        formatRG,
+        formatR,
+        halfFloatTexType,
+        supportLinearFiltering,
+      },
     }
   }
 
@@ -1324,8 +1338,12 @@ function useFluidSimulation() {
 
   function drawDisplay(target: FBO | null) {
     const g = gl!
-    const width = target == null ? g.drawingBufferWidth : target.width
-    const height = target == null ? g.drawingBufferHeight : target.height
+    const width = target == null
+      ? g.drawingBufferWidth
+      : target.width
+    const height = target == null
+      ? g.drawingBufferHeight
+      : target.height
 
     displayMaterial!.bind()
     if (config.SHADING)
@@ -1903,7 +1921,11 @@ function useFluidSimulation() {
       config.PRESSURE_ITERATIONS = options.pressureIterations
     contentDisplayEnabled = options?.contentDisplay ?? false
     pointerGate = options?.pointerGate ?? null
-    contentDisplay.mode = options?.displayMode === 'dye' ? 1 : options?.displayMode === 'thermal' ? 2 : 0
+    contentDisplay.mode = options?.displayMode === 'dye'
+      ? 1
+      : options?.displayMode === 'thermal'
+        ? 2
+        : 0
     if (options?.displace !== undefined)
       contentDisplay.displace = options.displace
     if (options?.chromatic !== undefined)
@@ -1955,7 +1977,9 @@ function useFluidSimulation() {
 
     advectionProgram = createProgramObj(
       baseVertexShader,
-      compileShader(gl.FRAGMENT_SHADER, advectionShaderSource, ext.supportLinearFiltering ? null : ['MANUAL_FILTERING']),
+      compileShader(gl.FRAGMENT_SHADER, advectionShaderSource, ext.supportLinearFiltering
+        ? null
+        : ['MANUAL_FILTERING']),
     )
 
     displayMaterial = createMaterial(baseVertexShader, displayShaderSource)
@@ -2041,7 +2065,14 @@ function useFluidSimulation() {
     splatSegments.length = 0
   }
 
-  return { init, resize, destroy, multipleSplats, emitSplat, setContentCanvas }
+  return {
+    init,
+    resize,
+    destroy,
+    multipleSplats,
+    emitSplat,
+    setContentCanvas,
+  }
 }
 
 /* ── halaman ─────────────────────────────────────────────────────────────── */
@@ -2068,6 +2099,7 @@ const FLUID = {
 
 const canvasRef = ref<HTMLCanvasElement>()
 const fluid = useFluidSimulation()
+const showFallback = ref(false)
 
 let resizeObserver: ResizeObserver | null = null
 
@@ -2084,8 +2116,10 @@ function createBlankContent(): HTMLCanvasElement {
 }
 
 onMounted(() => {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    showFallback.value = true
     return
+  }
 
   const canvas = canvasRef.value
   if (!canvas)
@@ -2106,8 +2140,10 @@ onMounted(() => {
     velocityDissipation: FLUID.velocityDissipation,
     pressureIterations: FLUID.pressureIterations,
   })
-  if (!ready)
+  if (!ready) {
+    showFallback.value = true
     return
+  }
 
   fluid.setContentCanvas(createBlankContent())
 
@@ -2129,6 +2165,7 @@ onUnmounted(() => {
       class="lq__canvas"
       aria-hidden="true"
     />
+    <WebglFallback v-if="showFallback" />
   </div>
 </template>
 
