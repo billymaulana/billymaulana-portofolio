@@ -8,6 +8,9 @@ strictPeerDependencies: false
 shamefullyHoist: true
 shellEmulator: true
 
+overrides:
+  katex: ^0.18.2
+
 allowBuilds:
   '@parcel/watcher': true
   esbuild: true
