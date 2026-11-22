@@ -10,6 +10,15 @@ const emit = defineEmits<{
   complete: []
 }>()
 
+definePageMeta({
+  standalone: true,
+})
+
+useSeoMeta({
+  title: 'Splash 1',
+  robots: 'noindex',
+})
+
 let isInitialized = false
 let spiralRotation: gsap.core.Tween | null = null
 

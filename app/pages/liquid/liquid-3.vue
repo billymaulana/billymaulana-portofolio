@@ -4,14 +4,98 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Explore — Liquid 1',
+  title: 'Liquid 3',
   robots: 'noindex',
 })
 
-/* Deliberately self-contained: the fluid engine is copied into this file instead of imported from
-   the global composable or the checkpoint route, so editing or deleting it never affects another route. */
+/* Liquid dari /hero/hero-2 tanpa elemen hero lainnya. Mode 'faithful' tidak pernah
+   menggambar fluidanya sendiri — yang terlihat hanya raster masthead yang diseret medan kecepatan —
+   jadi masthead dipertahankan sebagai medium; tanpa itu layar hitam total. Engine disalin utuh agar
+   rute ini tetap mandiri dan bisa dihapus tanpa sisa. */
 
-/* ── engine: simulasi fluida ─────────────────────────────────────────────── */
+/* ── engine: raster masthead ────────────────────────────────── */
+/**
+ * Masthead rasterizer — menggambar teks hero ke offscreen 2D canvas sebagai
+ * sumber texture untuk display pass useFluidSimulation. Displacement dan
+ * chromatic split kini terjadi di GPU pass fluid, bukan di modul ini.
+ */
+
+interface DistortionLine {
+  text: string
+  xAlign?: 'left' | 'center' | 'right'
+  yFrac?: number
+  indent?: number
+  fontSize?: number
+}
+
+interface MastheadRasterConfig {
+  fontFamily: string
+  fontWeight: number
+  letterSpacingEm: number
+  lines: DistortionLine[]
+}
+
+function distortionTextPadding(width: number): number {
+  const rootFs = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  return Math.min(Math.max(0.875 * rootFs, width * 0.0111), 1.5 * rootFs)
+}
+
+function useMastheadRaster(config: MastheadRasterConfig) {
+  const cfg = {
+    ...config,
+    lines: [...config.lines],
+  }
+  const canvas = document.createElement('canvas')
+
+  function applyFont(ctx: CanvasRenderingContext2D, fontSize: number) {
+    ctx.font = `${cfg.fontWeight} ${fontSize}px ${cfg.fontFamily}`
+    if ('letterSpacing' in ctx)
+      ctx.letterSpacing = `${fontSize * cfg.letterSpacingEm}px`
+  }
+
+  /* Latar HITAM opak, bukan transparan: display pass fluid memakai shader
+     referensi tanpa alpha handling — kompositing ke halaman terjadi lewat
+     mix-blend-mode: difference pada elemen canvas (hitam = identity) */
+  function render(cssWidth: number, cssHeight: number, scale: number): HTMLCanvasElement {
+    const width = Math.max(1, Math.floor(cssWidth * scale))
+    const height = Math.max(1, Math.floor(cssHeight * scale))
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, width, height)
+    ctx.fillStyle = '#ffffff'
+    ctx.textBaseline = 'alphabetic'
+
+    const pad = distortionTextPadding(cssWidth) * scale
+
+    for (let i = 0; i < cfg.lines.length; i++) {
+      const line = cfg.lines[i]!
+      const fontSize = (line.fontSize ?? 200) * scale
+      applyFont(ctx, fontSize)
+      const metrics = ctx.measureText(line.text)
+      const indentPx = (line.indent ?? 0) * (fontSize / 200)
+      const align = line.xAlign ?? 'left'
+      let x = pad + indentPx
+      if (align === 'right')
+        x = width - pad - metrics.width - indentPx
+      else if (align === 'center')
+        x = (width - metrics.width) / 2 + indentPx
+      const yFrac = line.yFrac ?? (i + 1) / (cfg.lines.length + 1)
+      ctx.fillText(line.text, x, yFrac * height)
+    }
+
+    return canvas
+  }
+
+  function updateLines(lines: DistortionLine[]) {
+    cfg.lines = lines
+  }
+
+  return { render, updateLines }
+}
+
+/* ── engine: simulasi fluida ────────────────────────────────── */
 /**
  * useFluidSimulation — Faithful port of Pavel Dobryakov's WebGL-Fluid-Simulation
  * https://github.com/PavelDoGreat/WebGL-Fluid-Simulation (MIT License)
@@ -198,6 +282,7 @@ function useFluidSimulation() {
 
   // ── Content display (mode displacement daspritam) ──
   let contentDisplayEnabled = false
+  let interpolateSegments = false
   let contentDisplayProgram: ProgramObj | null = null
   let contentTexture: TextureObj | null = null
   let pointerGate: ((u: number, v: number) => boolean) | null = null
@@ -1496,12 +1581,16 @@ function useFluidSimulation() {
        satu splat penuh, meniru deposit per-event kecil milik daspritam */
     const dx = seg.deltaX * config.SPLAT_FORCE / count
     const dy = seg.deltaY * config.SPLAT_FORCE / count
-    /* Content mode used to drop one full splat per event at the newest position, so a fast
-       flick (~86px between frames against a ~26px gaussian sigma) printed a row of separate
-       beads. Presence is divided by the sub-splat count together with momentum: the segment
-       deposits exactly what one splat did, only spread along the path instead of stacked at
-       its end, so coverage does not grow with the count. */
+    /* Content mode drops one full splat per event at the newest position, so a fast flick prints
+       separate beads once the per-frame step passes the gaussian sigma. Interpolating only helps
+       when presence is divided by the count alongside momentum — dividing momentum alone is what
+       multiplied dye coverage and flooded the text band. Opt-in so routes calibrated against the
+       single-splat behaviour keep it. */
     if (contentDisplayEnabled) {
+      if (!interpolateSegments) {
+        splat(seg.toX, seg.toY, seg.deltaX * config.SPLAT_FORCE, seg.deltaY * config.SPLAT_FORCE, seg.color)
+        return
+      }
       for (let i = 1; i <= count; i++) {
         const t = i / count
         splat(seg.fromX + (seg.toX - seg.fromX) * t, seg.fromY + (seg.toY - seg.fromY) * t, dx, dy, seg.color, 1 / count)
@@ -1903,6 +1992,7 @@ function useFluidSimulation() {
     densityDissipation?: number
     velocityDissipation?: number
     pressureIterations?: number
+    interpolateSegments?: boolean
   }): boolean {
     canvas = canvasEl
     hueMin = options?.hueMin ?? 0
@@ -1919,6 +2009,7 @@ function useFluidSimulation() {
       config.VELOCITY_DISSIPATION = options.velocityDissipation
     if (options?.pressureIterations !== undefined)
       config.PRESSURE_ITERATIONS = options.pressureIterations
+    interpolateSegments = options?.interpolateSegments ?? false
     contentDisplayEnabled = options?.contentDisplay ?? false
     pointerGate = options?.pointerGate ?? null
     contentDisplay.mode = options?.displayMode === 'dye'
@@ -2059,6 +2150,7 @@ function useFluidSimulation() {
     contentTexture = null
     contentDisplayProgram = null
     contentDisplayEnabled = false
+    interpolateSegments = false
     pointerGate = null
     pointers.length = 0
     splatStack = []
@@ -2075,16 +2167,18 @@ function useFluidSimulation() {
   }
 }
 
-/* ── halaman ─────────────────────────────────────────────────────────────── */
-/* Motion and ink must share one lifetime. At velocity 3.2 / density 1.1 the flow was dead after
-   ~1.2s while the thermal curve kept faint presence visible for 4s+, so the trail sat frozen for
-   about three seconds (measured: 2% of the visible trail still moving at t=3s). Velocity 1.2 lets
-   the flow outlive the bright phase; density 1.8 retires the ink as the flow runs out (79% of the
-   trail moving at 2s, nothing left at 4s). Pressure 20 turns the persisting momentum into coherent
-   rolling vortices instead of stamped blobs, and curl 8 keeps those vortices large and smooth —
-   curl 20 with long-lived velocity shredded the stroke into curly smoke within 0.3s. */
+/* ── halaman ────────────────────────────────────────────── */
+/* Motion and ink share one lifetime. At velocity 3.2 / pressure 3 the flow died after ~1.2s while
+   the thermal curve kept faint presence visible past 4s, so the trail stood still while it faded.
+   Velocity 1.2 lets the flow outlive the bright phase, density 1.8 retires the ink as the flow runs
+   out, pressure 20 turns the surviving momentum into rolling vortices rather than stamped blobs,
+   and curl 8 keeps those vortices large — curl 20 with long-lived velocity shreds a stroke into
+   curly smoke within 0.3s. */
+/* 'faithful' keeps the fluid itself invisible: the only thing drawn is the masthead raster being
+   dragged by the velocity field, with the aberration edge tinted uColor. 'thermal' painted a heat
+   field across the whole canvas, which covered the letters instead of acting on them. */
 const FLUID = {
-  mode: 'thermal' as const,
+  mode: 'faithful' as const,
   color: '#0047FF',
   curl: 8,
   splatRadius: 0.3,
@@ -2097,75 +2191,164 @@ const FLUID = {
   pressureIterations: 20,
 }
 
-const canvasRef = ref<HTMLCanvasElement>()
+const MASTHEAD_TEXT = 'BILLYMAULANA'
+const NAME_FONT = '\'Bebas Neue\', Impact, sans-serif'
+const NAME_TRACKING_EM = -0.015
+const NAME_MEASURE_BASE_PX = 100
+const NAME_Y_FRAC = 0.86
+
+const rootRef = ref<HTMLElement>()
+const fluidCanvasRef = ref<HTMLCanvasElement>()
+const nameRef = ref<HTMLElement>()
+const isFluidLive = ref(false)
+
 const fluid = useFluidSimulation()
-const showFallback = ref(false)
 
 let resizeObserver: ResizeObserver | null = null
+let fluidReady = false
+let textResizeHandler: (() => void) | null = null
 
-/* Display pass mode content tidak menggambar apa pun sebelum texture konten diunggah. Raster hitam
-   polos menggantikan masthead: tanpa tinta teks, yang tersisa di layar hanya heat field termal. */
-function createBlankContent(): HTMLCanvasElement {
-  const blank = document.createElement('canvas')
-  blank.width = 1
-  blank.height = 1
-  const ctx = blank.getContext('2d')!
-  ctx.fillStyle = '#000000'
-  ctx.fillRect(0, 0, 1, 1)
-  return blank
+const mastheadRaster = useMastheadRaster({
+  fontFamily: NAME_FONT,
+  fontWeight: 400,
+  letterSpacingEm: NAME_TRACKING_EM,
+  lines: [],
+})
+
+interface MastheadMetrics {
+  pad: number
+  fontSize: number
+  left: number
+  baselineFromTop: number
 }
 
-onMounted(() => {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    showFallback.value = true
+function measureMasthead(width: number): MastheadMetrics {
+  const ctx = document.createElement('canvas').getContext('2d')!
+  ctx.font = `400 ${NAME_MEASURE_BASE_PX}px ${NAME_FONT}`
+  if ('letterSpacing' in ctx)
+    ctx.letterSpacing = `${NAME_MEASURE_BASE_PX * NAME_TRACKING_EM}px`
+  const metrics = ctx.measureText(MASTHEAD_TEXT)
+  const inkWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight
+  const pad = distortionTextPadding(width)
+  const targetWidth = width - 2 * pad
+  const scale = targetWidth / inkWidth
+  const ascent = metrics.fontBoundingBoxAscent
+  const descent = metrics.fontBoundingBoxDescent
+  return {
+    pad,
+    fontSize: NAME_MEASURE_BASE_PX * scale,
+    left: pad + metrics.actualBoundingBoxLeft * scale,
+    baselineFromTop: ((NAME_MEASURE_BASE_PX - (ascent + descent)) / 2 + ascent) * scale,
+  }
+}
+
+function layoutMasthead() {
+  const root = rootRef.value
+  const name = nameRef.value
+  if (!root || !name)
     return
+  const m = measureMasthead(root.clientWidth)
+  const baselineY = NAME_Y_FRAC * root.clientHeight
+  name.style.left = `${m.left}px`
+  name.style.top = `${baselineY - m.baselineFromTop}px`
+  name.style.fontSize = `${m.fontSize}px`
+  name.style.letterSpacing = `${NAME_TRACKING_EM}em`
+  name.style.visibility = 'inherit'
+}
+
+function buildDistortionLines() {
+  const width = rootRef.value?.clientWidth ?? window.innerWidth
+  const m = measureMasthead(width)
+  return [
+    {
+      text: MASTHEAD_TEXT,
+      xAlign: 'left' as const,
+      yFrac: NAME_Y_FRAC,
+      fontSize: m.fontSize,
+      indent: (m.left - m.pad) * (200 / m.fontSize),
+    },
+  ]
+}
+
+function uploadMasthead() {
+  const root = rootRef.value
+  if (!root)
+    return
+  mastheadRaster.updateLines(buildDistortionLines())
+  const dpr = window.devicePixelRatio || 1
+  const canvas = mastheadRaster.render(root.clientWidth, root.clientHeight, dpr)
+  if (fluidReady)
+    fluid.setContentCanvas(canvas)
+}
+
+onMounted(async () => {
+  const mastheadFont = document.fonts.load(`400 100px ${NAME_FONT}`, MASTHEAD_TEXT).catch(() => [])
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  if (!prefersReduced && fluidCanvasRef.value) {
+    fluidReady = fluid.init(fluidCanvasRef.value, {
+      skipInitialSplats: true,
+      contentDisplay: true,
+      displayMode: FLUID.mode,
+      color: FLUID.color,
+      curl: FLUID.curl,
+      splatRadius: FLUID.splatRadius,
+      splatForce: FLUID.splatForce,
+      displace: FLUID.displace,
+      chromatic: FLUID.chromatic,
+      whiteCore: FLUID.whiteCore,
+      densityDissipation: FLUID.densityDissipation,
+      velocityDissipation: FLUID.velocityDissipation,
+      pressureIterations: FLUID.pressureIterations,
+      interpolateSegments: true,
+    })
+    if (fluidReady) {
+      resizeObserver = new ResizeObserver(() => {
+        fluid.resize()
+        uploadMasthead()
+      })
+      resizeObserver.observe(fluidCanvasRef.value)
+    }
   }
 
-  const canvas = canvasRef.value
-  if (!canvas)
-    return
+  await mastheadFont
+  await document.fonts.ready
+  layoutMasthead()
+  uploadMasthead()
 
-  const ready = fluid.init(canvas, {
-    skipInitialSplats: true,
-    contentDisplay: true,
-    displayMode: FLUID.mode,
-    color: FLUID.color,
-    curl: FLUID.curl,
-    splatRadius: FLUID.splatRadius,
-    splatForce: FLUID.splatForce,
-    displace: FLUID.displace,
-    chromatic: FLUID.chromatic,
-    whiteCore: FLUID.whiteCore,
-    densityDissipation: FLUID.densityDissipation,
-    velocityDissipation: FLUID.velocityDissipation,
-    pressureIterations: FLUID.pressureIterations,
-  })
-  if (!ready) {
-    showFallback.value = true
-    return
+  /* The DOM masthead only leaves once the fluid display has the raster to redraw it; without WebGL
+     or under reduced motion it stays as the only visible copy of the name. */
+  isFluidLive.value = fluidReady
+
+  textResizeHandler = () => {
+    layoutMasthead()
+    uploadMasthead()
   }
-
-  fluid.setContentCanvas(createBlankContent())
-
-  resizeObserver = new ResizeObserver(() => fluid.resize())
-  resizeObserver.observe(canvas)
+  window.addEventListener('resize', textResizeHandler)
 })
 
 onUnmounted(() => {
   fluid.destroy()
   resizeObserver?.disconnect()
   resizeObserver = null
+  if (textResizeHandler)
+    window.removeEventListener('resize', textResizeHandler)
 })
 </script>
 
 <template>
-  <div class="lq">
+  <div ref="rootRef" class="lq">
     <canvas
-      ref="canvasRef"
+      ref="fluidCanvasRef"
       class="lq__canvas"
       aria-hidden="true"
     />
-    <WebglFallback v-if="showFallback" />
+    <span
+      ref="nameRef"
+      class="lq__name"
+      :class="{ 'lq__name--hidden': isFluidLive }"
+      aria-hidden="true"
+    >{{ MASTHEAD_TEXT }}</span>
   </div>
 </template>
 
@@ -2182,10 +2365,29 @@ onUnmounted(() => {
 .lq__canvas {
   position: absolute;
   inset: 0;
+  z-index: 3;
   width: 100%;
   height: 100%;
   pointer-events: auto;
   mix-blend-mode: screen;
+}
+
+.lq__name {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  visibility: hidden;
+  pointer-events: none;
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-weight: 400;
+  line-height: 1;
+  color: #F2EFEA;
+  white-space: nowrap;
+}
+
+.lq__name--hidden {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

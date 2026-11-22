@@ -207,7 +207,7 @@ export function useFluidSimulation() {
     /* 0.03 uv keeps the warp inside one counter: the letterform bends and bulges, it never
        travels far enough for a stroke to land on top of its neighbour. */
     warpMax: 0.03,
-    /* 1.0 leaves the fluid the whole ramp, so the field matches /checkpoint/liquid/liquid-2
+    /* 1.0 leaves the fluid the whole ramp, so the field matches /liquid/liquid-2
        exactly; the contour below is what separates the name from it. Lower this only if a route
        wants the pale stops reserved for type. */
     fluidCeil: 1.0,

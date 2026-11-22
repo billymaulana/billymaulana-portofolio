@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm generate",
+  "installCommand": "bun install --frozen-lockfile",
+  "buildCommand": "bun run generate",
   "outputDirectory": ".output/public",
   "framework": "nuxtjs",
   "headers": [

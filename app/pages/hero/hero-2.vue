@@ -4,14 +4,155 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Checkpoint — Liquid 2',
+  title: 'Hero 2',
   robots: 'noindex',
 })
 
-/* Deliberately self-contained: the fluid engine is copied into this file instead of imported from
-   the global composable or the checkpoint route, so editing or deleting it never affects another route. */
+/* Rute ini sengaja mandiri: seluruh engine, state, dan style yang dipakainya tinggal di
+   file ini. Tidak ada composable, constant, atau token CSS global yang dirujuk, sehingga menghapus
+   satu file ini menghapus seluruh eksplorasi tanpa meninggalkan sisa di mana pun. */
 
-/* ── engine: simulasi fluida ─────────────────────────────────────────────── */
+/* ── engine: stage clock ─────────────────────────────────────── */
+function useHeroStage() {
+  const clockText = ref('00:00:00')
+  let clockTimer: ReturnType<typeof setInterval> | null = null
+  let rotatorTimer: ReturnType<typeof setInterval> | null = null
+
+  function startClock() {
+    if (clockTimer)
+      return
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Jakarta',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    })
+    const tick = () => {
+      clockText.value = formatter.format(new Date())
+    }
+    tick()
+    clockTimer = setInterval(tick, 1000)
+  }
+
+  function startStatusRotator(
+    el: HTMLElement,
+    statuses: string[],
+    scramble: (el: HTMLElement) => Promise<void>,
+    intervalMs = 8000,
+  ) {
+    if (rotatorTimer || statuses.length < 2)
+      return
+    let index = 0
+    rotatorTimer = setInterval(() => {
+      index = (index + 1) % statuses.length
+      el.dataset.originalText = statuses[index]!
+      scramble(el)
+    }, intervalMs)
+  }
+
+  function destroy() {
+    if (clockTimer) {
+      clearInterval(clockTimer)
+      clockTimer = null
+    }
+    if (rotatorTimer) {
+      clearInterval(rotatorTimer)
+      rotatorTimer = null
+    }
+  }
+
+  return {
+    clockText,
+    startClock,
+    startStatusRotator,
+    destroy,
+  }
+}
+
+/* ── engine: raster masthead ────────────────────────────────── */
+/**
+ * Masthead rasterizer — menggambar teks hero ke offscreen 2D canvas sebagai
+ * sumber texture untuk display pass useFluidSimulation. Displacement dan
+ * chromatic split kini terjadi di GPU pass fluid, bukan di modul ini.
+ */
+
+interface DistortionLine {
+  text: string
+  xAlign?: 'left' | 'center' | 'right'
+  yFrac?: number
+  indent?: number
+  fontSize?: number
+}
+
+interface MastheadRasterConfig {
+  fontFamily: string
+  fontWeight: number
+  letterSpacingEm: number
+  lines: DistortionLine[]
+}
+
+function distortionTextPadding(width: number): number {
+  const rootFs = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  return Math.min(Math.max(0.875 * rootFs, width * 0.0111), 1.5 * rootFs)
+}
+
+function useMastheadRaster(config: MastheadRasterConfig) {
+  const cfg = {
+    ...config,
+    lines: [...config.lines],
+  }
+  const canvas = document.createElement('canvas')
+
+  function applyFont(ctx: CanvasRenderingContext2D, fontSize: number) {
+    ctx.font = `${cfg.fontWeight} ${fontSize}px ${cfg.fontFamily}`
+    if ('letterSpacing' in ctx)
+      ctx.letterSpacing = `${fontSize * cfg.letterSpacingEm}px`
+  }
+
+  /* Latar HITAM opak, bukan transparan: display pass fluid memakai shader
+     referensi tanpa alpha handling — kompositing ke halaman terjadi lewat
+     mix-blend-mode: difference pada elemen canvas (hitam = identity) */
+  function render(cssWidth: number, cssHeight: number, scale: number): HTMLCanvasElement {
+    const width = Math.max(1, Math.floor(cssWidth * scale))
+    const height = Math.max(1, Math.floor(cssHeight * scale))
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, width, height)
+    ctx.fillStyle = '#ffffff'
+    ctx.textBaseline = 'alphabetic'
+
+    const pad = distortionTextPadding(cssWidth) * scale
+
+    for (let i = 0; i < cfg.lines.length; i++) {
+      const line = cfg.lines[i]!
+      const fontSize = (line.fontSize ?? 200) * scale
+      applyFont(ctx, fontSize)
+      const metrics = ctx.measureText(line.text)
+      const indentPx = (line.indent ?? 0) * (fontSize / 200)
+      const align = line.xAlign ?? 'left'
+      let x = pad + indentPx
+      if (align === 'right')
+        x = width - pad - metrics.width - indentPx
+      else if (align === 'center')
+        x = (width - metrics.width) / 2 + indentPx
+      const yFrac = line.yFrac ?? (i + 1) / (cfg.lines.length + 1)
+      ctx.fillText(line.text, x, yFrac * height)
+    }
+
+    return canvas
+  }
+
+  function updateLines(lines: DistortionLine[]) {
+    cfg.lines = lines
+  }
+
+  return { render, updateLines }
+}
+
+/* ── engine: simulasi fluida ────────────────────────────────── */
 /**
  * useFluidSimulation — Faithful port of Pavel Dobryakov's WebGL-Fluid-Simulation
  * https://github.com/PavelDoGreat/WebGL-Fluid-Simulation (MIT License)
@@ -198,6 +339,7 @@ function useFluidSimulation() {
 
   // ── Content display (mode displacement daspritam) ──
   let contentDisplayEnabled = false
+  let interpolateSegments = false
   let contentDisplayProgram: ProgramObj | null = null
   let contentTexture: TextureObj | null = null
   let pointerGate: ((u: number, v: number) => boolean) | null = null
@@ -1496,12 +1638,16 @@ function useFluidSimulation() {
        satu splat penuh, meniru deposit per-event kecil milik daspritam */
     const dx = seg.deltaX * config.SPLAT_FORCE / count
     const dy = seg.deltaY * config.SPLAT_FORCE / count
-    /* Content mode used to drop one full splat per event at the newest position, so a fast
-       flick (~86px between frames against a ~26px gaussian sigma) printed a row of separate
-       beads. Presence is divided by the sub-splat count together with momentum: the segment
-       deposits exactly what one splat did, only spread along the path instead of stacked at
-       its end, so coverage does not grow with the count. */
+    /* Content mode drops one full splat per event at the newest position, so a fast flick prints
+       separate beads once the per-frame step passes the gaussian sigma. Interpolating only helps
+       when presence is divided by the count alongside momentum — dividing momentum alone is what
+       multiplied dye coverage and flooded the text band. Opt-in so routes calibrated against the
+       single-splat behaviour keep it. */
     if (contentDisplayEnabled) {
+      if (!interpolateSegments) {
+        splat(seg.toX, seg.toY, seg.deltaX * config.SPLAT_FORCE, seg.deltaY * config.SPLAT_FORCE, seg.color)
+        return
+      }
       for (let i = 1; i <= count; i++) {
         const t = i / count
         splat(seg.fromX + (seg.toX - seg.fromX) * t, seg.fromY + (seg.toY - seg.fromY) * t, dx, dy, seg.color, 1 / count)
@@ -1903,6 +2049,7 @@ function useFluidSimulation() {
     densityDissipation?: number
     velocityDissipation?: number
     pressureIterations?: number
+    interpolateSegments?: boolean
   }): boolean {
     canvas = canvasEl
     hueMin = options?.hueMin ?? 0
@@ -1919,6 +2066,7 @@ function useFluidSimulation() {
       config.VELOCITY_DISSIPATION = options.velocityDissipation
     if (options?.pressureIterations !== undefined)
       config.PRESSURE_ITERATIONS = options.pressureIterations
+    interpolateSegments = options?.interpolateSegments ?? false
     contentDisplayEnabled = options?.contentDisplay ?? false
     pointerGate = options?.pointerGate ?? null
     contentDisplay.mode = options?.displayMode === 'dye'
@@ -2059,6 +2207,7 @@ function useFluidSimulation() {
     contentTexture = null
     contentDisplayProgram = null
     contentDisplayEnabled = false
+    interpolateSegments = false
     pointerGate = null
     pointers.length = 0
     splatStack = []
@@ -2075,16 +2224,18 @@ function useFluidSimulation() {
   }
 }
 
-/* ── halaman ─────────────────────────────────────────────────────────────── */
-/* Motion and ink must share one lifetime. At velocity 3.2 / density 1.1 the flow was dead after
-   ~1.2s while the thermal curve kept faint presence visible for 4s+, so the trail sat frozen for
-   about three seconds (measured: 2% of the visible trail still moving at t=3s). Velocity 1.2 lets
-   the flow outlive the bright phase; density 1.8 retires the ink as the flow runs out (79% of the
-   trail moving at 2s, nothing left at 4s). Pressure 20 turns the persisting momentum into coherent
-   rolling vortices instead of stamped blobs, and curl 8 keeps those vortices large and smooth —
-   curl 20 with long-lived velocity shredded the stroke into curly smoke within 0.3s. */
+/* ── halaman ────────────────────────────────────────────── */
+/* Motion and ink share one lifetime. At velocity 3.2 / pressure 3 the flow died after ~1.2s while
+   the thermal curve kept faint presence visible past 4s, so the trail stood still while it faded.
+   Velocity 1.2 lets the flow outlive the bright phase, density 1.8 retires the ink as the flow runs
+   out, pressure 20 turns the surviving momentum into rolling vortices rather than stamped blobs,
+   and curl 8 keeps those vortices large — curl 20 with long-lived velocity shreds a stroke into
+   curly smoke within 0.3s. */
+/* 'faithful' keeps the fluid itself invisible: the only thing drawn is the masthead raster being
+   dragged by the velocity field, with the aberration edge tinted uColor. 'thermal' painted a heat
+   field across the whole canvas, which covered the letters instead of acting on them. */
 const FLUID = {
-  mode: 'thermal' as const,
+  mode: 'faithful' as const,
   color: '#0047FF',
   curl: 8,
   splatRadius: 0.3,
@@ -2097,99 +2248,480 @@ const FLUID = {
   pressureIterations: 20,
 }
 
-const canvasRef = ref<HTMLCanvasElement>()
+const MASTHEAD_TEXT = 'BILLYMAULANA'
+const NAME_FONT = '\'Bebas Neue\', Impact, sans-serif'
+const NAME_TRACKING_EM = -0.015
+const NAME_MEASURE_BASE_PX = 100
+const NAME_Y_FRAC = 0.86
+
+const SOCIAL_LINKS = [
+  { label: 'GitHub', href: 'https://github.com/billymaulana' },
+  { label: 'LinkedIn', href: 'https://linkedin.com/in/billy-maulana' },
+  { label: 'Instagram', href: 'https://instagram.com/billymaulana' },
+]
+
+const sectionRef = ref<HTMLElement>()
+const fluidCanvasRef = ref<HTMLCanvasElement>()
+const namesRef = ref<HTMLElement>()
+const nameRef = ref<HTMLElement>()
+const taglineRef = ref<HTMLElement>()
+const metaRef = ref<HTMLElement>()
+
 const fluid = useFluidSimulation()
-const showFallback = ref(false)
+const heroStage = useHeroStage()
+const { clockText } = heroStage
 
+let gsapCtx: gsap.Context | null = null
 let resizeObserver: ResizeObserver | null = null
+let fluidReady = false
+let textResizeHandler: (() => void) | null = null
+let nameChars: HTMLElement[] = []
 
-/* Display pass mode content tidak menggambar apa pun sebelum texture konten diunggah. Raster hitam
-   polos menggantikan masthead: tanpa tinta teks, yang tersisa di layar hanya heat field termal. */
-function createBlankContent(): HTMLCanvasElement {
-  const blank = document.createElement('canvas')
-  blank.width = 1
-  blank.height = 1
-  const ctx = blank.getContext('2d')!
-  ctx.fillStyle = '#000000'
-  ctx.fillRect(0, 0, 1, 1)
-  return blank
+const mastheadRaster = useMastheadRaster({
+  fontFamily: NAME_FONT,
+  fontWeight: 400,
+  letterSpacingEm: NAME_TRACKING_EM,
+  lines: [],
+})
+
+interface MastheadMetrics {
+  pad: number
+  fontSize: number
+  left: number
+  baselineFromTop: number
 }
 
-onMounted(() => {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    showFallback.value = true
+function measureMasthead(width: number): MastheadMetrics {
+  const ctx = document.createElement('canvas').getContext('2d')!
+  ctx.font = `400 ${NAME_MEASURE_BASE_PX}px ${NAME_FONT}`
+  if ('letterSpacing' in ctx)
+    ctx.letterSpacing = `${NAME_MEASURE_BASE_PX * NAME_TRACKING_EM}px`
+  const metrics = ctx.measureText(MASTHEAD_TEXT)
+  const inkWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight
+  const pad = distortionTextPadding(width)
+  const targetWidth = width - 2 * pad
+  const scale = targetWidth / inkWidth
+  const ascent = metrics.fontBoundingBoxAscent
+  const descent = metrics.fontBoundingBoxDescent
+  return {
+    pad,
+    fontSize: NAME_MEASURE_BASE_PX * scale,
+    left: pad + metrics.actualBoundingBoxLeft * scale,
+    baselineFromTop: ((NAME_MEASURE_BASE_PX - (ascent + descent)) / 2 + ascent) * scale,
+  }
+}
+
+function layoutMasthead() {
+  const section = sectionRef.value
+  const name = nameRef.value
+  if (!section || !name)
+    return
+  const m = measureMasthead(section.clientWidth)
+  const baselineY = NAME_Y_FRAC * section.clientHeight
+  name.style.left = `${m.left}px`
+  name.style.top = `${baselineY - m.baselineFromTop}px`
+  name.style.fontSize = `${m.fontSize}px`
+  name.style.letterSpacing = `${NAME_TRACKING_EM}em`
+  name.style.visibility = 'inherit'
+}
+
+function buildDistortionLines() {
+  const width = sectionRef.value?.clientWidth ?? window.innerWidth
+  const m = measureMasthead(width)
+  return [
+    {
+      text: MASTHEAD_TEXT,
+      xAlign: 'left' as const,
+      yFrac: NAME_Y_FRAC,
+      fontSize: m.fontSize,
+      indent: (m.left - m.pad) * (200 / m.fontSize),
+    },
+  ]
+}
+
+function uploadMasthead() {
+  const section = sectionRef.value
+  if (!section)
+    return
+  mastheadRaster.updateLines(buildDistortionLines())
+  const dpr = window.devicePixelRatio || 1
+  const canvas = mastheadRaster.render(section.clientWidth, section.clientHeight, dpr)
+  if (fluidReady)
+    fluid.setContentCanvas(canvas)
+}
+
+function buildNameChars(el: HTMLElement): HTMLElement[] {
+  const text = el.textContent ?? ''
+  el.textContent = ''
+  const chars: HTMLElement[] = []
+  for (const ch of text) {
+    const span = document.createElement('span')
+    span.className = 'h4__name-char'
+    span.textContent = ch
+    el.appendChild(span)
+    chars.push(span)
+  }
+  return chars
+}
+
+onMounted(async () => {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  if (prefersReduced) {
+    await document.fonts.load(`400 100px ${NAME_FONT}`)
+    await document.fonts.ready
+    layoutMasthead()
+    heroStage.startClock()
+    textResizeHandler = layoutMasthead
+    window.addEventListener('resize', textResizeHandler)
     return
   }
 
-  const canvas = canvasRef.value
-  if (!canvas)
-    return
+  /* The face fetch starts before the gsap chunk is awaited, not after it: a font is only requested
+     when something asks for it, so serialising the two made the masthead wait for the import and
+     the download end to end. Passing the masthead string targets the glyphs actually drawn. */
+  const mastheadFont = document.fonts.load(`400 100px ${NAME_FONT}`, MASTHEAD_TEXT).catch(() => [])
 
-  const ready = fluid.init(canvas, {
-    skipInitialSplats: true,
-    contentDisplay: true,
-    displayMode: FLUID.mode,
-    color: FLUID.color,
-    curl: FLUID.curl,
-    splatRadius: FLUID.splatRadius,
-    splatForce: FLUID.splatForce,
-    displace: FLUID.displace,
-    chromatic: FLUID.chromatic,
-    whiteCore: FLUID.whiteCore,
-    densityDissipation: FLUID.densityDissipation,
-    velocityDissipation: FLUID.velocityDissipation,
-    pressureIterations: FLUID.pressureIterations,
+  const gsapModule = await import('gsap')
+  const gsapLib = gsapModule.default
+  const { ScrollTrigger } = await import('gsap/ScrollTrigger')
+  gsapLib.registerPlugin(ScrollTrigger)
+
+  gsapLib.set(
+    [namesRef.value, taglineRef.value, metaRef.value].filter(Boolean),
+    { autoAlpha: 0 },
+  )
+
+  if (fluidCanvasRef.value) {
+    fluidReady = fluid.init(fluidCanvasRef.value, {
+      skipInitialSplats: true,
+      contentDisplay: true,
+      displayMode: FLUID.mode,
+      color: FLUID.color,
+      curl: FLUID.curl,
+      splatRadius: FLUID.splatRadius,
+      splatForce: FLUID.splatForce,
+      displace: FLUID.displace,
+      chromatic: FLUID.chromatic,
+      whiteCore: FLUID.whiteCore,
+      densityDissipation: FLUID.densityDissipation,
+      velocityDissipation: FLUID.velocityDissipation,
+      pressureIterations: FLUID.pressureIterations,
+      interpolateSegments: true,
+    })
+    if (fluidReady) {
+      fluidCanvasRef.value.style.opacity = '0'
+      resizeObserver = new ResizeObserver(() => {
+        fluid.resize()
+        uploadMasthead()
+      })
+      resizeObserver.observe(fluidCanvasRef.value)
+    }
+  }
+
+  await mastheadFont
+  await document.fonts.ready
+  layoutMasthead()
+  nameChars = nameRef.value
+    ? buildNameChars(nameRef.value)
+    : []
+
+  uploadMasthead()
+
+  textResizeHandler = () => {
+    layoutMasthead()
+    uploadMasthead()
+  }
+  window.addEventListener('resize', textResizeHandler)
+  document.fonts.ready.then(() => textResizeHandler?.())
+
+  gsapCtx = gsapLib.context(() => {
+    const taglineLines = taglineRef.value
+      ? Array.from(taglineRef.value.querySelectorAll<HTMLElement>('.h4__tagline-line'))
+      : []
+    const metaBlocks = metaRef.value
+      ? Array.from(metaRef.value.querySelectorAll<HTMLElement>('.h4__meta-block'))
+      : []
+
+    gsapLib.set(nameChars, { yPercent: 100, filter: 'blur(8px)' })
+    gsapLib.set(taglineLines, { autoAlpha: 0, y: 16, filter: 'blur(10px)' })
+    gsapLib.set(metaBlocks, { autoAlpha: 0 })
+    gsapLib.set(
+      [namesRef.value, taglineRef.value, metaRef.value].filter(Boolean),
+      { autoAlpha: 1 },
+    )
+
+    const tl = gsapLib.timeline({
+      defaults: { ease: 'expo.out' },
+    })
+
+    if (nameChars.length) {
+      tl.to(nameChars, {
+        yPercent: 0,
+        filter: 'blur(0px)',
+        duration: 1,
+        stagger: 0.02,
+        ease: 'power4.out',
+      }, 0)
+    }
+
+    if (taglineLines.length) {
+      tl.to(taglineLines, {
+        autoAlpha: 1,
+        y: 0,
+        filter: 'blur(0px)',
+        duration: 0.9,
+        stagger: 0.12,
+        ease: 'power3.out',
+      }, 0.5)
+    }
+
+    metaBlocks.forEach((block, i) => {
+      tl.to(block, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, 1 + i * 0.09)
+    })
+
+    tl.call(() => {
+      heroStage.startClock()
+    }, [], 1)
+
+    if (fluidReady && fluidCanvasRef.value)
+      tl.to(fluidCanvasRef.value, { opacity: 1, duration: 0.6, ease: 'power3.out' }, 1.35)
+
+    /* The DOM masthead only leaves once the fluid display can redraw it; without WebGL it stays. */
+    if (fluidReady && namesRef.value) {
+      tl.to(namesRef.value, { autoAlpha: 0, duration: 0.6, ease: 'power3.out' }, 1.40)
+      tl.set(namesRef.value, { display: 'none' }, 2.15)
+    }
+
+    if (sectionRef.value) {
+      const parallaxTargets = [taglineRef.value, metaRef.value, fluidCanvasRef.value].filter(Boolean)
+      gsapLib.to(parallaxTargets, {
+        yPercent: -25,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: sectionRef.value,
+          start: 'top top',
+          end: 'bottom top',
+          scrub: 0.5,
+        },
+      })
+
+      const fadeTrigger = () => ({
+        trigger: sectionRef.value,
+        start: 'top top',
+        end: '50% top',
+        scrub: true,
+      })
+
+      gsapLib.to(
+        [taglineRef.value, metaRef.value].filter(Boolean),
+        {
+          opacity: 0,
+          ease: 'none',
+          scrollTrigger: fadeTrigger(),
+        },
+      )
+
+      if (fluidCanvasRef.value) {
+        gsapLib.fromTo(
+          fluidCanvasRef.value,
+          { opacity: 1 },
+          {
+            opacity: 0,
+            ease: 'none',
+            immediateRender: false,
+            scrollTrigger: fadeTrigger(),
+          },
+        )
+      }
+    }
   })
-  if (!ready) {
-    showFallback.value = true
-    return
-  }
-
-  fluid.setContentCanvas(createBlankContent())
-
-  resizeObserver = new ResizeObserver(() => fluid.resize())
-  resizeObserver.observe(canvas)
 })
 
 onUnmounted(() => {
+  gsapCtx?.revert()
   fluid.destroy()
+  heroStage.destroy()
   resizeObserver?.disconnect()
-  resizeObserver = null
+  if (textResizeHandler)
+    window.removeEventListener('resize', textResizeHandler)
 })
 </script>
 
 <template>
-  <div class="lq">
+  <section
+    ref="sectionRef"
+    class="h4-root bg-[#050507] h-[100dvh] w-full relative overflow-hidden"
+    aria-label="Billy Maulana — Frontend Architect & Creative Developer"
+  >
     <canvas
-      ref="canvasRef"
-      class="lq__canvas"
+      ref="fluidCanvasRef"
+      class="h4__fluid h-full w-full pointer-events-auto inset-0 absolute z-3 mix-blend-screen"
       aria-hidden="true"
     />
-    <WebglFallback v-if="showFallback" />
-  </div>
+
+    <div class="h4__grain opacity-[0.07] pointer-events-none inset-0 absolute z-4 mix-blend-overlay" aria-hidden="true" />
+
+    <div ref="namesRef" class="h4__names pointer-events-none inset-0 absolute z-5">
+      <span ref="nameRef" class="h4__name">{{ MASTHEAD_TEXT }}</span>
+      <h1 class="sr-only">
+        Billy Maulana
+      </h1>
+    </div>
+
+    <p ref="taglineRef" class="h4__tagline text-center pointer-events-none absolute z-6">
+      <span class="h4__tagline-line"><em class="h4__tagline-voice">A Frontend Architect</em> crafting interfaces</span>
+      <br aria-hidden="true">
+      <span class="h4__tagline-line">that move millions of people.</span>
+    </p>
+
+    <div ref="metaRef" class="h4__meta flex pointer-events-none items-baseline justify-between absolute z-6">
+      <p class="h4__meta-block h4__meta-clock">
+        Bandung — {{ clockText }} GMT+7
+      </p>
+      <ul class="h4__meta-block h4__meta-socials" aria-label="Social links">
+        <li v-for="social in SOCIAL_LINKS" :key="social.href">
+          <a class="h4__meta-link" :href="social.href" target="_blank" rel="noopener noreferrer">{{ social.label }}</a>
+        </li>
+      </ul>
+      <nav class="h4__meta-block h4__meta-nav" aria-label="Sections">
+        <a class="h4__meta-link" href="#work">Work</a>
+        <a class="h4__meta-link" href="#about">About</a>
+        <a class="h4__meta-link" href="#contact">Contact</a>
+      </nav>
+    </div>
+  </section>
 </template>
 
-<style scoped>
-.lq {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
-  background: #050507;
+<style>
+.h4-root {
+  --h4-pad: clamp(1.25rem, 3.2vw, 3rem);
 }
 
-.lq__canvas {
+.h4__grain {
+  background-image: url('/assets/textures/grain.png');
+  background-size: 200px 200px;
+  background-repeat: repeat;
+}
+
+.h4__name {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-weight: 400;
+  line-height: 1;
+  color: #F2EFEA;
+  white-space: nowrap;
+}
+
+.h4__name-char {
+  display: inline-block;
+  will-change: transform, filter, opacity;
+}
+
+.h4-root .sr-only {
+  font-family: 'Suisse', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.h4__tagline {
+  top: clamp(1.25rem, 4vh, 1.75rem);
+  left: var(--h4-pad);
+  right: var(--h4-pad);
+  margin-inline: auto;
+  max-width: 45rem;
+  text-wrap: balance;
+  font-family: 'Suisse', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.0625rem, 1.9vw, 2.28rem);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  color: #F2EFEA;
+}
+
+.h4__tagline-line {
+  display: inline-block;
+}
+
+.h4__tagline-voice {
+  font-family: 'Apparel', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1em;
+}
+
+.h4__meta {
+  left: var(--h4-pad);
+  right: var(--h4-pad);
+  bottom: var(--h4-pad);
+  font-family: 'Suisse', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400;
+  font-size: 0.625rem;
+  line-height: 1;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(242, 239, 234, 0.92);
+  column-gap: 1rem;
+}
+
+.h4__meta-clock {
+  flex: 1 1 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.h4__meta-socials {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75em;
+}
+
+.h4__meta-socials li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75em;
+}
+
+.h4__meta-socials li + li::before {
+  content: '/';
+  color: rgba(208, 208, 216, 0.3);
+}
+
+.h4__meta-nav {
+  flex: 1 1 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 1.1em;
+}
+
+.h4__meta-link {
   pointer-events: auto;
-  mix-blend-mode: screen;
+  position: relative;
+  color: inherit;
+  transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.h4__meta-link::after {
+  content: '';
+  position: absolute;
+  inset: -0.5rem 0;
+}
+
+.h4__meta-link:hover {
+  color: #F2EFEA;
+}
+
+@media (max-width: 767px) {
+  .h4__meta-socials {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lq__canvas {
+  .h4__fluid {
     display: none;
   }
 }

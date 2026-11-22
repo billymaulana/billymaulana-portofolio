@@ -4,11 +4,11 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Checkpoint — Hero 1',
+  title: 'Hero 4',
   robots: 'noindex',
 })
 
-/* Rute checkpoint sengaja mandiri: seluruh engine, state, dan style yang dipakainya tinggal di
+/* Rute ini sengaja mandiri: seluruh engine, state, dan style yang dipakainya tinggal di
    file ini. Tidak ada composable, constant, atau token CSS global yang dirujuk, sehingga menghapus
    satu file ini menghapus seluruh eksplorasi tanpa meninggalkan sisa di mana pun. */
 
@@ -514,7 +514,7 @@ function useHeroTextWarp(config: Partial<DistortionConfig> = {}) {
   }
 }
 
-/* ── engine: simulasi fluida ────────────────────────────────── */
+/* ── engine: simulasi fluida ─────────────────────────────────────────────── */
 /**
  * useFluidSimulation — Faithful port of Pavel Dobryakov's WebGL-Fluid-Simulation
  * https://github.com/PavelDoGreat/WebGL-Fluid-Simulation (MIT License)
@@ -581,6 +581,17 @@ interface Pointer {
   deltaY: number
   down: boolean
   moved: boolean
+  seeded: boolean
+  color: FluidColor
+}
+
+interface SplatSegment {
+  fromX: number
+  fromY: number
+  toX: number
+  toY: number
+  deltaX: number
+  deltaY: number
   color: FluidColor
 }
 
@@ -592,37 +603,70 @@ function useFluidSimulation() {
   let isWebGL2 = false
   let animFrameId = 0
 
-  // ── Config (Pavel defaults) ──
+  /* Kalibrasi perilaku fluid daspritam.in (decay multiplicative per-frame
+     dikonversi ke bentuk divisive Pavel 1/(1+d*dt) pada dt 1/60):
+     dye 0.93/frame -> 4.5 · velocity 0.90/frame -> 6.7 · curl 20 ·
+     pressure iterations 3 · splat force deltaPx*5 ~ 7200 screen-normalized.
+     Trail mati cepat = tidak ada akumulasi dye = tidak bisa blow-out putih */
   const config = {
     SIM_RESOLUTION: 128,
-    DYE_RESOLUTION: 1024,
-    DENSITY_DISSIPATION: 1.5,
-    VELOCITY_DISSIPATION: 0.6,
+    DYE_RESOLUTION: 512,
+    /* 3.5, bukan 4.5 hasil konversi persis: trail butuh sisa napas ~1s agar
+       smear terbaca sebagai air, bukan kilat. Clamp DYE_MAX tetap menjamin
+       anti blow-out pada dissipation berapapun */
+    DENSITY_DISSIPATION: 4.5,
+    VELOCITY_DISSIPATION: 6.7,
     PRESSURE: 0.8,
-    PRESSURE_ITERATIONS: 20,
-    CURL: 18,
-    SPLAT_RADIUS: 0.25,
-    SPLAT_FORCE: 6000,
-    SHADING: true,
+    PRESSURE_ITERATIONS: 3,
+    /* 14, bukan 20 forensik daspritam: tanpa shading, vorticity 20 masih
+       menyisakan tendril keriting di tepi blob — referensi bertepi mulus */
+    CURL: 14,
+    SPLAT_RADIUS: 0.35,
+    SPLAT_FORCE: 7200,
+    /* Referensi daspritam tanpa shading/bloom/sunrays: normal-based shading
+       memberi relief 3D kasar, sunrays flicker radial saat dye melewati
+       threshold — keduanya sumber "kedip" dan tekstur berkerut */
+    SHADING: false,
     COLORFUL: true,
     COLOR_UPDATE_SPEED: 10,
     PAUSED: false,
     BACK_COLOR: { r: 0, g: 0, b: 0 },
     TRANSPARENT: false,
-    BLOOM: true,
+    BLOOM: false,
     BLOOM_ITERATIONS: 8,
     BLOOM_RESOLUTION: 256,
-    BLOOM_INTENSITY: 0.8,
-    BLOOM_THRESHOLD: 0.6,
+    BLOOM_INTENSITY: 0.7,
+    BLOOM_THRESHOLD: 0.8,
     BLOOM_SOFT_KNEE: 0.7,
-    SUNRAYS: true,
+    SUNRAYS: false,
     SUNRAYS_RESOLUTION: 196,
     SUNRAYS_WEIGHT: 1.0,
   }
 
+  /* Dye di-clamp saat splat: dissipation cepat sekalipun, gerakan menetap di
+     satu titik menumpuk deposit >1 dan bloom memutihkan layar. Clamp = plafon
+     energi; velocity TIDAK di-clamp (butuh rentang ratusan, bertanda) */
+  /* 0.85, bukan 1.0: hue cycling menumpuk deposit beda warna di titik dwell —
+     ketiga channel mencapai plafon bersamaan = core memutih. Di bawah 1.0
+     campuran tetap ber-tint dan bloom prefilter (threshold 0.8) nyaris diam */
+  const DYE_MAX = 0.85
+  const VELOCITY_CLAMP = 1e6
+  /* Sub-splat interpolasi segmen: jarak antar deposit jauh di bawah FWHM
+     gaussian radius 0.3 (~0.09 uv) supaya flick cepat tetap pita kontinu */
+  const SPLAT_INTERP_SPACING = 0.02
+  const MAX_SPLATS_PER_SEGMENT = 8
+  /* 1.4, bukan 1.8: radius 0.35 menaikkan total deposit ~2x (terukur mean
+     luminance 22 vs 11) — sustained sweep memenuhi layar dengan kabut,
+     sedangkan referensi menjaga background tetap void */
+  const DYE_SPLAT_MULT = 1.2
+
   // ── Pointers ──
   const pointers: Pointer[] = []
   let splatStack: number[] = []
+  /* Cap 32: bila rAF macet (tab background) event menumpuk — segmen tertua
+     dibuang daripada membanjiri GPU dengan ratusan splat sekali frame */
+  const splatSegments: SplatSegment[] = []
+  const MAX_QUEUED_SEGMENTS = 32
 
   // ── Programs ──
   let blurProgram: ProgramObj | null = null
@@ -654,6 +698,28 @@ function useFluidSimulation() {
   let sunraysFBO: FBO | null = null
   let sunraysTempFBO: FBO | null = null
   let ditheringTexture: TextureObj | null = null
+
+  // ── Content display (mode displacement daspritam) ──
+  let contentDisplayEnabled = false
+  let contentDisplayProgram: ProgramObj | null = null
+  let contentTexture: TextureObj | null = null
+  let pointerGate: ((u: number, v: number) => boolean) | null = null
+
+  const contentDisplay = {
+    mode: 0,
+    displace: 0.001,
+    chromatic: 0.003,
+    color: [0, 0.28, 1] as [number, number, number],
+    whiteCore: 0.95,
+  }
+
+  function hexToRgb(hex: string): [number, number, number] {
+    const h = hex.replace('#', '')
+    const int = Number.parseInt(h.length === 3
+      ? h.replace(/./g, c => c + c)
+      : h, 16)
+    return [(int >> 16 & 255) / 255, (int >> 8 & 255) / 255, (int & 255) / 255]
+  }
 
   // ── Blit ──
   let blit: ((target: FBO | null, clear?: boolean) => void) | null = null
@@ -910,12 +976,18 @@ function useFluidSimulation() {
     uniform vec3 color;
     uniform vec2 point;
     uniform float radius;
+    uniform float clampValue;
     void main () {
         vec2 p = vUv - point.xy;
         p.x *= aspectRatio;
         vec3 splat = exp(-dot(p, p) / radius) * color;
-        vec3 base = texture2D(uTarget, vUv).xyz;
-        gl_FragColor = vec4(base + splat, 1.0);
+        vec3 result = texture2D(uTarget, vUv).xyz + splat;
+        /* Skala proporsional, bukan min() per-channel: min meratakan ketiga
+           channel ke plafon yang sama sehingga titik dwell memutih abu-abu;
+           skala mempertahankan rasio hue tinta */
+        float peak = max(result.x, max(result.y, result.z));
+        result *= peak > clampValue ? clampValue / peak : 1.0;
+        gl_FragColor = vec4(result, 1.0);
     }
   `
 
@@ -1066,6 +1138,107 @@ function useFluidSimulation() {
         vec2 vel = texture2D(uVelocity, vUv).xy;
         vel.xy -= vec2(R - L, T - B);
         gl_FragColor = vec4(vel, 0.0, 1.0);
+    }
+  `
+
+  /* Display pass daspritam: velocity fluid men-displace konten (uv - vel*0.001).
+     Fringe chromatic R-vs-G/B (dulu merah+aqua) diganti tint dua-tone biru:
+     TANDA aberration (hi-lo) memilih #0000ff (biru solid) vs #0061ff (azure),
+     magnitudonya jadi kekuatan mix ke tepi huruf yang bergerak. */
+  /* Buffer dye mode content menyimpan (vx, vy, presence): rg = vektor
+     kecepatan (peta displacement, meluruh bersih), b = density presence 0..1
+     penanda jejak kursor. Tiga mode display via uMode (semua parameter uniform
+     supaya warna/displace/chromatic diubah dari config tanpa menyentuh GLSL):
+       0 FAITHFUL — paritas mekanik daspritam: fluid invisible, teks meleleh +
+         chromatic aberration; energi tepi diberi tint uColor (biru).
+       1 DYE — tubuh cairan uColor terlihat dengan inti putih (non-daspritam).
+       2 THERMAL — energi tepi (presence + speed) dipetakan lewat colormap
+         termal 9-stop, dipakai identik dengan background heat field. */
+  const contentDisplayShaderSource = `
+    precision highp float;
+
+    uniform sampler2D tMap;
+    uniform sampler2D tFluid;
+    uniform float uMode;
+    uniform float uDisplace;
+    uniform float uChromatic;
+    uniform vec3 uColor;
+    uniform float uWhite;
+    varying vec2 vUv;
+
+    const vec3 C0 = vec3(0.020, 0.020, 0.027);
+    const vec3 C1 = vec3(0.059, 0.039, 0.447);
+    const vec3 C2 = vec3(0.227, 0.102, 0.620);
+    const vec3 C3 = vec3(0.420, 0.184, 0.784);
+    const vec3 C4 = vec3(0.639, 0.169, 0.659);
+    const vec3 C5 = vec3(0.831, 0.361, 0.431);
+    const vec3 C6 = vec3(0.933, 0.541, 0.165);
+    const vec3 C7 = vec3(0.973, 0.749, 0.153);
+    const vec3 C8 = vec3(0.996, 0.898, 0.365);
+    const vec3 C9 = vec3(0.999, 0.961, 0.702);
+    const vec3 C10 = vec3(1.000, 0.996, 0.961);
+
+    vec3 thermal(float t) {
+      t = clamp(t, 0.0, 1.0);
+      if (t < 0.13) return mix(C0, C1, smoothstep(0.00, 0.13, t));
+      if (t < 0.28) return mix(C1, C2, smoothstep(0.13, 0.28, t));
+      if (t < 0.43) return mix(C2, C3, smoothstep(0.28, 0.43, t));
+      if (t < 0.56) return mix(C3, C4, smoothstep(0.43, 0.56, t));
+      if (t < 0.68) return mix(C4, C5, smoothstep(0.56, 0.68, t));
+      if (t < 0.79) return mix(C5, C6, smoothstep(0.68, 0.79, t));
+      if (t < 0.875) return mix(C6, C7, smoothstep(0.79, 0.875, t));
+      if (t < 0.935) return mix(C7, C8, smoothstep(0.875, 0.935, t));
+      if (t < 0.975) return mix(C8, C9, smoothstep(0.935, 0.975, t));
+      return mix(C9, C10, smoothstep(0.975, 1.00, t));
+    }
+
+    void main() {
+      vec3 f = texture2D(tFluid, vUv).rgb;
+      vec2 vel = f.rg;
+      float presence = clamp(f.b, 0.0, 1.6);
+
+      vec2 uv = vUv;
+      vec2 uv2 = uv - vel * uDisplace;
+      vec3 base = texture2D(tMap, uv2).rgb;
+
+      vec2 shift = vel * uChromatic;
+      vec3 sh = texture2D(tMap, vec2(uv.x - shift.x, uv.y + shift.y)).rgb;
+
+      vec3 col;
+      if (uMode < 0.5) {
+        float aberr = clamp(length(sh - base), 0.0, 1.0);
+        col = base + uColor * aberr;
+      } else if (uMode < 1.5) {
+        base.g = sh.g;
+        base.b = sh.b;
+        vec3 hue = mix(uColor, vec3(1.0), smoothstep(uWhite, uWhite + 0.4, presence));
+        vec3 body = hue * smoothstep(0.0, 0.3, presence);
+        float cover = smoothstep(0.04, 0.22, presence);
+        col = mix(base, body, cover);
+      } else {
+        float speed = length(vel);
+        /* Pemotongan keras di ujung panas memetakan semua energi di atas ambang
+           ke warna identik, sehingga inti aliran runtuh jadi bidang cream rata
+           dan detail yang sudah dihitung solver terbuang. Kurva eksponensial
+           mendekati 1 tanpa pernah menyentuhnya — gradasi tetap hidup sampai
+           piksel terpanas. */
+        float raw = presence * 0.62 + speed * 0.0042;
+        float heat = pow(1.0 - exp(-raw * 1.35), 0.62);
+
+        vec3 hot = thermal(heat);
+        float cover = smoothstep(0.015, 0.30, heat);
+
+        /* Pemisahan kanal RGB milik mode dye menghasilkan cyan dan merah pada tinta putih —
+           dua warna yang tidak ada di ramp termal, sehingga terbaca sebagai artefak rusak.
+           Magnitudo aberasi dipertahankan, tapi warnanya diambil dari ramp pada suhu lebih
+           tinggi supaya tepi yang bergerak tetap berada di dalam palet. */
+        float aberr = clamp(length(sh - base), 0.0, 1.0);
+        vec3 ink = mix(base, thermal(min(heat + 0.34, 1.0)), aberr * 0.85);
+
+        col = mix(ink, max(ink, hot), cover);
+      }
+
+      gl_FragColor = vec4(col, 1.0);
     }
   `
 
@@ -1557,11 +1730,14 @@ function useFluidSimulation() {
     if (splatStack.length > 0)
       multipleSplats(splatStack.pop()!)
 
+    if (splatSegments.length > 0) {
+      for (const seg of splatSegments)
+        splatSegment(seg)
+      splatSegments.length = 0
+    }
+
     pointers.forEach((p) => {
-      if (p.moved) {
-        p.moved = false
-        splatPointer(p)
-      }
+      p.moved = false
     })
   }
 
@@ -1632,6 +1808,10 @@ function useFluidSimulation() {
   }
 
   function render(target: FBO | null) {
+    if (contentDisplayEnabled) {
+      drawContentDisplay(target)
+      return
+    }
     const g = gl!
     if (config.BLOOM)
       applyBloom(dye!.read, bloomFBO!)
@@ -1680,6 +1860,54 @@ function useFluidSimulation() {
     }
     if (config.SUNRAYS)
       g.uniform1i(displayMaterial!.uniforms.uSunrays!, sunraysFBO!.attach(3))
+    blit!(target)
+  }
+
+  function setContentCanvas(source: HTMLCanvasElement) {
+    if (!gl)
+      return
+    const g = gl
+    if (!contentTexture) {
+      const texture = g.createTexture()!
+      g.bindTexture(g.TEXTURE_2D, texture)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE)
+      contentTexture = {
+        texture,
+        width: source.width,
+        height: source.height,
+        attach(id: number) {
+          g.activeTexture(g.TEXTURE0 + id)
+          g.bindTexture(g.TEXTURE_2D, texture)
+          return id
+        },
+      }
+    }
+    g.bindTexture(g.TEXTURE_2D, contentTexture.texture)
+    /* Raster 2D top-down, vUv WebGL bottom-up — flip saat upload agar
+       searah dengan velocity field (texcoordY pointer sudah di-flip) */
+    g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, true)
+    g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, source)
+    g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, false)
+    contentTexture.width = source.width
+    contentTexture.height = source.height
+  }
+
+  function drawContentDisplay(target: FBO | null) {
+    if (!contentTexture || !contentDisplayProgram)
+      return
+    const g = gl!
+    g.disable(g.BLEND)
+    contentDisplayProgram.bind()
+    g.uniform1i(contentDisplayProgram.uniforms.tMap!, contentTexture.attach(0))
+    g.uniform1i(contentDisplayProgram.uniforms.tFluid!, dye!.read.attach(1))
+    g.uniform1f(contentDisplayProgram.uniforms.uMode!, contentDisplay.mode)
+    g.uniform1f(contentDisplayProgram.uniforms.uDisplace!, contentDisplay.displace)
+    g.uniform1f(contentDisplayProgram.uniforms.uChromatic!, contentDisplay.chromatic)
+    g.uniform3f(contentDisplayProgram.uniforms.uColor!, contentDisplay.color[0], contentDisplay.color[1], contentDisplay.color[2])
+    g.uniform1f(contentDisplayProgram.uniforms.uWhite!, contentDisplay.whiteCore)
     blit!(target)
   }
 
@@ -1760,10 +1988,40 @@ function useFluidSimulation() {
   // SPLAT + COLOR
   // ══════════════════════════════════════════════════════════════════════
 
-  function splatPointer(pointer: Pointer) {
-    const dx = pointer.deltaX * config.SPLAT_FORCE
-    const dy = pointer.deltaY * config.SPLAT_FORCE
-    splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color)
+  /* Paritas daspritam: setiap event pointer di-queue sebagai segmen lalu
+     dipecah menjadi sub-splat sepanjang garis lama->baru. Satu splat per
+     frame (perilaku lama) meninggalkan titik-titik terpisah saat flick
+     karena delta satu frame bisa melampaui radius gaussian */
+  function splatSegment(seg: SplatSegment) {
+    const dist = Math.hypot(seg.deltaX, seg.deltaY)
+    const count = Math.max(1, Math.min(Math.ceil(dist / SPLAT_INTERP_SPACING), MAX_SPLATS_PER_SEGMENT))
+    /* Momentum dibagi rata antar sub-splat: total energi per segmen setara
+       satu splat penuh, meniru deposit per-event kecil milik daspritam */
+    const dx = seg.deltaX * config.SPLAT_FORCE / count
+    const dy = seg.deltaY * config.SPLAT_FORCE / count
+    /* Content mode used to drop one full splat per event at the newest position, so a fast
+       flick (~86px between frames against a ~26px gaussian sigma) printed a row of separate
+       beads. Presence is divided by the sub-splat count together with momentum: the segment
+       deposits exactly what one splat did, only spread along the path instead of stacked at
+       its end, so coverage does not grow with the count. */
+    if (contentDisplayEnabled) {
+      for (let i = 1; i <= count; i++) {
+        const t = i / count
+        splat(seg.fromX + (seg.toX - seg.fromX) * t, seg.fromY + (seg.toY - seg.fromY) * t, dx, dy, seg.color, 1 / count)
+      }
+      return
+    }
+    const dyeColor = {
+      r: seg.color.r * DYE_SPLAT_MULT,
+      g: seg.color.g * DYE_SPLAT_MULT,
+      b: seg.color.b * DYE_SPLAT_MULT,
+    }
+    for (let i = 1; i <= count; i++) {
+      const t = i / count
+      const x = seg.fromX + (seg.toX - seg.fromX) * t
+      const y = seg.fromY + (seg.toY - seg.fromY) * t
+      splat(x, y, dx, dy, dyeColor)
+    }
   }
 
   function multipleSplats(amount: number) {
@@ -1780,19 +2038,55 @@ function useFluidSimulation() {
     }
   }
 
-  function splat(x: number, y: number, dx: number, dy: number, color: FluidColor) {
+  /* 14 (dari 10): dissipation cepat kalibrasi daspritam memangkas umur splat
+     tunggal — deposit awal dinaikkan agar splat programatik tetap terbaca
+     tanpa mengubah kontrak pemanggil; plafon dijaga clamp DYE_MAX di shader */
+  function emitSplat(x: number, y: number, dx: number, dy: number, brightness = 1, radius?: number) {
+    const color = generateColor()
+    color.r *= 14.0 * brightness
+    color.g *= 14.0 * brightness
+    color.b *= 14.0 * brightness
+    if (radius === undefined) {
+      splat(x, y, dx, dy, color)
+      return
+    }
+    const previousRadius = config.SPLAT_RADIUS
+    config.SPLAT_RADIUS = radius
+    splat(x, y, dx, dy, color)
+    config.SPLAT_RADIUS = previousRadius
+  }
+
+  function splat(x: number, y: number, dx: number, dy: number, color: FluidColor, presence = 1) {
     const g = gl!
     splatProgram!.bind()
     g.uniform1i(splatProgram!.uniforms.uTarget!, velocity!.read.attach(0))
     g.uniform1f(splatProgram!.uniforms.aspectRatio!, canvas!.width / canvas!.height)
     g.uniform2f(splatProgram!.uniforms.point!, x, y)
     g.uniform3f(splatProgram!.uniforms.color!, dx, dy, 0.0)
-    g.uniform1f(splatProgram!.uniforms.radius!, correctRadius(config.SPLAT_RADIUS / 100.0))
+    /* Wiring OGL referensi memakai radius mentah tanpa koreksi aspect —
+       correctRadius Pavel melebarkan blob ~2x di layar landscape */
+    g.uniform1f(splatProgram!.uniforms.radius!, contentDisplayEnabled
+      ? config.SPLAT_RADIUS / 100.0
+      : correctRadius(config.SPLAT_RADIUS / 100.0))
+    g.uniform1f(splatProgram!.uniforms.clampValue!, VELOCITY_CLAMP)
     blit!(velocity!.write)
     velocity!.swap()
 
     g.uniform1i(splatProgram!.uniforms.uTarget!, dye!.read.attach(0))
-    g.uniform3f(splatProgram!.uniforms.color!, color.r, color.g, color.b)
+    if (contentDisplayEnabled) {
+      /* Paritas daspritam: dye di-splat dengan vektor kecepatan (dx,dy,1) dan
+         menjadi peta displacement — bukan velocity field. Velocity hasil
+         pressure-projection punya lobus +/- berselang dan disustain vorticity
+         (tearing zebra + residu saat idle); density murni ter-advect dan
+         meluruh multiplicative sehingga teks selalu pulih utuh. Tanpa clamp
+         DYE_MAX: nilai kecepatan ratusan akan tergencet ke 0.85 */
+      g.uniform3f(splatProgram!.uniforms.color!, dx, dy, presence)
+      g.uniform1f(splatProgram!.uniforms.clampValue!, VELOCITY_CLAMP)
+    }
+    else {
+      g.uniform3f(splatProgram!.uniforms.color!, color.r, color.g, color.b)
+      g.uniform1f(splatProgram!.uniforms.clampValue!, DYE_MAX)
+    }
     blit!(dye!.write)
     dye!.swap()
   }
@@ -1804,8 +2098,13 @@ function useFluidSimulation() {
     return radius
   }
 
+  let hueMin = 0
+  let hueMax = 1
+
   function generateColor(): FluidColor {
-    const c = HSVtoRGB(Math.random(), 1.0, 1.0)
+    const span = hueMax - hueMin
+    const hue = ((hueMin + Math.random() * span) % 1 + 1) % 1
+    const c = HSVtoRGB(hue, 1.0, 1.0)
     c.r *= 0.15
     c.g *= 0.15
     c.b *= 0.15
@@ -1907,6 +2206,7 @@ function useFluidSimulation() {
       deltaY: 0,
       down: false,
       moved: false,
+      seeded: false,
       color: { r: 30 * 0.15 / 255, g: 0, b: 300 * 0.15 / 255 },
     }
   }
@@ -1922,9 +2222,27 @@ function useFluidSimulation() {
     pointer.deltaX = 0
     pointer.deltaY = 0
     pointer.color = generateColor()
+    pointer.seeded = true
   }
 
   function updatePointerMoveData(pointer: Pointer, posX: number, posY: number) {
+    /* Pointer lahir di texcoord (0,0), bukan di posisi kursor sebenarnya. Karena
+       mousemove di sini tidak lagi digerbangi `down` seperti port aslinya, event
+       pertama akan menghitung delta dari sudut kanvas ke kursor dan meledak jadi
+       satu splat sepanjang layar — cukup kursor kebetulan berada di atas viewport
+       saat halaman dimuat. Event pertama hanya menanam posisi, tanpa gaya. */
+    if (!pointer.seeded) {
+      pointer.texcoordX = posX / canvas!.width
+      pointer.texcoordY = 1.0 - posY / canvas!.height
+      pointer.prevTexcoordX = pointer.texcoordX
+      pointer.prevTexcoordY = pointer.texcoordY
+      pointer.deltaX = 0
+      pointer.deltaY = 0
+      pointer.moved = false
+      pointer.seeded = true
+      return
+    }
+
     pointer.prevTexcoordX = pointer.texcoordX
     pointer.prevTexcoordY = pointer.texcoordY
     pointer.texcoordX = posX / canvas!.width
@@ -1932,6 +2250,22 @@ function useFluidSimulation() {
     pointer.deltaX = correctDeltaX(pointer.texcoordX - pointer.prevTexcoordX)
     pointer.deltaY = correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY)
     pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0
+    /* Segmen per event (bukan per frame): browser yang tidak meng-coalesce
+       mousemove mengirim >1 event/frame — semua gerakan ikut ter-splat,
+       bukan hanya delta event terakhir */
+    if (pointer.moved && (!pointerGate || pointerGate(pointer.texcoordX, pointer.texcoordY))) {
+      if (splatSegments.length >= MAX_QUEUED_SEGMENTS)
+        splatSegments.shift()
+      splatSegments.push({
+        fromX: pointer.prevTexcoordX,
+        fromY: pointer.prevTexcoordY,
+        toX: pointer.texcoordX,
+        toY: pointer.texcoordY,
+        deltaX: pointer.deltaX,
+        deltaY: pointer.deltaY,
+        color: pointer.color,
+      })
+    }
   }
 
   function updatePointerUpData(pointer: Pointer) {
@@ -2038,10 +2372,11 @@ function useFluidSimulation() {
   // MAIN LOOP
   // ══════════════════════════════════════════════════════════════════════
 
+  /* resizeCanvas tidak boleh dipanggil per frame: membaca clientWidth tiap
+     frame memicu forced reflow (terukur 92ms/5s trace) — resize ditangani
+     ResizeObserver pemilik canvas via resize() publik */
   function update() {
     const dt = calcDeltaTime()
-    if (resizeCanvas())
-      initFramebuffers()
     updateColors(dt)
     applyInputs()
     if (!config.PAUSED)
@@ -2054,8 +2389,54 @@ function useFluidSimulation() {
   // PUBLIC API
   // ══════════════════════════════════════════════════════════════════════
 
-  function init(canvasEl: HTMLCanvasElement, options?: { skipInitialSplats?: boolean }): boolean {
+  function init(canvasEl: HTMLCanvasElement, options?: {
+    skipInitialSplats?: boolean
+    hueMin?: number
+    hueMax?: number
+    curl?: number
+    splatRadius?: number
+    splatForce?: number
+    contentDisplay?: boolean
+    pointerGate?: (u: number, v: number) => boolean
+    displayMode?: 'faithful' | 'dye' | 'thermal'
+    displace?: number
+    chromatic?: number
+    color?: string
+    whiteCore?: number
+    densityDissipation?: number
+    velocityDissipation?: number
+    pressureIterations?: number
+  }): boolean {
     canvas = canvasEl
+    hueMin = options?.hueMin ?? 0
+    hueMax = options?.hueMax ?? 1
+    if (options?.curl !== undefined)
+      config.CURL = options.curl
+    if (options?.splatRadius !== undefined)
+      config.SPLAT_RADIUS = options.splatRadius
+    if (options?.splatForce !== undefined)
+      config.SPLAT_FORCE = options.splatForce
+    if (options?.densityDissipation !== undefined)
+      config.DENSITY_DISSIPATION = options.densityDissipation
+    if (options?.velocityDissipation !== undefined)
+      config.VELOCITY_DISSIPATION = options.velocityDissipation
+    if (options?.pressureIterations !== undefined)
+      config.PRESSURE_ITERATIONS = options.pressureIterations
+    contentDisplayEnabled = options?.contentDisplay ?? false
+    pointerGate = options?.pointerGate ?? null
+    contentDisplay.mode = options?.displayMode === 'dye'
+      ? 1
+      : options?.displayMode === 'thermal'
+        ? 2
+        : 0
+    if (options?.displace !== undefined)
+      contentDisplay.displace = options.displace
+    if (options?.chromatic !== undefined)
+      contentDisplay.chromatic = options.chromatic
+    if (options?.color !== undefined)
+      contentDisplay.color = hexToRgb(options.color)
+    if (options?.whiteCore !== undefined)
+      contentDisplay.whiteCore = options.whiteCore
 
     const ctx = getWebGLContext(canvas)
     if (!ctx || !ctx.ext.formatRGBA) {
@@ -2106,6 +2487,9 @@ function useFluidSimulation() {
 
     displayMaterial = createMaterial(baseVertexShader, displayShaderSource)
 
+    if (contentDisplayEnabled)
+      contentDisplayProgram = createProgramObj(baseVertexShader, compileShader(gl.FRAGMENT_SHADER, contentDisplayShaderSource))
+
     // Setup blit (fullscreen quad)
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), gl.STATIC_DRAW)
@@ -2135,6 +2519,7 @@ function useFluidSimulation() {
     pointers.push(createPointer())
 
     updateKeywords()
+    resizeCanvas()
     initFramebuffers()
 
     // Initial splats (skip if hero wants black-first activation)
@@ -2174,11 +2559,23 @@ function useFluidSimulation() {
     sunraysFBO = null
     sunraysTempFBO = null
     ditheringTexture = null
+    contentTexture = null
+    contentDisplayProgram = null
+    contentDisplayEnabled = false
+    pointerGate = null
     pointers.length = 0
     splatStack = []
+    splatSegments.length = 0
   }
 
-  return { init, resize, destroy }
+  return {
+    init,
+    resize,
+    destroy,
+    multipleSplats,
+    emitSplat,
+    setContentCanvas,
+  }
 }
 
 /* ── halaman ────────────────────────────────────────────── */
@@ -2186,13 +2583,19 @@ const MASTHEAD_TEXT = 'BILLYMAULANA'
 const NAME_FONT = '\'Bebas Neue\', Impact, sans-serif'
 const MASTHEAD_PROBE_PX = 200
 
-/* Rasio grid diukur dari piksel chdartmaker.com pada 1440x900: tinggi tinta
-   masthead 192px, tepi atas tinta 24px di bawah tepi kontainer, jarak tinta
-   masthead ke tinta nav 69px. Disimpan sebagai rasio, bukan px, supaya
-   proporsinya bertahan di setiap lebar viewport */
-const CAP_PER_VIEWPORT = 192 / 1440
-const INK_TOP_PER_CAP = 24 / 192
-const NAV_GAP_PER_CAP = 69 / 192
+/* Geometri masthead disalin dari /hero/hero-2: tracking −0.015em, font-size diskalakan
+   sampai lebar tinta = lebar section − 2×pad, dan baseline jatuh di 86% tinggi section. Canvas warp
+   diberi bleed 24/192 cap di atas dan bawah tinta (rasio hero-3) supaya tinta yang tergeser warp
+   tidak terpotong tepi canvas. */
+const NAME_TRACKING_EM = -0.015
+const NAME_Y_FRAC = 0.86
+const INK_BLEED_PER_CAP = 24 / 192
+
+const SOCIAL_LINKS = [
+  { label: 'GitHub', href: 'https://github.com/billymaulana' },
+  { label: 'LinkedIn', href: 'https://linkedin.com/in/billy-maulana' },
+  { label: 'Instagram', href: 'https://instagram.com/billymaulana' },
+]
 
 const NAV_LINKS = [
   { label: 'Work', href: '#work' },
@@ -2200,13 +2603,48 @@ const NAV_LINKS = [
   { label: 'Contact', href: '#contact' },
 ]
 
+/* Motion and ink must share one lifetime. At velocity 3.2 / density 1.1 the flow was dead after
+   ~1.2s while the thermal curve kept faint presence visible for 4s+, so the trail sat frozen for
+   about three seconds (measured: 2% of the visible trail still moving at t=3s). Velocity 1.2 lets
+   the flow outlive the bright phase; density 1.8 retires the ink as the flow runs out (79% of the
+   trail moving at 2s, nothing left at 4s). Pressure 20 turns the persisting momentum into coherent
+   rolling vortices instead of stamped blobs, and curl 8 keeps those vortices large and smooth —
+   curl 20 with long-lived velocity shredded the stroke into curly smoke within 0.3s. */
+const FLUID = {
+  mode: 'thermal' as const,
+  color: '#0047FF',
+  curl: 8,
+  splatRadius: 0.3,
+  splatForce: 7200,
+  displace: 0.001,
+  chromatic: 0.003,
+  whiteCore: 0.95,
+  densityDissipation: 1.8,
+  velocityDissipation: 1.2,
+  pressureIterations: 20,
+}
+
+/* Display pass mode content tidak menggambar apa pun sebelum texture konten diunggah. Masthead
+   sudah punya canvas warp sendiri, jadi texture konten fluida cukup raster hitam polos: yang
+   tersisa di canvas ini hanya heat field termal, dan hitamnya hilang lewat blend screen. */
+function createBlankContent(): HTMLCanvasElement {
+  const blank = document.createElement('canvas')
+  blank.width = 1
+  blank.height = 1
+  const ctx = blank.getContext('2d')!
+  ctx.fillStyle = '#000000'
+  ctx.fillRect(0, 0, 1, 1)
+  return blank
+}
+
 const sectionRef = ref<HTMLElement>()
 const headRef = ref<HTMLElement>()
 const fluidCanvasRef = ref<HTMLCanvasElement>()
 const textCanvasRef = ref<HTMLCanvasElement>()
-const navRef = ref<HTMLElement>()
-const footRef = ref<HTMLElement>()
+const taglineRef = ref<HTMLElement>()
+const metaRef = ref<HTMLElement>()
 const isTextReady = ref(false)
+const clockText = ref('00:00:00')
 
 const fluid = useFluidSimulation()
 
@@ -2216,82 +2654,66 @@ let fluidReady = false
 let fluidActivated = false
 let textDistortion: ReturnType<typeof useHeroTextWarp> | null = null
 let textResizeHandler: (() => void) | null = null
+let clockTimer: ReturnType<typeof setInterval> | null = null
 
-let mastheadCapRatio = 0
+function mastheadPad(width: number): number {
+  const rootFs = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  return Math.min(Math.max(0.875 * rootFs, width * 0.0111), 1.5 * rootFs)
+}
 
-function inkHeightPerFontSize(): number {
-  if (mastheadCapRatio)
-    return mastheadCapRatio
+function applyMastheadFont(ctx: CanvasRenderingContext2D, fontSize: number) {
+  ctx.font = `400 ${fontSize}px ${NAME_FONT}`
+  if ('letterSpacing' in ctx)
+    ctx.letterSpacing = `${fontSize * NAME_TRACKING_EM}px`
+}
+
+interface MastheadMetrics {
+  pad: number
+  fontSize: number
+  baselineInCanvas: number
+}
+
+function measureMasthead(width: number): MastheadMetrics {
   const ctx = document.createElement('canvas').getContext('2d')!
-  ctx.font = `400 ${MASTHEAD_PROBE_PX}px ${NAME_FONT}`
+  applyMastheadFont(ctx, MASTHEAD_PROBE_PX)
+  const probe = ctx.measureText(MASTHEAD_TEXT)
+  const pad = mastheadPad(width)
+  const probeInk = probe.actualBoundingBoxLeft + probe.actualBoundingBoxRight
+  const fontSize = (MASTHEAD_PROBE_PX * (width - 2 * pad)) / probeInk
+  applyMastheadFont(ctx, fontSize)
   const m = ctx.measureText(MASTHEAD_TEXT)
-  mastheadCapRatio = (m.actualBoundingBoxAscent + m.actualBoundingBoxDescent) / MASTHEAD_PROBE_PX
-  return mastheadCapRatio
+  const bleed = Math.round((m.actualBoundingBoxAscent + m.actualBoundingBoxDescent) * INK_BLEED_PER_CAP)
+  return { pad, fontSize, baselineInCanvas: bleed + m.actualBoundingBoxAscent }
 }
 
-function computeMastheadFontSize(): number {
-  const w = sectionRef.value?.clientWidth ?? window.innerWidth
-  return (w * CAP_PER_VIEWPORT) / inkHeightPerFontSize()
-}
-
-/* Gap referensi diukur tinta-ke-tinta, sedangkan nav diposisikan lewat tepi
-   box-nya — selisih half-leading plus jarak ascender ke cap harus dibuang
-   supaya jarak yang TERLIHAT sama, bukan jarak box-nya */
-function navInkTopOffset(): number {
-  const link = navRef.value?.querySelector<HTMLElement>('.chd__nav-link')
-  if (!link)
-    return 0
-  const cs = getComputedStyle(link)
-  const ctx = document.createElement('canvas').getContext('2d')!
-  ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
-  const m = ctx.measureText(link.textContent ?? 'W')
-  const lineBox = navRef.value?.getBoundingClientRect().height ?? 0
-  const halfLeading = (lineBox - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2
-  return Math.max(0, halfLeading + m.fontBoundingBoxAscent - m.actualBoundingBoxAscent)
+function layoutMasthead(): number {
+  const section = sectionRef.value
+  const head = headRef.value
+  const m = measureMasthead(section?.clientWidth ?? window.innerWidth)
+  if (section && head) {
+    head.style.left = `${m.pad}px`
+    head.style.right = `${m.pad}px`
+    head.style.top = `${NAME_Y_FRAC * section.clientHeight - m.baselineInCanvas}px`
+  }
+  return m.fontSize
 }
 
 function renderMasthead(fontSize: number): HTMLCanvasElement {
-  const target = Math.max(1, Math.round(headRef.value?.clientWidth ?? window.innerWidth))
+  const width = Math.max(1, Math.round(headRef.value?.clientWidth ?? window.innerWidth))
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')!
-  const canSpace = 'letterSpacing' in ctx
-
-  function applyFont(spacing: number) {
-    ctx.font = `400 ${fontSize}px ${NAME_FONT}`
-    if (canSpace)
-      ctx.letterSpacing = `${spacing}px`
-  }
-
-  function inkWidth(spacing: number): number {
-    applyFont(spacing)
-    const m = ctx.measureText(MASTHEAD_TEXT)
-    return m.actualBoundingBoxLeft + m.actualBoundingBoxRight
-  }
-
-  /* Lebar tinta linear terhadap letter-spacing, jadi dua sampel cukup untuk
-     menyelesaikan spacing yang membuat teks pas selebar kontainer. Tanpa ini
-     canvas di-stretch untuk mengisi lebar dan proporsi huruf Bebas ikut rusak */
-  const natural = inkWidth(0)
-  const widened = inkWidth(10)
-  const spacing = canSpace && widened > natural
-    ? ((target - natural) / (widened - natural)) * 10
-    : 0
-
-  applyFont(spacing)
+  applyMastheadFont(ctx, fontSize)
   const m = ctx.measureText(MASTHEAD_TEXT)
   const cap = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent
-  const padTop = Math.round(cap * INK_TOP_PER_CAP)
-  const padBottom = Math.max(0, Math.round(cap * NAV_GAP_PER_CAP - navInkTopOffset()))
+  const bleed = Math.round(cap * INK_BLEED_PER_CAP)
 
-  canvas.width = canSpace
-    ? target
-    : Math.ceil(natural)
-  canvas.height = Math.ceil(padTop + cap + padBottom)
+  canvas.width = width
+  canvas.height = Math.ceil(cap + bleed * 2)
 
-  applyFont(spacing)
+  applyMastheadFont(ctx, fontSize)
   ctx.fillStyle = '#ffffff'
   ctx.textBaseline = 'alphabetic'
-  ctx.fillText(MASTHEAD_TEXT, m.actualBoundingBoxLeft, padTop + m.actualBoundingBoxAscent)
+  ctx.fillText(MASTHEAD_TEXT, m.actualBoundingBoxLeft, bleed + m.actualBoundingBoxAscent)
 
   return canvas
 }
@@ -2304,7 +2726,7 @@ function paintStaticMasthead() {
   const canvas = textCanvasRef.value
   if (!canvas)
     return
-  const source = renderMasthead(computeMastheadFontSize())
+  const source = renderMasthead(layoutMasthead())
   canvas.width = source.width
   canvas.height = source.height
   canvas.style.aspectRatio = `${source.width} / ${source.height}`
@@ -2315,15 +2737,49 @@ function paintStaticMasthead() {
   ctx.drawImage(source, 0, 0)
 }
 
+function startClock() {
+  if (clockTimer)
+    return
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+  const tick = () => {
+    clockText.value = formatter.format(new Date())
+  }
+  tick()
+  clockTimer = setInterval(tick, 1000)
+}
+
 onMounted(async () => {
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  startClock()
 
   await document.fonts.load(`400 100px ${NAME_FONT}`)
   await document.fonts.ready
 
   if (fluidCanvasRef.value) {
-    fluidReady = fluid.init(fluidCanvasRef.value, { skipInitialSplats: true })
+    fluidReady = fluid.init(fluidCanvasRef.value, {
+      skipInitialSplats: true,
+      contentDisplay: true,
+      displayMode: FLUID.mode,
+      color: FLUID.color,
+      curl: FLUID.curl,
+      splatRadius: FLUID.splatRadius,
+      splatForce: FLUID.splatForce,
+      displace: FLUID.displace,
+      chromatic: FLUID.chromatic,
+      whiteCore: FLUID.whiteCore,
+      densityDissipation: FLUID.densityDissipation,
+      velocityDissipation: FLUID.velocityDissipation,
+      pressureIterations: FLUID.pressureIterations,
+    })
     if (fluidReady) {
+      fluid.setContentCanvas(createBlankContent())
       fluidCanvasRef.value.style.opacity = '0'
       resizeObserver = new ResizeObserver(() => fluid.resize())
       resizeObserver.observe(fluidCanvasRef.value)
@@ -2340,7 +2796,7 @@ onMounted(async () => {
 
   if (textCanvasRef.value) {
     const sim = useHeroTextWarp({
-      fontSize: computeMastheadFontSize(),
+      fontSize: layoutMasthead(),
       fontFamily: NAME_FONT,
       fontWeight: 400,
       intensity: 0.06,
@@ -2352,7 +2808,7 @@ onMounted(async () => {
     })
     if (sim.init(textCanvasRef.value)) {
       textDistortion = sim
-      textResizeHandler = () => textDistortion?.updateFontSize(computeMastheadFontSize())
+      textResizeHandler = () => textDistortion?.updateFontSize(layoutMasthead())
       window.addEventListener('resize', textResizeHandler)
       setTimeout(() => {
         sim.start()
@@ -2380,31 +2836,31 @@ onMounted(async () => {
   const gsapModule = await import('gsap')
   const gsap = gsapModule.default
 
-  gsap.set([navRef.value, footRef.value].filter(Boolean), { autoAlpha: 0 })
+  gsap.set([taglineRef.value, metaRef.value].filter(Boolean), { autoAlpha: 0 })
 
   gsapCtx = gsap.context(() => {
-    const navItems = navRef.value
-      ? Array.from(navRef.value.querySelectorAll<HTMLElement>('.chd__nav-item'))
+    const taglineLines = taglineRef.value
+      ? Array.from(taglineRef.value.querySelectorAll<HTMLElement>('.chd__tagline-line'))
       : []
-    const footBlocks = footRef.value
-      ? Array.from(footRef.value.querySelectorAll<HTMLElement>('.chd__foot-block'))
+    const metaBlocks = metaRef.value
+      ? Array.from(metaRef.value.querySelectorAll<HTMLElement>('.chd__meta-block'))
       : []
 
     gsap.set([
-      ...navItems,
-      ...footBlocks,
+      ...taglineLines,
+      ...metaBlocks,
     ], { autoAlpha: 0 })
-    gsap.set([navRef.value, footRef.value].filter(Boolean), { autoAlpha: 1 })
+    gsap.set([taglineRef.value, metaRef.value].filter(Boolean), { autoAlpha: 1 })
 
     const tl = gsap.timeline({
       defaults: { ease: 'expo.out' },
     })
 
-    navItems.forEach((item, i) => {
-      tl.to(item, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, 0.5 + i * 0.08)
+    taglineLines.forEach((line, i) => {
+      tl.to(line, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, 0.5 + i * 0.08)
     })
 
-    footBlocks.forEach((block, i) => {
+    metaBlocks.forEach((block, i) => {
       tl.to(block, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, 0.75 + i * 0.1)
     })
   })
@@ -2418,6 +2874,10 @@ onUnmounted(() => {
   resizeObserver?.disconnect()
   if (textResizeHandler)
     window.removeEventListener('resize', textResizeHandler)
+  if (clockTimer) {
+    clearInterval(clockTimer)
+    clockTimer = null
+  }
 })
 </script>
 
@@ -2444,44 +2904,34 @@ onUnmounted(() => {
       <h1 class="sr-only">
         Billy Maulana
       </h1>
-
-      <nav ref="navRef" class="chd__nav" aria-label="Hero navigation">
-        <ul class="chd__nav-links">
-          <li v-for="link in NAV_LINKS" :key="link.href" class="chd__nav-item">
-            <a class="chd__nav-link" :href="link.href">{{ link.label }}</a>
-          </li>
-        </ul>
-        <div class="chd__nav-item chd__nav-status">
-          <span class="chd__nav-status-label">Available for select work</span>
-        </div>
-      </nav>
     </div>
 
-    <div ref="footRef" class="chd__foot">
-      <div class="chd__foot-block chd__foot-role">
-        <p class="chd__foot-lines">
-          Frontend Architect &amp;<br>Creative Developer
-        </p>
-        <a class="chd__foot-link" href="#about">Explore <span aria-hidden="true">&#8600;</span></a>
-      </div>
-      <div class="chd__foot-block chd__foot-scroll" aria-hidden="true">
-        Scroll
-      </div>
-      <div class="chd__foot-block chd__foot-clients">
-        <p class="chd__foot-lines">
-          PLN Mobile, Flexben,<br>UNESCO IHP
-        </p>
-        <a class="chd__foot-link" href="#work">View work <span aria-hidden="true">&#8600;</span></a>
-      </div>
+    <p ref="taglineRef" class="chd__tagline">
+      <span class="chd__tagline-line"><em class="chd__tagline-voice">A Frontend Architect</em> crafting interfaces</span>
+      <br aria-hidden="true">
+      <span class="chd__tagline-line">that move millions of people.</span>
+    </p>
+
+    <div ref="metaRef" class="chd__meta">
+      <p class="chd__meta-block chd__meta-clock">
+        Bandung — {{ clockText }} GMT+7
+      </p>
+      <ul class="chd__meta-block chd__meta-socials" aria-label="Social links">
+        <li v-for="social in SOCIAL_LINKS" :key="social.href">
+          <a class="chd__meta-link" :href="social.href" target="_blank" rel="noopener noreferrer">{{ social.label }}</a>
+        </li>
+      </ul>
+      <nav class="chd__meta-block chd__meta-nav" aria-label="Sections">
+        <a v-for="link in NAV_LINKS" :key="link.href" class="chd__meta-link" :href="link.href">{{ link.label }}</a>
+      </nav>
     </div>
   </section>
 </template>
 
 <style scoped>
 .chd {
-  --chd-pad: clamp(0.9375rem, 2.08vw, 1.875rem);
-  --chd-top: clamp(0.9375rem, 2.08vw, 1.875rem);
-  --chd-bottom: clamp(2rem, 4vh, 3rem);
+  --chd-pad: clamp(0.875rem, 1.11vw, 1.5rem);
+  --chd-meta-pad: clamp(1.25rem, 3.2vw, 3rem);
 
   position: relative;
   width: 100%;
@@ -2517,7 +2967,7 @@ onUnmounted(() => {
 
 .chd__head {
   position: absolute;
-  top: var(--chd-top);
+  top: 0;
   left: var(--chd-pad);
   right: var(--chd-pad);
   z-index: 5;
@@ -2538,107 +2988,107 @@ onUnmounted(() => {
   opacity: 1;
 }
 
-.chd__nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-family: 'Satoshi', 'Inter', system-ui, sans-serif;
-  font-weight: 500;
-  font-size: 0.75rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(232, 232, 236, 0.78);
-}
-
-.chd__nav-links {
-  display: flex;
-  align-items: center;
-  gap: clamp(1.5rem, 3vw, 2.75rem);
-}
-
-.chd__nav-link {
-  pointer-events: auto;
-  color: rgba(232, 232, 236, 0.78);
-  transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.chd__nav-link:hover {
+.chd__tagline {
+  position: absolute;
+  top: clamp(1.25rem, 4vh, 1.75rem);
+  left: var(--chd-meta-pad);
+  right: var(--chd-meta-pad);
+  z-index: 6;
+  margin-inline: auto;
+  max-width: 45rem;
+  pointer-events: none;
+  text-align: center;
+  text-wrap: balance;
+  font-family: 'Suisse', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.0625rem, 1.9vw, 2.28rem);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'kern' 1, 'liga' 1;
   color: #F2EFEA;
 }
 
-.chd__nav-status {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: rgba(208, 208, 216, 0.62);
+.chd__tagline-line {
+  display: inline-block;
 }
 
-.chd__nav-status-label {
-  margin-right: -0.18em;
+.chd__tagline-voice {
+  font-family: 'Apparel', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1em;
 }
 
-.chd__foot {
+.chd__meta {
   position: absolute;
-  bottom: var(--chd-bottom);
-  left: var(--chd-pad);
-  right: var(--chd-pad);
+  left: var(--chd-meta-pad);
+  right: var(--chd-meta-pad);
+  bottom: var(--chd-meta-pad);
   z-index: 6;
   display: flex;
-  align-items: flex-end;
+  align-items: baseline;
   justify-content: space-between;
+  column-gap: 1rem;
   pointer-events: none;
-  font-family: 'Satoshi', 'Inter', system-ui, sans-serif;
-  font-weight: 500;
-  font-size: 0.75rem;
-  letter-spacing: 0.18em;
+  font-family: 'Suisse', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400;
+  font-size: 0.625rem;
+  line-height: 1;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: rgba(208, 208, 216, 0.62);
+  color: rgba(242, 239, 234, 0.92);
 }
 
-.chd__foot-lines {
-  line-height: 1.7;
+.chd__meta-clock {
+  flex: 1 1 0;
+  font-variant-numeric: tabular-nums;
 }
 
-.chd__foot-role .chd__foot-lines {
-  text-indent: clamp(2rem, 4vw, 3.5rem);
+.chd__meta-socials {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75em;
 }
 
-.chd__foot-link {
-  display: inline-block;
-  margin-top: 0.85rem;
+.chd__meta-socials li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75em;
+}
+
+.chd__meta-socials li + li::before {
+  content: '/';
+  color: rgba(208, 208, 216, 0.3);
+}
+
+.chd__meta-nav {
+  flex: 1 1 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 1.1em;
+}
+
+.chd__meta-link {
   pointer-events: auto;
-  color: rgba(232, 232, 236, 0.78);
+  position: relative;
+  color: inherit;
   transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.chd__foot-link:hover {
+.chd__meta-link::after {
+  content: '';
+  position: absolute;
+  inset: -0.5rem 0;
+}
+
+.chd__meta-link:hover {
   color: #F2EFEA;
 }
 
-.chd__foot-scroll {
-  color: rgba(208, 208, 216, 0.62);
-}
-
-.chd__foot-clients {
-  text-align: right;
-  margin-right: -0.18em;
-}
-
-@media (max-width: 768px) {
-  .chd__nav {
-    font-size: 0.6875rem;
-  }
-
-  .chd__nav-status {
-    display: none;
-  }
-
-  .chd__foot {
-    bottom: 1.5rem;
-  }
-
-  .chd__foot-scroll,
-  .chd__foot-clients {
+@media (max-width: 767px) {
+  .chd__meta-socials {
     display: none;
   }
 }

@@ -4,155 +4,517 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Checkpoint — Hero 2',
+  title: 'Hero 3',
   robots: 'noindex',
 })
 
-/* Rute checkpoint sengaja mandiri: seluruh engine, state, dan style yang dipakainya tinggal di
+/* Rute ini sengaja mandiri: seluruh engine, state, dan style yang dipakainya tinggal di
    file ini. Tidak ada composable, constant, atau token CSS global yang dirujuk, sehingga menghapus
    satu file ini menghapus seluruh eksplorasi tanpa meninggalkan sisa di mana pun. */
 
-/* ── engine: stage clock ─────────────────────────────────────── */
-function useHeroStage() {
-  const clockText = ref('00:00:00')
-  let clockTimer: ReturnType<typeof setInterval> | null = null
-  let rotatorTimer: ReturnType<typeof setInterval> | null = null
-
-  function startClock() {
-    if (clockTimer)
-      return
-    const formatter = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Jakarta',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    })
-    const tick = () => {
-      clockText.value = formatter.format(new Date())
-    }
-    tick()
-    clockTimer = setInterval(tick, 1000)
-  }
-
-  function startStatusRotator(
-    el: HTMLElement,
-    statuses: string[],
-    scramble: (el: HTMLElement) => Promise<void>,
-    intervalMs = 8000,
-  ) {
-    if (rotatorTimer || statuses.length < 2)
-      return
-    let index = 0
-    rotatorTimer = setInterval(() => {
-      index = (index + 1) % statuses.length
-      el.dataset.originalText = statuses[index]!
-      scramble(el)
-    }, intervalMs)
-  }
-
-  function destroy() {
-    if (clockTimer) {
-      clearInterval(clockTimer)
-      clockTimer = null
-    }
-    if (rotatorTimer) {
-      clearInterval(rotatorTimer)
-      rotatorTimer = null
-    }
-  }
-
-  return {
-    clockText,
-    startClock,
-    startStatusRotator,
-    destroy,
-  }
-}
-
-/* ── engine: raster masthead ────────────────────────────────── */
+/* ── engine: warp tipografi ─────────────────────────────────── */
 /**
- * Masthead rasterizer — menggambar teks hero ke offscreen 2D canvas sebagai
- * sumber texture untuk display pass useFluidSimulation. Displacement dan
- * chromatic split kini terjadi di GPU pass fluid, bukan di modul ini.
+ * WebGL Text Distortion Effect
+ * Renders text to offscreen canvas, applies GPU liquid displacement
+ * with flowmap-based ink ripple and chromatic aberration.
+ *
+ * Inspired by: daspritam.in (ink chroma), supersolid.agency (glitch liquid),
+ * crz.digital (liquid splash proximity).
+ *
+ * Key principle: small displacement + strong chromatic = liquid ink look.
+ * Text must WARP visibly, never disappear.
  */
 
-interface DistortionLine {
-  text: string
-  xAlign?: 'left' | 'center' | 'right'
-  yFrac?: number
-  indent?: number
-  fontSize?: number
-}
-
-interface MastheadRasterConfig {
-  fontFamily: string
+interface DistortionConfig {
+  fontSize: number
   fontWeight: number
-  letterSpacingEm: number
-  lines: DistortionLine[]
+  fontFamily: string
+  radius: number
+  intensity: number
+  chromaticSpread: number
+  lines: { text: string, indent: number }[]
+  /* Override rasterisasi teks. Shader warp hanya butuh sebuah texture, jadi
+     caller boleh menggambar sendiri (mis. masthead dua-font Switzer +
+     Cormorant italik) selama origin baris kiri berhimpit dengan tepi kiri
+     canvas — updateFontSize memanggilnya ulang dengan fontSize terkini */
+  renderText?: (fontSize: number) => HTMLCanvasElement
 }
 
-function distortionTextPadding(width: number): number {
-  const rootFs = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-  return Math.min(Math.max(0.875 * rootFs, width * 0.0111), 1.5 * rootFs)
+const defaultDistortionConfig: DistortionConfig = {
+  fontSize: 200,
+  fontWeight: 700,
+  fontFamily: '\'Switzer\', \'Helvetica Neue\', sans-serif',
+  radius: 0.25,
+  intensity: 0.08,
+  chromaticSpread: 0.02,
+  lines: [
+    { text: 'BILLY', indent: 0 },
+    { text: 'MAULANA', indent: 0 },
+  ],
 }
 
-function useMastheadRaster(config: MastheadRasterConfig) {
+const distortionVertexShader = `
+  precision highp float;
+  attribute vec2 aPosition;
+  varying vec2 vUv;
+
+  void main() {
+    vUv = aPosition * 0.5 + 0.5;
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+  }
+`
+
+const distortionFragmentShader = `
+  precision highp float;
+  precision highp sampler2D;
+  varying vec2 vUv;
+
+  uniform sampler2D uText;
+  uniform vec2 uMouse;
+  uniform float uRadius;
+  uniform float uIntensity;
+  uniform float uChromatic;
+  uniform float uTime;
+  uniform float uSettle;
+  uniform float uHover;
+  uniform float uVelocity;
+  uniform vec2 uResolution;
+
+  // Gradient noise
+  vec2 hash22(vec2 p) {
+    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+    return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(dot(hash22(i), f), dot(hash22(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0)), u.x),
+      mix(dot(hash22(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0)), dot(hash22(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0)), u.x),
+      u.y
+    );
+  }
+
+  // Fractal Brownian Motion — organic ink flow
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    vec2 shift = vec2(100.0);
+    for (int i = 0; i < 3; i++) {
+      v += a * noise(p);
+      p = p * 2.0 + shift;
+      a *= 0.5;
+    }
+    return v;
+  }
+
+  void main() {
+    vec2 uv = vUv;
+    float aspect = uResolution.x / uResolution.y;
+
+    // Velocity boost — noticeable but liquid-like response
+    float velBoost = 1.0 + uVelocity * 2.0;
+
+    // Dynamic radius expands with velocity
+    float dynamicRadius = uRadius * (1.0 + uVelocity * 0.4);
+
+    // No idle effect — text is static until mouse interacts
+    vec2 idleUndulation = vec2(0.0);
+    float idleFactor = 0.0;
+
+    // Entrance noise — organic reveal
+    float entranceNoise = (1.0 - uSettle) * 0.02;
+    vec2 entranceOffset = vec2(
+      noise(uv * 8.0 + uTime * 0.5) * entranceNoise,
+      noise(uv * 8.0 + uTime * 0.5 + 100.0) * entranceNoise
+    );
+
+    // ── Cursor interaction ──
+    vec2 mouseUv = uMouse;
+    vec2 diff = uv - mouseUv;
+    diff.x *= aspect;
+    float dist = length(diff);
+
+    // Liquid blob falloff — soft outer halo + sharp inner core
+    float outerInfluence = smoothstep(dynamicRadius * 1.5, dynamicRadius * 0.3, dist) * uHover;
+    float innerInfluence = pow(smoothstep(dynamicRadius, 0.0, dist), 0.6) * uHover;
+    float influence = mix(outerInfluence, innerInfluence, 0.6);
+
+    // Flow direction from cursor
+    vec2 flowDir = normalize(diff + 0.001);
+
+    // Perpendicular swirl direction — liquid rotates around cursor
+    vec2 perpDir = vec2(-flowDir.y, flowDir.x);
+
+    // Organic vortex via FBM — layered turbulence
+    float swirlAngle = fbm(uv * 6.0 + uTime * 0.25) * 3.14159;
+    vec2 swirlDir = vec2(cos(swirlAngle), sin(swirlAngle));
+
+    // Ripple waves — liquid surface tension
+    float ripple = sin(dist * 12.0 - uTime * 3.0) * 0.08 * influence;
+
+    // Turbulent micro-displacement via fbm — organic motion
+    float turbX = fbm(uv * 10.0 + uTime * 0.25) * 0.12 * influence;
+    float turbY = fbm(uv * 10.0 + uTime * 0.25 + 50.0) * 0.12 * influence;
+
+    // Combine: visible liquid flow without glitch
+    vec2 displacement = vec2(0.0);
+    displacement += flowDir * influence * 0.12;        // push from cursor
+    displacement += perpDir * influence * 0.25;        // perpendicular flow
+    displacement += swirlDir * influence * 0.35;       // organic swirl
+    displacement += flowDir * ripple;                  // surface ripple
+    displacement += vec2(turbX, turbY);                // micro-turbulence
+    displacement *= uIntensity * velBoost;
+
+    vec2 totalOffset = displacement + entranceOffset + idleUndulation;
+
+    // ── Chromatic aberration — ink iridescence ──
+    // Angle follows cursor for directional rainbow
+    float chromAngle = atan(diff.y, diff.x) + uTime * 0.15;
+    vec2 chromDir = vec2(cos(chromAngle), sin(chromAngle));
+
+    // Secondary chromatic axis — perpendicular for richer split
+    vec2 chromDir2 = vec2(-chromDir.y, chromDir.x);
+
+    float idleChromatic = idleFactor * 2.0;
+    float chromaticAmount = uChromatic * (influence * 3.0 * velBoost + (1.0 - uSettle) * 1.0) + idleChromatic;
+
+    // Cool-toned chromatic — blue/cyan dominant, minimal red fringing
+    vec2 rOffset = totalOffset + chromDir * chromaticAmount * 0.25 + chromDir2 * chromaticAmount * 0.08;
+    vec2 gOffset = totalOffset;
+    vec2 bOffset = totalOffset - chromDir * chromaticAmount - chromDir2 * chromaticAmount * 0.3;
+
+    float r = texture2D(uText, uv + rOffset).r;
+    float g = texture2D(uText, uv + gOffset).g;
+    float b = texture2D(uText, uv + bOffset).b;
+
+    // Alpha combines all three channels for full coverage
+    float a = texture2D(uText, uv + gOffset).a;
+    a = max(a, max(texture2D(uText, uv + rOffset).a, texture2D(uText, uv + bOffset).a));
+
+    gl_FragColor = vec4(r * a, g * a, b * a, a);
+  }
+`
+
+function useHeroTextWarp(config: Partial<DistortionConfig> = {}) {
   const cfg = {
+    ...defaultDistortionConfig,
     ...config,
-    lines: [...config.lines],
   }
-  const canvas = document.createElement('canvas')
+  let gl: WebGL2RenderingContext | WebGLRenderingContext | null = null
+  let canvas: HTMLCanvasElement | null = null
+  let program: WebGLProgram | null = null
+  const uniforms: Record<string, WebGLUniformLocation> = {}
+  let textTexture: WebGLTexture | null = null
+  let animationId = 0
+  let startTime = 0
 
-  function applyFont(ctx: CanvasRenderingContext2D, fontSize: number) {
-    ctx.font = `${cfg.fontWeight} ${fontSize}px ${cfg.fontFamily}`
-    if ('letterSpacing' in ctx)
-      ctx.letterSpacing = `${fontSize * cfg.letterSpacingEm}px`
+  let mouseX = 0.5
+  let mouseY = 0.5
+  let smoothMouseX = 0.5
+  let smoothMouseY = 0.5
+  let isHovering = false
+  let smoothHover = 0
+  let smoothVelocity = 0
+  let settleProgress = 0
+  let rawDeltaX = 0
+  let rawDeltaY = 0
+  let lastRawX = 0.5
+  let lastRawY = 0.5
+
+  function compileShader(type: number, source: string): WebGLShader | null {
+    const shader = gl!.createShader(type)
+    if (!shader)
+      return null
+    gl!.shaderSource(shader, source)
+    gl!.compileShader(shader)
+    if (!gl!.getShaderParameter(shader, gl!.COMPILE_STATUS)) {
+      console.error('[textDistortion] Shader error:', gl!.getShaderInfoLog(shader))
+      return null
+    }
+    return shader
   }
 
-  /* Latar HITAM opak, bukan transparan: display pass fluid memakai shader
-     referensi tanpa alpha handling — kompositing ke halaman terjadi lewat
-     mix-blend-mode: difference pada elemen canvas (hitam = identity) */
-  function render(cssWidth: number, cssHeight: number, scale: number): HTMLCanvasElement {
-    const width = Math.max(1, Math.floor(cssWidth * scale))
-    const height = Math.max(1, Math.floor(cssHeight * scale))
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')!
-    ctx.fillStyle = '#000000'
-    ctx.fillRect(0, 0, width, height)
+  function renderTextToCanvas(): HTMLCanvasElement {
+    const offscreen = document.createElement('canvas')
+    const ctx = offscreen.getContext('2d')!
+
+    ctx.font = `${cfg.fontWeight} ${cfg.fontSize}px ${cfg.fontFamily}`
+
+    const indentScale = cfg.fontSize / 200
+
+    // Measure left-side bearing to compensate font whitespace.
+    // actualBoundingBoxLeft < 0 means the visual edge is to the RIGHT of origin (LSB gap).
+    let leftBearing = 0
+    for (const line of cfg.lines) {
+      if (line.indent === 0) {
+        const metrics = ctx.measureText(line.text)
+        if (metrics.actualBoundingBoxLeft < 0) {
+          leftBearing = Math.max(leftBearing, -metrics.actualBoundingBoxLeft)
+        }
+      }
+    }
+
+    let maxWidth = 0
+    for (const line of cfg.lines) {
+      const metrics = ctx.measureText(line.text)
+      const totalWidth = metrics.width + line.indent * indentScale
+      maxWidth = Math.max(maxWidth, totalWidth)
+    }
+
+    const lineHeight = cfg.fontSize * 0.84
+    const totalHeight = lineHeight * cfg.lines.length + cfg.fontSize * 0.2
+
+    const bleed = cfg.fontSize * 0.02
+    offscreen.width = Math.ceil(maxWidth - leftBearing + bleed)
+    offscreen.height = Math.ceil(totalHeight + bleed)
+
+    ctx.clearRect(0, 0, offscreen.width, offscreen.height)
+
+    ctx.font = `${cfg.fontWeight} ${cfg.fontSize}px ${cfg.fontFamily}`
     ctx.fillStyle = '#ffffff'
-    ctx.textBaseline = 'alphabetic'
-
-    const pad = distortionTextPadding(cssWidth) * scale
+    ctx.textBaseline = 'top'
 
     for (let i = 0; i < cfg.lines.length; i++) {
       const line = cfg.lines[i]!
-      const fontSize = (line.fontSize ?? 200) * scale
-      applyFont(ctx, fontSize)
-      const metrics = ctx.measureText(line.text)
-      const indentPx = (line.indent ?? 0) * (fontSize / 200)
-      const align = line.xAlign ?? 'left'
-      let x = pad + indentPx
-      if (align === 'right')
-        x = width - pad - metrics.width - indentPx
-      else if (align === 'center')
-        x = (width - metrics.width) / 2 + indentPx
-      const yFrac = line.yFrac ?? (i + 1) / (cfg.lines.length + 1)
-      ctx.fillText(line.text, x, yFrac * height)
+      const x = line.indent * indentScale - leftBearing
+      const y = i * lineHeight
+      ctx.fillText(line.text, x, y)
     }
 
-    return canvas
+    return offscreen
   }
 
-  function updateLines(lines: DistortionLine[]) {
-    cfg.lines = lines
+  function renderSource(): HTMLCanvasElement {
+    return cfg.renderText
+      ? cfg.renderText(cfg.fontSize)
+      : renderTextToCanvas()
   }
 
-  return { render, updateLines }
+  function createTexture(source: HTMLCanvasElement): WebGLTexture | null {
+    const tex = gl!.createTexture()
+    if (!tex)
+      return null
+    gl!.bindTexture(gl!.TEXTURE_2D, tex)
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MIN_FILTER, gl!.LINEAR)
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MAG_FILTER, gl!.LINEAR)
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_S, gl!.CLAMP_TO_EDGE)
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_T, gl!.CLAMP_TO_EDGE)
+    gl!.pixelStorei(gl!.UNPACK_FLIP_Y_WEBGL, true)
+    gl!.texImage2D(gl!.TEXTURE_2D, 0, gl!.RGBA, gl!.RGBA, gl!.UNSIGNED_BYTE, source)
+    gl!.pixelStorei(gl!.UNPACK_FLIP_Y_WEBGL, false)
+    return tex
+  }
+
+  function render() {
+    if (!gl || !program || !canvas)
+      return
+
+    const now = (Date.now() - startTime) / 1000
+
+    // Liquid mouse tracking — responsive but with viscous drag
+    smoothMouseX += (mouseX - smoothMouseX) * 0.14
+    smoothMouseY += (mouseY - smoothMouseY) * 0.14
+    smoothHover += ((isHovering ? 1 : 0) - smoothHover) * 0.15
+
+    // Track mouse velocity from raw deltas for dynamic intensity
+    const rawVelocity = Math.sqrt(rawDeltaX * rawDeltaX + rawDeltaY * rawDeltaY)
+    const targetVel = Math.min(rawVelocity * 8, 1.0)
+    // Asymmetric smoothing: fast attack, slow decay for viscous persistence
+    const velLerp = targetVel > smoothVelocity
+      ? 0.3
+      : 0.05
+    smoothVelocity += (targetVel - smoothVelocity) * velLerp
+    rawDeltaX *= 0.45
+    rawDeltaY *= 0.45
+
+    settleProgress = Math.min(1.0, now / 0.8)
+    const settleEased = 1.0 - (1.0 - settleProgress) ** 3
+
+    gl.viewport(0, 0, canvas.width, canvas.height)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+
+    gl.useProgram(program)
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, textTexture)
+    gl.uniform1i(uniforms.uText!, 0)
+    gl.uniform2f(uniforms.uMouse!, smoothMouseX, smoothMouseY)
+    gl.uniform1f(uniforms.uRadius!, cfg.radius)
+    gl.uniform1f(uniforms.uIntensity!, cfg.intensity)
+    gl.uniform1f(uniforms.uChromatic!, cfg.chromaticSpread)
+    gl.uniform1f(uniforms.uTime!, now)
+    gl.uniform1f(uniforms.uSettle!, settleEased)
+    gl.uniform1f(uniforms.uHover!, smoothHover)
+    gl.uniform1f(uniforms.uVelocity!, smoothVelocity)
+    gl.uniform2f(uniforms.uResolution!, canvas.width, canvas.height)
+
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0)
+    animationId = requestAnimationFrame(render)
+  }
+
+  function onPointerMove(e: PointerEvent) {
+    if (!canvas)
+      return
+    const rect = canvas.getBoundingClientRect()
+    const newX = (e.clientX - rect.left) / rect.width
+    // Flip Y to match WebGL UV space (0 = bottom, 1 = top)
+    const newY = 1.0 - (e.clientY - rect.top) / rect.height
+
+    rawDeltaX = newX - lastRawX
+    rawDeltaY = newY - lastRawY
+    lastRawX = newX
+    lastRawY = newY
+
+    mouseX = newX
+    mouseY = newY
+    isHovering = newX >= 0 && newX <= 1 && newY >= 0 && newY <= 1
+  }
+
+  function handleResize() {
+    if (!canvas || !gl)
+      return
+
+    // Render text first so we can set correct aspect-ratio before reading dimensions
+    const textCanvas = renderSource()
+    canvas.style.aspectRatio = `${textCanvas.width} / ${textCanvas.height}`
+
+    const width = Math.floor(canvas.clientWidth)
+    const height = Math.floor(canvas.clientHeight)
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width
+      canvas.height = height
+
+      if (textTexture) {
+        gl.bindTexture(gl.TEXTURE_2D, textTexture)
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas)
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+      }
+    }
+  }
+
+  function init(canvasEl: HTMLCanvasElement): boolean {
+    canvas = canvasEl
+
+    gl = canvas.getContext('webgl2', {
+      alpha: true,
+      depth: false,
+      stencil: false,
+      antialias: false,
+      premultipliedAlpha: true,
+      preserveDrawingBuffer: false,
+    }) as WebGL2RenderingContext
+
+    if (!gl) {
+      gl = canvas.getContext('webgl', {
+        alpha: true,
+        depth: false,
+        stencil: false,
+        antialias: false,
+        premultipliedAlpha: true,
+        preserveDrawingBuffer: false,
+      })
+    }
+
+    if (!gl) {
+      console.warn('[textDistortion] WebGL not supported')
+      return false
+    }
+
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+    gl.clearColor(0.0, 0.0, 0.0, 0.0)
+
+    const vs = compileShader(gl.VERTEX_SHADER, distortionVertexShader)
+    const fs = compileShader(gl.FRAGMENT_SHADER, distortionFragmentShader)
+    if (!vs || !fs)
+      return false
+
+    program = gl.createProgram()!
+    gl.attachShader(program, vs)
+    gl.attachShader(program, fs)
+    gl.bindAttribLocation(program, 0, 'aPosition')
+    gl.linkProgram(program)
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.error('[textDistortion] Link error:', gl.getProgramInfoLog(program))
+      return false
+    }
+
+    const uniformCount = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS)
+    for (let i = 0; i < uniformCount; i++) {
+      const info = gl.getActiveUniform(program, i)!
+      uniforms[info.name] = gl.getUniformLocation(program, info.name)!
+    }
+
+    const buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), gl.STATIC_DRAW)
+
+    const indexBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), gl.STATIC_DRAW)
+
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
+    gl.enableVertexAttribArray(0)
+
+    handleResize()
+    const textCanvas = renderSource()
+    textTexture = createTexture(textCanvas)
+
+    return true
+  }
+
+  function start() {
+    if (!gl)
+      return
+    startTime = Date.now()
+    settleProgress = 0
+    render()
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+    window.addEventListener('resize', handleResize)
+  }
+
+  function destroy() {
+    cancelAnimationFrame(animationId)
+    window.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('resize', handleResize)
+    if (gl && textTexture)
+      gl.deleteTexture(textTexture)
+    if (gl && program)
+      gl.deleteProgram(program)
+    gl = null
+    canvas = null
+    program = null
+  }
+
+  function updateFontSize(newSize: number) {
+    if (cfg.fontSize === newSize)
+      return
+    cfg.fontSize = newSize
+    if (!canvas || !gl || !textTexture)
+      return
+    const textCanvas = renderSource()
+    canvas.style.aspectRatio = `${textCanvas.width} / ${textCanvas.height}`
+    canvas.width = Math.floor(canvas.clientWidth)
+    canvas.height = Math.floor(canvas.clientHeight)
+    gl.bindTexture(gl.TEXTURE_2D, textTexture)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+  }
+
+  return {
+    init,
+    start,
+    destroy,
+    updateFontSize,
+  }
 }
 
-/* ── engine: simulasi fluida ────────────────────────────────── */
+/* ── engine: simulasi fluida ─────────────────────────────────────────────── */
 /**
  * useFluidSimulation — Faithful port of Pavel Dobryakov's WebGL-Fluid-Simulation
  * https://github.com/PavelDoGreat/WebGL-Fluid-Simulation (MIT License)
@@ -339,7 +701,6 @@ function useFluidSimulation() {
 
   // ── Content display (mode displacement daspritam) ──
   let contentDisplayEnabled = false
-  let interpolateSegments = false
   let contentDisplayProgram: ProgramObj | null = null
   let contentTexture: TextureObj | null = null
   let pointerGate: ((u: number, v: number) => boolean) | null = null
@@ -1638,16 +1999,12 @@ function useFluidSimulation() {
        satu splat penuh, meniru deposit per-event kecil milik daspritam */
     const dx = seg.deltaX * config.SPLAT_FORCE / count
     const dy = seg.deltaY * config.SPLAT_FORCE / count
-    /* Content mode drops one full splat per event at the newest position, so a fast flick prints
-       separate beads once the per-frame step passes the gaussian sigma. Interpolating only helps
-       when presence is divided by the count alongside momentum — dividing momentum alone is what
-       multiplied dye coverage and flooded the text band. Opt-in so routes calibrated against the
-       single-splat behaviour keep it. */
+    /* Content mode used to drop one full splat per event at the newest position, so a fast
+       flick (~86px between frames against a ~26px gaussian sigma) printed a row of separate
+       beads. Presence is divided by the sub-splat count together with momentum: the segment
+       deposits exactly what one splat did, only spread along the path instead of stacked at
+       its end, so coverage does not grow with the count. */
     if (contentDisplayEnabled) {
-      if (!interpolateSegments) {
-        splat(seg.toX, seg.toY, seg.deltaX * config.SPLAT_FORCE, seg.deltaY * config.SPLAT_FORCE, seg.color)
-        return
-      }
       for (let i = 1; i <= count; i++) {
         const t = i / count
         splat(seg.fromX + (seg.toX - seg.fromX) * t, seg.fromY + (seg.toY - seg.fromY) * t, dx, dy, seg.color, 1 / count)
@@ -2049,7 +2406,6 @@ function useFluidSimulation() {
     densityDissipation?: number
     velocityDissipation?: number
     pressureIterations?: number
-    interpolateSegments?: boolean
   }): boolean {
     canvas = canvasEl
     hueMin = options?.hueMin ?? 0
@@ -2066,7 +2422,6 @@ function useFluidSimulation() {
       config.VELOCITY_DISSIPATION = options.velocityDissipation
     if (options?.pressureIterations !== undefined)
       config.PRESSURE_ITERATIONS = options.pressureIterations
-    interpolateSegments = options?.interpolateSegments ?? false
     contentDisplayEnabled = options?.contentDisplay ?? false
     pointerGate = options?.pointerGate ?? null
     contentDisplay.mode = options?.displayMode === 'dye'
@@ -2207,7 +2562,6 @@ function useFluidSimulation() {
     contentTexture = null
     contentDisplayProgram = null
     contentDisplayEnabled = false
-    interpolateSegments = false
     pointerGate = null
     pointers.length = 0
     splatStack = []
@@ -2225,17 +2579,33 @@ function useFluidSimulation() {
 }
 
 /* ── halaman ────────────────────────────────────────────── */
-/* Motion and ink share one lifetime. At velocity 3.2 / pressure 3 the flow died after ~1.2s while
-   the thermal curve kept faint presence visible past 4s, so the trail stood still while it faded.
-   Velocity 1.2 lets the flow outlive the bright phase, density 1.8 retires the ink as the flow runs
-   out, pressure 20 turns the surviving momentum into rolling vortices rather than stamped blobs,
-   and curl 8 keeps those vortices large — curl 20 with long-lived velocity shreds a stroke into
-   curly smoke within 0.3s. */
-/* 'faithful' keeps the fluid itself invisible: the only thing drawn is the masthead raster being
-   dragged by the velocity field, with the aberration edge tinted uColor. 'thermal' painted a heat
-   field across the whole canvas, which covered the letters instead of acting on them. */
+const MASTHEAD_TEXT = 'BILLYMAULANA'
+const NAME_FONT = '\'Bebas Neue\', Impact, sans-serif'
+const MASTHEAD_PROBE_PX = 200
+
+/* Rasio grid diukur dari piksel chdartmaker.com pada 1440x900: tinggi tinta
+   masthead 192px, tepi atas tinta 24px di bawah tepi kontainer, jarak tinta
+   masthead ke tinta nav 69px. Disimpan sebagai rasio, bukan px, supaya
+   proporsinya bertahan di setiap lebar viewport */
+const CAP_PER_VIEWPORT = 192 / 1440
+const INK_TOP_PER_CAP = 24 / 192
+const NAV_GAP_PER_CAP = 69 / 192
+
+const NAV_LINKS = [
+  { label: 'Work', href: '#work' },
+  { label: 'About', href: '#about' },
+  { label: 'Contact', href: '#contact' },
+]
+
+/* Motion and ink must share one lifetime. At velocity 3.2 / density 1.1 the flow was dead after
+   ~1.2s while the thermal curve kept faint presence visible for 4s+, so the trail sat frozen for
+   about three seconds (measured: 2% of the visible trail still moving at t=3s). Velocity 1.2 lets
+   the flow outlive the bright phase; density 1.8 retires the ink as the flow runs out (79% of the
+   trail moving at 2s, nothing left at 4s). Pressure 20 turns the persisting momentum into coherent
+   rolling vortices instead of stamped blobs, and curl 8 keeps those vortices large and smooth —
+   curl 20 with long-lived velocity shredded the stroke into curly smoke within 0.3s. */
 const FLUID = {
-  mode: 'faithful' as const,
+  mode: 'thermal' as const,
   color: '#0047FF',
   curl: 8,
   splatRadius: 0.3,
@@ -2248,149 +2618,139 @@ const FLUID = {
   pressureIterations: 20,
 }
 
-const MASTHEAD_TEXT = 'BILLYMAULANA'
-const NAME_FONT = '\'Bebas Neue\', Impact, sans-serif'
-const NAME_TRACKING_EM = -0.015
-const NAME_MEASURE_BASE_PX = 100
-const NAME_Y_FRAC = 0.86
-
-const SOCIAL_LINKS = [
-  { label: 'GitHub', href: 'https://github.com/billymaulana' },
-  { label: 'LinkedIn', href: 'https://linkedin.com/in/billy-maulana' },
-  { label: 'Instagram', href: 'https://instagram.com/billymaulana' },
-]
+/* Display pass mode content tidak menggambar apa pun sebelum texture konten diunggah. Masthead
+   sudah punya canvas warp sendiri, jadi texture konten fluida cukup raster hitam polos: yang
+   tersisa di canvas ini hanya heat field termal, dan hitamnya hilang lewat blend screen. */
+function createBlankContent(): HTMLCanvasElement {
+  const blank = document.createElement('canvas')
+  blank.width = 1
+  blank.height = 1
+  const ctx = blank.getContext('2d')!
+  ctx.fillStyle = '#000000'
+  ctx.fillRect(0, 0, 1, 1)
+  return blank
+}
 
 const sectionRef = ref<HTMLElement>()
+const headRef = ref<HTMLElement>()
 const fluidCanvasRef = ref<HTMLCanvasElement>()
-const namesRef = ref<HTMLElement>()
-const nameRef = ref<HTMLElement>()
-const taglineRef = ref<HTMLElement>()
-const metaRef = ref<HTMLElement>()
+const textCanvasRef = ref<HTMLCanvasElement>()
+const navRef = ref<HTMLElement>()
+const footRef = ref<HTMLElement>()
+const isTextReady = ref(false)
 
 const fluid = useFluidSimulation()
-const heroStage = useHeroStage()
-const { clockText } = heroStage
 
 let gsapCtx: gsap.Context | null = null
 let resizeObserver: ResizeObserver | null = null
 let fluidReady = false
+let fluidActivated = false
+let textDistortion: ReturnType<typeof useHeroTextWarp> | null = null
 let textResizeHandler: (() => void) | null = null
-let nameChars: HTMLElement[] = []
 
-const mastheadRaster = useMastheadRaster({
-  fontFamily: NAME_FONT,
-  fontWeight: 400,
-  letterSpacingEm: NAME_TRACKING_EM,
-  lines: [],
-})
+let mastheadCapRatio = 0
 
-interface MastheadMetrics {
-  pad: number
-  fontSize: number
-  left: number
-  baselineFromTop: number
-}
-
-function measureMasthead(width: number): MastheadMetrics {
+function inkHeightPerFontSize(): number {
+  if (mastheadCapRatio)
+    return mastheadCapRatio
   const ctx = document.createElement('canvas').getContext('2d')!
-  ctx.font = `400 ${NAME_MEASURE_BASE_PX}px ${NAME_FONT}`
-  if ('letterSpacing' in ctx)
-    ctx.letterSpacing = `${NAME_MEASURE_BASE_PX * NAME_TRACKING_EM}px`
-  const metrics = ctx.measureText(MASTHEAD_TEXT)
-  const inkWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight
-  const pad = distortionTextPadding(width)
-  const targetWidth = width - 2 * pad
-  const scale = targetWidth / inkWidth
-  const ascent = metrics.fontBoundingBoxAscent
-  const descent = metrics.fontBoundingBoxDescent
-  return {
-    pad,
-    fontSize: NAME_MEASURE_BASE_PX * scale,
-    left: pad + metrics.actualBoundingBoxLeft * scale,
-    baselineFromTop: ((NAME_MEASURE_BASE_PX - (ascent + descent)) / 2 + ascent) * scale,
+  ctx.font = `400 ${MASTHEAD_PROBE_PX}px ${NAME_FONT}`
+  const m = ctx.measureText(MASTHEAD_TEXT)
+  mastheadCapRatio = (m.actualBoundingBoxAscent + m.actualBoundingBoxDescent) / MASTHEAD_PROBE_PX
+  return mastheadCapRatio
+}
+
+function computeMastheadFontSize(): number {
+  const w = sectionRef.value?.clientWidth ?? window.innerWidth
+  return (w * CAP_PER_VIEWPORT) / inkHeightPerFontSize()
+}
+
+/* Gap referensi diukur tinta-ke-tinta, sedangkan nav diposisikan lewat tepi
+   box-nya — selisih half-leading plus jarak ascender ke cap harus dibuang
+   supaya jarak yang TERLIHAT sama, bukan jarak box-nya */
+function navInkTopOffset(): number {
+  const link = navRef.value?.querySelector<HTMLElement>('.chd__nav-link')
+  if (!link)
+    return 0
+  const cs = getComputedStyle(link)
+  const ctx = document.createElement('canvas').getContext('2d')!
+  ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+  const m = ctx.measureText(link.textContent ?? 'W')
+  const lineBox = navRef.value?.getBoundingClientRect().height ?? 0
+  const halfLeading = (lineBox - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2
+  return Math.max(0, halfLeading + m.fontBoundingBoxAscent - m.actualBoundingBoxAscent)
+}
+
+function renderMasthead(fontSize: number): HTMLCanvasElement {
+  const target = Math.max(1, Math.round(headRef.value?.clientWidth ?? window.innerWidth))
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')!
+  const canSpace = 'letterSpacing' in ctx
+
+  function applyFont(spacing: number) {
+    ctx.font = `400 ${fontSize}px ${NAME_FONT}`
+    if (canSpace)
+      ctx.letterSpacing = `${spacing}px`
   }
-}
 
-function layoutMasthead() {
-  const section = sectionRef.value
-  const name = nameRef.value
-  if (!section || !name)
-    return
-  const m = measureMasthead(section.clientWidth)
-  const baselineY = NAME_Y_FRAC * section.clientHeight
-  name.style.left = `${m.left}px`
-  name.style.top = `${baselineY - m.baselineFromTop}px`
-  name.style.fontSize = `${m.fontSize}px`
-  name.style.letterSpacing = `${NAME_TRACKING_EM}em`
-  name.style.visibility = 'inherit'
-}
-
-function buildDistortionLines() {
-  const width = sectionRef.value?.clientWidth ?? window.innerWidth
-  const m = measureMasthead(width)
-  return [
-    {
-      text: MASTHEAD_TEXT,
-      xAlign: 'left' as const,
-      yFrac: NAME_Y_FRAC,
-      fontSize: m.fontSize,
-      indent: (m.left - m.pad) * (200 / m.fontSize),
-    },
-  ]
-}
-
-function uploadMasthead() {
-  const section = sectionRef.value
-  if (!section)
-    return
-  mastheadRaster.updateLines(buildDistortionLines())
-  const dpr = window.devicePixelRatio || 1
-  const canvas = mastheadRaster.render(section.clientWidth, section.clientHeight, dpr)
-  if (fluidReady)
-    fluid.setContentCanvas(canvas)
-}
-
-function buildNameChars(el: HTMLElement): HTMLElement[] {
-  const text = el.textContent ?? ''
-  el.textContent = ''
-  const chars: HTMLElement[] = []
-  for (const ch of text) {
-    const span = document.createElement('span')
-    span.className = 'h4__name-char'
-    span.textContent = ch
-    el.appendChild(span)
-    chars.push(span)
+  function inkWidth(spacing: number): number {
+    applyFont(spacing)
+    const m = ctx.measureText(MASTHEAD_TEXT)
+    return m.actualBoundingBoxLeft + m.actualBoundingBoxRight
   }
-  return chars
+
+  /* Lebar tinta linear terhadap letter-spacing, jadi dua sampel cukup untuk
+     menyelesaikan spacing yang membuat teks pas selebar kontainer. Tanpa ini
+     canvas di-stretch untuk mengisi lebar dan proporsi huruf Bebas ikut rusak */
+  const natural = inkWidth(0)
+  const widened = inkWidth(10)
+  const spacing = canSpace && widened > natural
+    ? ((target - natural) / (widened - natural)) * 10
+    : 0
+
+  applyFont(spacing)
+  const m = ctx.measureText(MASTHEAD_TEXT)
+  const cap = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent
+  const padTop = Math.round(cap * INK_TOP_PER_CAP)
+  const padBottom = Math.max(0, Math.round(cap * NAV_GAP_PER_CAP - navInkTopOffset()))
+
+  canvas.width = canSpace
+    ? target
+    : Math.ceil(natural)
+  canvas.height = Math.ceil(padTop + cap + padBottom)
+
+  applyFont(spacing)
+  ctx.fillStyle = '#ffffff'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillText(MASTHEAD_TEXT, m.actualBoundingBoxLeft, padTop + m.actualBoundingBoxAscent)
+
+  return canvas
+}
+
+/* Jalur reduced-motion tidak pernah menyentuh WebGL, sedangkan masthead hanya
+   ada di canvas — tanpa rasterisasi statis ini hero kosong dan cuma menyisakan
+   h1 sr-only. Canvas hanya boleh punya satu jenis context, jadi jalur 2D di
+   sini dan jalur WebGL di bawah bersifat saling eksklusif */
+function paintStaticMasthead() {
+  const canvas = textCanvasRef.value
+  if (!canvas)
+    return
+  const source = renderMasthead(computeMastheadFontSize())
+  canvas.width = source.width
+  canvas.height = source.height
+  canvas.style.aspectRatio = `${source.width} / ${source.height}`
+  const ctx = canvas.getContext('2d')
+  if (!ctx)
+    return
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(source, 0, 0)
 }
 
 onMounted(async () => {
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  if (prefersReduced) {
-    await document.fonts.load(`400 100px ${NAME_FONT}`)
-    await document.fonts.ready
-    layoutMasthead()
-    heroStage.startClock()
-    textResizeHandler = layoutMasthead
-    window.addEventListener('resize', textResizeHandler)
-    return
-  }
-
-  /* The face fetch starts before the gsap chunk is awaited, not after it: a font is only requested
-     when something asks for it, so serialising the two made the masthead wait for the import and
-     the download end to end. Passing the masthead string targets the glyphs actually drawn. */
-  const mastheadFont = document.fonts.load(`400 100px ${NAME_FONT}`, MASTHEAD_TEXT).catch(() => [])
-
-  const gsapModule = await import('gsap')
-  const gsapLib = gsapModule.default
-  const { ScrollTrigger } = await import('gsap/ScrollTrigger')
-  gsapLib.registerPlugin(ScrollTrigger)
-
-  gsapLib.set(
-    [namesRef.value, taglineRef.value, metaRef.value].filter(Boolean),
-    { autoAlpha: 0 },
-  )
+  await document.fonts.load(`400 100px ${NAME_FONT}`)
+  await document.fonts.ready
 
   if (fluidCanvasRef.value) {
     fluidReady = fluid.init(fluidCanvasRef.value, {
@@ -2407,141 +2767,100 @@ onMounted(async () => {
       densityDissipation: FLUID.densityDissipation,
       velocityDissipation: FLUID.velocityDissipation,
       pressureIterations: FLUID.pressureIterations,
-      interpolateSegments: true,
     })
     if (fluidReady) {
+      fluid.setContentCanvas(createBlankContent())
       fluidCanvasRef.value.style.opacity = '0'
-      resizeObserver = new ResizeObserver(() => {
-        fluid.resize()
-        uploadMasthead()
-      })
+      resizeObserver = new ResizeObserver(() => fluid.resize())
       resizeObserver.observe(fluidCanvasRef.value)
     }
   }
 
-  await mastheadFont
-  await document.fonts.ready
-  layoutMasthead()
-  nameChars = nameRef.value
-    ? buildNameChars(nameRef.value)
-    : []
-
-  uploadMasthead()
-
-  textResizeHandler = () => {
-    layoutMasthead()
-    uploadMasthead()
+  if (prefersReduced) {
+    paintStaticMasthead()
+    textResizeHandler = paintStaticMasthead
+    window.addEventListener('resize', textResizeHandler)
+    isTextReady.value = true
+    return
   }
-  window.addEventListener('resize', textResizeHandler)
-  document.fonts.ready.then(() => textResizeHandler?.())
 
-  gsapCtx = gsapLib.context(() => {
-    const taglineLines = taglineRef.value
-      ? Array.from(taglineRef.value.querySelectorAll<HTMLElement>('.h4__tagline-line'))
+  if (textCanvasRef.value) {
+    const sim = useHeroTextWarp({
+      fontSize: computeMastheadFontSize(),
+      fontFamily: NAME_FONT,
+      fontWeight: 400,
+      intensity: 0.06,
+      chromaticSpread: 0,
+      lines: [
+        { text: MASTHEAD_TEXT, indent: 0 },
+      ],
+      renderText: renderMasthead,
+    })
+    if (sim.init(textCanvasRef.value)) {
+      textDistortion = sim
+      textResizeHandler = () => textDistortion?.updateFontSize(computeMastheadFontSize())
+      window.addEventListener('resize', textResizeHandler)
+      setTimeout(() => {
+        sim.start()
+        isTextReady.value = true
+      }, 300)
+    }
+    else {
+      paintStaticMasthead()
+      textResizeHandler = paintStaticMasthead
+      window.addEventListener('resize', textResizeHandler)
+      isTextReady.value = true
+    }
+  }
+
+  function onFirstPointerMove() {
+    if (fluidActivated || !fluidCanvasRef.value)
+      return
+    fluidActivated = true
+    import('gsap').then(({ default: g }) => {
+      g.to(fluidCanvasRef.value!, { opacity: 1, duration: 1.2, ease: 'power2.out' })
+    })
+  }
+  sectionRef.value?.addEventListener('pointermove', onFirstPointerMove)
+
+  const gsapModule = await import('gsap')
+  const gsap = gsapModule.default
+
+  gsap.set([navRef.value, footRef.value].filter(Boolean), { autoAlpha: 0 })
+
+  gsapCtx = gsap.context(() => {
+    const navItems = navRef.value
+      ? Array.from(navRef.value.querySelectorAll<HTMLElement>('.chd__nav-item'))
       : []
-    const metaBlocks = metaRef.value
-      ? Array.from(metaRef.value.querySelectorAll<HTMLElement>('.h4__meta-block'))
+    const footBlocks = footRef.value
+      ? Array.from(footRef.value.querySelectorAll<HTMLElement>('.chd__foot-block'))
       : []
 
-    gsapLib.set(nameChars, { yPercent: 100, filter: 'blur(8px)' })
-    gsapLib.set(taglineLines, { autoAlpha: 0, y: 16, filter: 'blur(10px)' })
-    gsapLib.set(metaBlocks, { autoAlpha: 0 })
-    gsapLib.set(
-      [namesRef.value, taglineRef.value, metaRef.value].filter(Boolean),
-      { autoAlpha: 1 },
-    )
+    gsap.set([
+      ...navItems,
+      ...footBlocks,
+    ], { autoAlpha: 0 })
+    gsap.set([navRef.value, footRef.value].filter(Boolean), { autoAlpha: 1 })
 
-    const tl = gsapLib.timeline({
+    const tl = gsap.timeline({
       defaults: { ease: 'expo.out' },
     })
 
-    if (nameChars.length) {
-      tl.to(nameChars, {
-        yPercent: 0,
-        filter: 'blur(0px)',
-        duration: 1,
-        stagger: 0.02,
-        ease: 'power4.out',
-      }, 0)
-    }
-
-    if (taglineLines.length) {
-      tl.to(taglineLines, {
-        autoAlpha: 1,
-        y: 0,
-        filter: 'blur(0px)',
-        duration: 0.9,
-        stagger: 0.12,
-        ease: 'power3.out',
-      }, 0.5)
-    }
-
-    metaBlocks.forEach((block, i) => {
-      tl.to(block, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, 1 + i * 0.09)
+    navItems.forEach((item, i) => {
+      tl.to(item, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, 0.5 + i * 0.08)
     })
 
-    tl.call(() => {
-      heroStage.startClock()
-    }, [], 1)
-
-    if (fluidReady && fluidCanvasRef.value)
-      tl.to(fluidCanvasRef.value, { opacity: 1, duration: 0.6, ease: 'power3.out' }, 1.35)
-
-    /* The DOM masthead only leaves once the fluid display can redraw it; without WebGL it stays. */
-    if (fluidReady && namesRef.value) {
-      tl.to(namesRef.value, { autoAlpha: 0, duration: 0.6, ease: 'power3.out' }, 1.40)
-      tl.set(namesRef.value, { display: 'none' }, 2.15)
-    }
-
-    if (sectionRef.value) {
-      const parallaxTargets = [taglineRef.value, metaRef.value, fluidCanvasRef.value].filter(Boolean)
-      gsapLib.to(parallaxTargets, {
-        yPercent: -25,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: sectionRef.value,
-          start: 'top top',
-          end: 'bottom top',
-          scrub: 0.5,
-        },
-      })
-
-      const fadeTrigger = () => ({
-        trigger: sectionRef.value,
-        start: 'top top',
-        end: '50% top',
-        scrub: true,
-      })
-
-      gsapLib.to(
-        [taglineRef.value, metaRef.value].filter(Boolean),
-        {
-          opacity: 0,
-          ease: 'none',
-          scrollTrigger: fadeTrigger(),
-        },
-      )
-
-      if (fluidCanvasRef.value) {
-        gsapLib.fromTo(
-          fluidCanvasRef.value,
-          { opacity: 1 },
-          {
-            opacity: 0,
-            ease: 'none',
-            immediateRender: false,
-            scrollTrigger: fadeTrigger(),
-          },
-        )
-      }
-    }
+    footBlocks.forEach((block, i) => {
+      tl.to(block, { autoAlpha: 1, duration: 0.6, ease: 'power3.out' }, 0.75 + i * 0.1)
+    })
   })
 })
 
 onUnmounted(() => {
   gsapCtx?.revert()
   fluid.destroy()
-  heroStage.destroy()
+  textDistortion?.destroy()
+  textDistortion = null
   resizeObserver?.disconnect()
   if (textResizeHandler)
     window.removeEventListener('resize', textResizeHandler)
@@ -2551,178 +2870,240 @@ onUnmounted(() => {
 <template>
   <section
     ref="sectionRef"
-    class="h4-root bg-[#050507] h-[100dvh] w-full relative overflow-hidden"
+    class="chd"
     aria-label="Billy Maulana — Frontend Architect & Creative Developer"
   >
     <canvas
       ref="fluidCanvasRef"
-      class="h4__fluid h-full w-full pointer-events-auto inset-0 absolute z-3 mix-blend-screen"
+      class="chd__canvas"
       aria-hidden="true"
     />
 
-    <div class="h4__grain opacity-[0.07] pointer-events-none inset-0 absolute z-4 mix-blend-overlay" aria-hidden="true" />
+    <div class="chd__grain" aria-hidden="true" />
 
-    <div ref="namesRef" class="h4__names pointer-events-none inset-0 absolute z-5">
-      <span ref="nameRef" class="h4__name">{{ MASTHEAD_TEXT }}</span>
+    <div ref="headRef" class="chd__head" :class="{ 'chd__head--ready': isTextReady }">
+      <canvas
+        ref="textCanvasRef"
+        class="chd__text-canvas"
+        aria-hidden="true"
+      />
       <h1 class="sr-only">
         Billy Maulana
       </h1>
+
+      <nav ref="navRef" class="chd__nav" aria-label="Hero navigation">
+        <ul class="chd__nav-links">
+          <li v-for="link in NAV_LINKS" :key="link.href" class="chd__nav-item">
+            <a class="chd__nav-link" :href="link.href">{{ link.label }}</a>
+          </li>
+        </ul>
+        <div class="chd__nav-item chd__nav-status">
+          <span class="chd__nav-status-label">Available for select work</span>
+        </div>
+      </nav>
     </div>
 
-    <p ref="taglineRef" class="h4__tagline text-center pointer-events-none absolute z-6">
-      <span class="h4__tagline-line"><em class="h4__tagline-voice">A Frontend Architect</em> crafting interfaces</span>
-      <br aria-hidden="true">
-      <span class="h4__tagline-line">that move millions of people.</span>
-    </p>
-
-    <div ref="metaRef" class="h4__meta flex pointer-events-none items-baseline justify-between absolute z-6">
-      <p class="h4__meta-block h4__meta-clock">
-        Bandung — {{ clockText }} GMT+7
-      </p>
-      <ul class="h4__meta-block h4__meta-socials" aria-label="Social links">
-        <li v-for="social in SOCIAL_LINKS" :key="social.href">
-          <a class="h4__meta-link" :href="social.href" target="_blank" rel="noopener noreferrer">{{ social.label }}</a>
-        </li>
-      </ul>
-      <nav class="h4__meta-block h4__meta-nav" aria-label="Sections">
-        <a class="h4__meta-link" href="#work">Work</a>
-        <a class="h4__meta-link" href="#about">About</a>
-        <a class="h4__meta-link" href="#contact">Contact</a>
-      </nav>
+    <div ref="footRef" class="chd__foot">
+      <div class="chd__foot-block chd__foot-role">
+        <p class="chd__foot-lines">
+          Frontend Architect &amp;<br>Creative Developer
+        </p>
+        <a class="chd__foot-link" href="#about">Explore <span aria-hidden="true">&#8600;</span></a>
+      </div>
+      <div class="chd__foot-block chd__foot-scroll" aria-hidden="true">
+        Scroll
+      </div>
+      <div class="chd__foot-block chd__foot-clients">
+        <p class="chd__foot-lines">
+          PLN Mobile, Flexben,<br>UNESCO IHP
+        </p>
+        <a class="chd__foot-link" href="#work">View work <span aria-hidden="true">&#8600;</span></a>
+      </div>
     </div>
   </section>
 </template>
 
-<style>
-.h4-root {
-  --h4-pad: clamp(1.25rem, 3.2vw, 3rem);
+<style scoped>
+.chd {
+  --chd-pad: clamp(0.9375rem, 2.08vw, 1.875rem);
+  --chd-top: clamp(0.9375rem, 2.08vw, 1.875rem);
+  --chd-bottom: clamp(2rem, 4vh, 3rem);
+
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 50%, rgba(6, 6, 16, 0.6) 0%, transparent 70%),
+    #060610;
 }
 
-.h4__grain {
+.chd__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: auto;
+  mix-blend-mode: screen;
+}
+
+.chd__grain {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
   background-image: url('/assets/textures/grain.png');
   background-size: 200px 200px;
   background-repeat: repeat;
 }
 
-.h4__name {
+.chd__head {
   position: absolute;
-  top: 0;
-  left: 0;
-  visibility: hidden;
-  font-family: 'Bebas Neue', Impact, sans-serif;
-  font-weight: 400;
-  line-height: 1;
-  color: #F2EFEA;
-  white-space: nowrap;
+  top: var(--chd-top);
+  left: var(--chd-pad);
+  right: var(--chd-pad);
+  z-index: 5;
+  pointer-events: none;
+  mix-blend-mode: difference;
 }
 
-.h4__name-char {
-  display: inline-block;
-  will-change: transform, filter, opacity;
+.chd__text-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1380 / 285;
+  opacity: 0;
+  transition: opacity 0.8s ease;
 }
 
-.h4-root .sr-only {
-  font-family: 'Suisse', 'Helvetica Neue', Arial, sans-serif;
+.chd__head--ready .chd__text-canvas {
+  opacity: 1;
 }
 
-.h4__tagline {
-  top: clamp(1.25rem, 4vh, 1.75rem);
-  left: var(--h4-pad);
-  right: var(--h4-pad);
-  margin-inline: auto;
-  max-width: 45rem;
-  text-wrap: balance;
-  font-family: 'Suisse', 'Helvetica Neue', Arial, sans-serif;
-  font-weight: 400;
-  font-size: clamp(1.0625rem, 1.9vw, 2.28rem);
-  line-height: 1.3;
-  letter-spacing: -0.02em;
-  font-feature-settings: 'kern' 1, 'liga' 1;
-  color: #F2EFEA;
-}
-
-.h4__tagline-line {
-  display: inline-block;
-}
-
-.h4__tagline-voice {
-  font-family: 'Apparel', Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
-  font-size: 1em;
-}
-
-.h4__meta {
-  left: var(--h4-pad);
-  right: var(--h4-pad);
-  bottom: var(--h4-pad);
-  font-family: 'Suisse', 'Helvetica Neue', Arial, sans-serif;
-  font-weight: 400;
-  font-size: 0.625rem;
-  line-height: 1;
-  letter-spacing: 0.28em;
+.chd__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'Satoshi', 'Inter', system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(242, 239, 234, 0.92);
-  column-gap: 1rem;
+  color: rgba(232, 232, 236, 0.78);
 }
 
-.h4__meta-clock {
-  flex: 1 1 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.h4__meta-socials {
-  flex: 0 0 auto;
+.chd__nav-links {
   display: flex;
-  align-items: baseline;
-  gap: 0.75em;
+  align-items: center;
+  gap: clamp(1.5rem, 3vw, 2.75rem);
 }
 
-.h4__meta-socials li {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75em;
-}
-
-.h4__meta-socials li + li::before {
-  content: '/';
-  color: rgba(208, 208, 216, 0.3);
-}
-
-.h4__meta-nav {
-  flex: 1 1 0;
-  display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 1.1em;
-}
-
-.h4__meta-link {
+.chd__nav-link {
   pointer-events: auto;
-  position: relative;
-  color: inherit;
+  color: rgba(232, 232, 236, 0.78);
   transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.h4__meta-link::after {
-  content: '';
-  position: absolute;
-  inset: -0.5rem 0;
-}
-
-.h4__meta-link:hover {
+.chd__nav-link:hover {
   color: #F2EFEA;
 }
 
-@media (max-width: 767px) {
-  .h4__meta-socials {
+.chd__nav-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: rgba(208, 208, 216, 0.62);
+}
+
+.chd__nav-status-label {
+  margin-right: -0.18em;
+}
+
+.chd__foot {
+  position: absolute;
+  bottom: var(--chd-bottom);
+  left: var(--chd-pad);
+  right: var(--chd-pad);
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  pointer-events: none;
+  font-family: 'Satoshi', 'Inter', system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(208, 208, 216, 0.62);
+}
+
+.chd__foot-lines {
+  line-height: 1.7;
+}
+
+.chd__foot-role .chd__foot-lines {
+  text-indent: clamp(2rem, 4vw, 3.5rem);
+}
+
+.chd__foot-link {
+  display: inline-block;
+  margin-top: 0.85rem;
+  pointer-events: auto;
+  color: rgba(232, 232, 236, 0.78);
+  transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chd__foot-link:hover {
+  color: #F2EFEA;
+}
+
+.chd__foot-scroll {
+  color: rgba(208, 208, 216, 0.62);
+}
+
+.chd__foot-clients {
+  text-align: right;
+  margin-right: -0.18em;
+}
+
+@media (max-width: 768px) {
+  .chd__nav {
+    font-size: 0.6875rem;
+  }
+
+  .chd__nav-status {
+    display: none;
+  }
+
+  .chd__foot {
+    bottom: 1.5rem;
+  }
+
+  .chd__foot-scroll,
+  .chd__foot-clients {
     display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .h4__fluid {
+  .chd__canvas {
     display: none;
   }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 </style>

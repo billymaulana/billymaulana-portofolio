@@ -5,6 +5,7 @@
 
 | Tanggal | Slug | Rute | Konsep | Verdict (verbatim, dipotong) | Severity |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-20 | [[2026-11-20-explore-concept-1-thermal-specimen]] | `/explore/concept/1` | Thermal Specimen — potret Billy sebagai garis pindai termal yang menimpa masthead serif, panas pointer melelehkan kaki huruf | "masih jauh kualitas uinya motionnya effect dan lain lainnya dari awwwards. typography jelek, fotor saya thermal juga tidak rapih. semua yang saya lihat tidak aesthetic." | rejected |
 | 2026-09-22 | [[2026-09-22-explore-hero-1-plasma-burn]] | `/explore/hero/hero-1` | Plasma burn — masthead tersulut, terkoyak, menghangus di dalam medan termal | "text effect jelek, dan detail pada liquid saya kurang suka adjust lagi." | iterate |
 | 2026-09-21 | [[2026-09-21-explore-hero-1-thermal-ink]] | `/explore/hero/hero-1` | Thermal ink — ramp termal di-clip ke dalam letterform agar tidak menutupi masthead | "jelek pada explore/hero/hero-1 saya ingin plasma seperti ini: /checkpoint/liquid/liquid-2" | iterate |
 | 2026-08-02 | [[2026-08-02-explore-liquid-1-dye-blob]] | `/explore/liquid/liquid-1` | Liquid-only — engine hero-2 mode dye di atas ground hitam | "jelek, saat putih tidak terlihat liqudi ... berbeda dengan checkpoint/hero-2 liquidnya" | iterate |
@@ -34,12 +35,12 @@
 | Font | Dipakai di | Diagnosis ulang |
 | --- | --- | --- |
 | **Inter** | Prisma, Axon, Studio, VortxLab | Bukan fontnya. Dipakai dengan tracking/leading/weight default — gagal gate 1, 2, 4, 5 |
-| **Obviously Condensed Black** | SPECIMEN 001, **THERMAL READOUT** | **Diulang 2×.** Kombinasi condensed-black + mono-uppercase tanpa kontras skeleton dicatat gagal 2026-07-25, dibangun ulang 2026-07-26 di rute yang sama |
+| **Obviously Condensed Black** | SPECIMEN 001, **THERMAL READOUT**, **Thermal Specimen** | **Diulang 3×.** Kombinasi condensed-black + mono-uppercase tanpa kontras skeleton dicatat gagal 2026-07-25, dibangun ulang 2026-07-26 di rute yang sama. 2026-11-20: dipakai lagi sebagai statement 44px di dalam bingkai goresan — x-height 0,651 vs PP Editorial New 0,526 (+23,8%, ambang harmoni 15%), dan tabel ini tidak dibuka sebelum membangun |
 | **Almarai** | Prisma | Tidak dikomentari; hero ditolak karena video stock, bukan karena font |
 | **JetBrains Mono** | THERMAL READOUT | Billy: "saya tidak suka font mono". Bukan eksekusi — **preferensi famili**. Mono keluar dari palet UI project ini |
 | **Marck Script** | Red Manifesto | Script sebagai display — gagal gate 6 (kontras skeleton) |
-| **PP Editorial New** | hero-explore-3 v2, **v3** | Bukan fontnya sendiri: rasio tintanya **1,054** — tertinggi dari 8 famili di repo. Dipasang dengan leading 0,86 yang diwarisi dari era Clash Display (rasio 0,840) tanpa diukur ulang → tinta antar baris tumpang tindih 51,6px. Billy minta famili masthead diganti pada v2 dan v3 |
-| **Switzer** | THERMAL v2, v3 | Tidak dikomentari langsung; ikut dalam permintaan "ganti semua font family dan font pairingnya" |
+| **PP Editorial New** | hero-explore-3 v2, **v3** | Bukan fontnya sendiri: rasio tintanya **1,054** — tertinggi dari 8 famili di repo. Dipasang dengan leading 0,86 yang diwarisi dari era Clash Display (rasio 0,840) tanpa diukur ulang → tinta antar baris tumpang tindih 51,6px. Billy minta famili masthead diganti pada v2 dan v3. 2026-11-20 (**Thermal Specimen**): leading sudah benar (1,06 ≥ lantai 1,054), tetapi weight **200** memberi rasio stem : cap 0,075 terhadap 0,122 pada referensi "Ignite" — 39% lebih kurus. Berkas weight 400 di repo = 0,138, tetapi isinya cut **Italic** (salah label); cut tegak hanya 200 dan 800. Billy: "typography jelek" |
+| **Switzer** | THERMAL v2, v3, **Thermal Specimen** | Tidak dikomentari langsung; ikut dalam permintaan "ganti semua font family dan font pairingnya". 2026-11-20: dipasang pada weight 450 dan 500 sekaligus, menjadikan halaman 4 weight (200/400/450/500) terhadap batas 3 |
 | **Instrument Serif** | hero-explore-3 v4 | **Hanya punya 1 weight (400).** Sebagai masthead 274px ia membuat weight tertinggi di halaman jatuh di 500 — nol elemen bold. Billy: "font terlalu monoton tidak bold". Juga "tidak sesuai konsep": serif editorial bergaya Times di atas konsep instrumen termal |
 | **Host Grotesk** | hero-explore-3 v4 | Dipilih dari frekuensi library (20 kemunculan), bukan dari kecocokan konsep. Variable 300–800 tapi hanya 300/400/500 yang dipakai |
 
@@ -49,12 +50,12 @@
 2. ~~**Font BANNED dipakai** — Inter 3×~~ → **didiagnosis ulang 2026-07-26**: yang berulang bukan pemakaian Inter, melainkan **tipografi dieksekusi dengan nilai default** (tracking, leading, weight, optical). Fontnya kebetulan Inter.
 3. **Logam grayscale prosedural** — 2×. Sinyal "silver/prisma/kaca" kemungkinan berarti refraksi optik, bukan brushed metal.
 4. **Lolos semua gate teknis, tetap ditolak** — 5×. Gate mekanis (typecheck/lint/build/console) tidak mengukur taste. Pada THERMAL READOUT bahkan `taste-lint` 15/15 hijau — rule `font-family-count` meluluskan tiga famili sans karena hanya menghitung jumlah, tidak memeriksa klasifikasi.
-5. **Gagal uji SWAP** — 7×. Ganti nama → tampilan identik.
+5. **Gagal uji SWAP** — 8×. Ganti nama → tampilan identik.
 6. **Mega-type + label mono uppercase tanpa kontras skeleton** — 3×. Sudah jadi rule sejak 2026-07-25; diulang di `/calibration`, lalu diulang lagi di THERMAL READOUT dengan **font yang persis sama** (Obviously Condensed Black) yang sudah tercatat gagal di tabel di atas.
 7. **Teknik Level 1 (CSS statis) sebagai keseluruhan halaman** — 1×. Tidak ada elemen visual non-teks sama sekali.
 8. **Memperbaiki token, bukan komposisi** — 1×. Setelah ditolak, `/calibration` dinaikkan dari Level 1 ke Level 5 dan `taste-lint` dari 5 ke 14 pass; susunan tipografinya tidak disentuh sama sekali dan tetap ditolak.
 9. **Lolos di batas ambang lalu berhenti** — 1×. Rasio display:body 5.1× terhadap ambang 5×, padahal target 10–20×.
-10. **Spec ditulis tanpa membuka library sendiri** — 1×. Blok Fonts THERMAL READOUT diisi dari inventaris `public/assets/fonts/`; `typography-execution-patterns.md` (ditulis beberapa jam sebelumnya, memuat jawabannya) tidak dibuka sama sekali.
+10. **Spec ditulis tanpa membuka library sendiri** — 2×. *(2026-11-20: brief `/explore/concept/1` ditulis tanpa membuka `references/visual/`, padahal empat dari delapan gambar yang Billy kirim sudah dianalisis di sana.)* Blok Fonts THERMAL READOUT diisi dari inventaris `public/assets/fonts/`; `typography-execution-patterns.md` (ditulis beberapa jam sebelumnya, memuat jawabannya) tidak dibuka sama sekali.
 11. **Konsep art director menggeser subjek halaman** — 1×. Masthead diisi tagline konsep (`RUNNING HOT`) 280px, nama Billy diletakkan di label HUD 11px.
 12. **UI dinilai dengan mata, bukan diukur** — 1×. Logo menabrak eyebrow 22px (2.247px²) pada 1440×780 lolos DUA iterasi; hanya 1440×900 dan 390×844 yang pernah diuji, keduanya kebetulan di sisi aman dari ambang tinggi 830px. Ditutup dengan `scripts/layout-audit.mjs` (7 viewport) yang kini wajib sebelum klaim selesai.
 13. **Gate yang dibangun untuk kelas kegagalan tertentu meluluskan kelas itu juga** — 1×. `layout-audit` dibuat 2026-07-26 khusus untuk mencegah tabrakan elemen, lalu keesokan build-nya meluluskan halaman dengan tiga tabrakan kasat mata di **7 dari 7 viewport**. Sebabnya bukan gate tidak dijalankan — gate-nya dijalankan dan gate-nya salah: ia mengukur kotak CSS, sedangkan yang dilihat Billy adalah tinta glyph. Ditutup dengan `scripts/ink-audit.mjs`.
@@ -66,6 +67,12 @@
 19. **Menulis ulang yang sudah ada di repo** — 2×. Blok Fonts diisi dari inventaris alih-alih dari `typography-execution-patterns.md`; simulasi fluida ditulis dari nol dengan curl-noise padahal `useFluidSimulation.ts` sudah memuat Navier-Stokes lengkap.
 20. **Keadaan diam tidak pernah diperiksa** — 1×. Ambient emitter di `/explore/hero` menyala sejak `onMounted` dan menutupi 7,16% viewport melintasi masthead, lolos beberapa sesi karena setiap verifikasi berupa "gerakkan kursor, lihat jejaknya". Kondisi yang paling sering dialami pengunjung — tiga detik pertama tanpa gerakan kursor — tidak pernah di-screenshot. Varian dari pola #12: bukan UI yang dinilai dengan mata alih-alih diukur, melainkan **keadaan halaman yang tidak pernah dimasukkan ke dalam ruang uji sama sekali**.
 21. **Parameter shader dikonfigurasi lalu diabaikan oleh mode render** — 1×. `color: '#0047FF'` ditulis di konfigurasi fluida sementara `displayMode: 'thermal'` memetakan intensitas ke colormap violet→oranye; hasil terukur nol persen area pada pita hue tempat biru identitas berada. Konfigurasi yang tidak berpengaruh terbaca sebagai "identitas sudah diterapkan" padahal tidak pernah sampai ke layar.
+
+22. **Font dari tabel "pernah dipakai saat ditolak" dipakai lagi tanpa membuka tabelnya** — 1×, tiga famili sekaligus. `/explore/concept/1` memakai PP Editorial New, Obviously, dan Switzer; ketiganya tercatat di tabel di atas, Obviously untuk ketiga kalinya.
+23. **Gate tidak dijalankan sebelum presentasi** — 1×. `taste-lint`, prediksi tersegel, skor A/T, dan gate editorial dilewati pada `/explore/concept/1`. Saat `taste-lint` dijalankan sesudah penolakan: 10 pass · 4 fail (jumlah famili, jumlah weight, `text-wrap`, measure).
+24. **Kegagalan audit dijelaskan, bukan diperbaiki** — 1×. `effect-audit --idle` gagal (cakupan 13,04% terhadap batas 2%) dan hasilnya tetap dipresentasikan dengan alasan "bawaan konsep". Audit yang gagal adalah temuan, bukan catatan kaki.
+25. **Parameter desain dipilih dari nama, bukan dari mengukur referensi** — 1×. Weight "Ultralight", pitch garis 9px, dan foto tampak belakang dipilih tanpa satu pun pengukuran terhadap delapan referensi yang Billy kirim; setelah diukur ketiganya meleset (stem : cap 0,075 vs 0,122 · 28 baris vs lantai 50 · porsi hangat 20–22% vs 49%).
+26. **Tepi nyaris sejajar** — 1×. 9 tepi kiri untuk 11 elemen teks, 5 di antaranya meleset 3,7–17,8px. Lolos `layout-audit` dan `ink-audit` di 7 viewport. Ditutup dengan `scripts/align-audit.mjs`.
 
 ## Yang belum pernah dicoba
 

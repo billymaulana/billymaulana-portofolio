@@ -4,11 +4,11 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Checkpoint — Liquid 1',
+  title: 'Liquid 1',
   robots: 'noindex',
 })
 
-/* Rute checkpoint sengaja mandiri: engine fluida disalin utuh ke dalam file ini, tidak diimpor
+/* Rute ini sengaja mandiri: engine fluida disalin utuh ke dalam file ini, tidak diimpor
    dari composable global. Menghapus satu file ini menghapus seluruh eksplorasi tanpa sisa. */
 
 /* ── engine: simulasi fluida ─────────────────────────────────────────────── */
