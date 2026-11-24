@@ -241,6 +241,9 @@ dan `../../failures/`.
 | **"Monoton"** | (a) padding section identik; (b) ritme padat/lapang tidak bergantian; (c) teknik visual sama diulang |
 | **"Terlalu clean"** | (a) tidak ada planned imperfection; (b) tidak ada grain/noise; (c) grid tidak pernah dilanggar |
 | **"Mepet"** | (a) margin < 4× gutter di desktop; (b) measure > 75ch; (c) tidak ada whitespace yang berfungsi sebagai elemen |
+| **"Cutting tidak enak dilihat"** | (a) garis luar sosok berasal dari topeng (elips, fade < 60 px), bukan anatomi; (b) bagian sosok dibuang (rambut, bahu); (c) tepi matte bercak atau berhalo |
+| **"Tidak menyatu" / "tempelan" / "tidak imersif"** | (a) tidak ada cahaya atau bidang latar yang juga jatuh di sosok (sosok terang berbatas penuh di ground rata); (b) huruf dan sosok tidak berlapis; (c) 0 elemen yang disusun mengelilingi sosok; (d) uji EMPTY gagal: gambar dihapus, struktur halaman tidak berubah; (e) efek interaksi pada gambar tanpa watak (geser generik). Luas sosok dan porsi hitam BUKAN ukurannya |
+| **"Tidak harmonis saat efek muncul" / "tidak mendukung konsep"** | (a) tumpang-tindih hue frame diam ↔ frame efek < 70% (histogram 24 bin berbobot kroma, L\* ≥ 14, C\* ≥ 20); (b) massa kroma melonjak > 10× saat efek datang; (c) cahaya latar memakai warna di luar ramp efek; (d) isi terang frame bukan 0% berkroma dan bukan ≥ 50% berkroma dalam satu palet (keadaan campuran) |
 
 Cara memakainya: begitu muncul kata sifat, **jangan langsung memperbaiki**. Terjemahkan dulu
 ke baris tabel, periksa mana yang benar-benar gagal, baru perbaiki yang itu. Ini mencegah

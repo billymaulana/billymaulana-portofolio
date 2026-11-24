@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concept 2 styleframes</title>
+<style>
+:root { color-scheme: dark; --bg: #050507; --fg: #e9e6f2; --muted: #8d88a0; --rule: #1d1838; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 -apple-system, "Helvetica Neue", Helvetica, sans-serif; }
+header { padding: 40px 32px 8px; max-width: 1800px; margin: 0 auto; }
+header h1 { font-size: 15px; font-weight: 500; margin: 0; letter-spacing: -0.01em; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+main { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding: 24px 32px 64px; max-width: 1800px; margin: 0 auto; }
+section { border-top: 1px solid var(--rule); padding-top: 16px; }
+.label { font-size: 56px; line-height: 1; font-weight: 600; letter-spacing: -0.03em; margin: 0 0 12px; }
+.idea { margin: 0 0 20px; min-height: 6.5em; max-width: 52ch; }
+figure { margin: 0 0 16px; }
+figure img { display: block; width: 100%; height: auto; background: #0b0a12; }
+figcaption { color: var(--muted); font-size: 12px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) 30%; gap: 12px; align-items: start; }
+a { color: inherit; }
+@media (max-width: 1100px) { main { grid-template-columns: 1fr; } .idea { min-height: 0; } }
+@media (max-width: 480px) { header, main { padding-left: 16px; padding-right: 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Explore Concept 2 — styleframe splash dan hero</h1>
+  <p>Tiga arah. Setiap kolom: splash 1440×900, hero 1440×900, hero 390×844. Klik gambar untuk ukuran penuh.</p>
+</header>
+<main>
+  <section>
+    <p class="label">a</p>
+    <p class="idea">Nama Billy dicetak dari kaca layar: bening dan dingin sehingga nyaris tak terlihat di gelap, dan baru terbaca ketika panas sentuhan lewat di bawahnya lalu dibiaskan oleh tebal hurufnya.</p>
+    <figure><a href="a/splash-1440x900.jpg"><img src="a/splash-1440x900.jpg" width="1440" height="900" alt="a, splash"></a><figcaption>splash · 1440×900</figcaption></figure>
+    <div class="pair">
+      <figure><a href="a/hero-1440x900.jpg"><img src="a/hero-1440x900.jpg" width="1440" height="900" alt="a, hero desktop"></a><figcaption>hero · 1440×900</figcaption></figure>
+      <figure><a href="a/hero-390x844.jpg"><img src="a/hero-390x844.jpg" width="390" height="844" alt="a, hero ponsel"></a><figcaption>hero · 390×844</figcaption></figure>
+    </div>
+  </section>
+  <section>
+    <p class="label">b</p>
+    <p class="idea">Satu piksel dipanaskan sampai putih, lalu panasnya merambat menyusuri tubuh huruf dan menulis nama Billy dari dalam — dan piksel itu ternyata titik di atas huruf "i" pada Billy, satu-satunya bagian yang tidak pernah mendingin.</p>
+    <figure><a href="b/splash-1440x900.jpg"><img src="b/splash-1440x900.jpg" width="1440" height="900" alt="b, splash"></a><figcaption>splash · 1440×900</figcaption></figure>
+    <div class="pair">
+      <figure><a href="b/hero-1440x900.jpg"><img src="b/hero-1440x900.jpg" width="1440" height="900" alt="b, hero desktop"></a><figcaption>hero · 1440×900</figcaption></figure>
+      <figure><a href="b/hero-390x844.jpg"><img src="b/hero-390x844.jpg" width="390" height="844" alt="b, hero ponsel"></a><figcaption>hero · 390×844</figcaption></figure>
+    </div>
+  </section>
+  <section>
+    <p class="label">c</p>
+    <p class="idea">Billy seorang frontend engineer: namanya adalah satu bidang datar yang pengunjung dorong menembus sosoknya sendiri, dan panas hanya menyala di garis tempat bidang huruf itu memotong tubuh.</p>
+    <figure><a href="c/splash-1440x900.jpg"><img src="c/splash-1440x900.jpg" width="1440" height="900" alt="c, splash"></a><figcaption>splash · 1440×900</figcaption></figure>
+    <div class="pair">
+      <figure><a href="c/hero-1440x900.jpg"><img src="c/hero-1440x900.jpg" width="1440" height="900" alt="c, hero desktop"></a><figcaption>hero · 1440×900</figcaption></figure>
+      <figure><a href="c/hero-390x844.jpg"><img src="c/hero-390x844.jpg" width="390" height="844" alt="c, hero ponsel"></a><figcaption>hero · 390×844</figcaption></figure>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concept 2 styleframes — putaran 2</title>
+<style>
+:root { color-scheme: dark; --bg: #050507; --fg: #e9e6f2; --muted: #8d88a0; --rule: #1d1838; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 -apple-system, "Helvetica Neue", Helvetica, sans-serif; }
+header { padding: 40px 32px 8px; max-width: 1560px; margin: 0 auto; }
+header h1 { font-size: 15px; font-weight: 500; margin: 0; letter-spacing: -0.01em; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+main { padding: 24px 32px 96px; max-width: 1560px; margin: 0 auto; }
+section { border-top: 1px solid var(--rule); padding-top: 16px; margin-bottom: 72px; }
+.label { font-size: 56px; line-height: 1; font-weight: 600; letter-spacing: -0.03em; margin: 0 0 12px; }
+.idea { margin: 0 0 24px; max-width: 68ch; }
+.note { margin: 12px 0 0; color: var(--muted); max-width: 68ch; }
+figure { margin: 0; }
+figure img { display: block; width: 100%; height: auto; background: #0b0a12; }
+figcaption { color: var(--muted); font-size: 12px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.lead { display: grid; grid-template-columns: minmax(0, 3.463fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 24px; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+a { color: inherit; }
+@media (max-width: 900px) { .lead, .pair { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { header, main { padding-left: 16px; padding-right: 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Explore Concept 2 — styleframe putaran 2</h1>
+  <p>Dua arah. Font nama: Archivo Expanded 800. Klik gambar untuk ukuran penuh.</p>
+</header>
+<main>
+  <section>
+    <p class="label">a</p>
+    <p class="idea">Billy dipotret dengan rana kedua: tiga fotonya menjadi tiga eksposur satu tolehan yang terekam sebagai jejak panas, dan yang terakhir beku paling tajam dan paling panas tepat saat penghitung mencapai 60fps.</p>
+    <div class="lead">
+      <figure><a href="F1/hero-1440x900.jpg"><img src="F1/hero-1440x900.jpg" width="1440" height="900" alt="a, hero desktop"></a><figcaption>hero · 1440×900</figcaption></figure>
+      <figure><a href="F1/hero-390x844.jpg"><img src="F1/hero-390x844.jpg" width="390" height="844" alt="a, hero ponsel"></a><figcaption>hero · 390×844</figcaption></figure>
+    </div>
+    <div class="pair">
+      <figure><a href="F1/splash-1440x900.jpg"><img src="F1/splash-1440x900.jpg" width="1440" height="900" alt="a, splash"></a><figcaption>splash, penghitung di 47 · 1440×900</figcaption></figure>
+      <figure><a href="F1/touch-1440x900.jpg"><img src="F1/touch-1440x900.jpg" width="1440" height="900" alt="a, hero saat pointer menyentuh wajah"></a><figcaption>hero saat pointer menyentuh wajah · 1440×900</figcaption></figure>
+    </div>
+  </section>
+  <section>
+    <p class="label">b</p>
+    <p class="idea">Tanpa sosok: serangkaian isolator kaca tegangan tinggi, benda dari jaringan listrik di balik PLN Mobile, menahan panas di antara dua kata nama Billy.</p>
+    <div class="lead">
+      <figure><a href="O1/hero-1440x900.jpg"><img src="O1/hero-1440x900.jpg" width="1440" height="900" alt="b, hero desktop"></a><figcaption>hero · 1440×900</figcaption></figure>
+      <div></div>
+    </div>
+    <p class="note">Arah b baru punya satu frame; splash dan ponsel dibuat bila arah ini dipilih.</p>
+  </section>
+</main>
+</body>
+</html>
