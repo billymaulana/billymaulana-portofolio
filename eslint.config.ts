@@ -9,5 +9,5 @@ export default antfu({
    * which stall on package.json in this bun-managed repo.
    */
   pnpm: false,
-  ignores: ['docs/**', '.firecrawl/**'],
+  ignores: ['docs/**', '.firecrawl/**', '.superpowers/**'],
 })
