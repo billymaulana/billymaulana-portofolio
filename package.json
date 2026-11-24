@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@antfu/utils": "^9.3.0",
+    "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource/almarai": "^5.3.0",
     "@fontsource/barlow": "^5.3.0",
     "@fontsource/bebas-neue": "^5.3.0",
