@@ -10,26 +10,8 @@ useSeoMeta({
   robots: 'noindex',
 })
 
-const { entries, query, groups, matches } = useRouteIndex()
+const { entries, groups } = useRouteIndex()
 const RouteLink = resolveComponent('NuxtLink')
-const filterInput = useTemplateRef<HTMLInputElement>('filterInput')
-
-function openFirstMatch() {
-  const first = matches.value.find(entry => !entry.isDynamic)
-  if (first)
-    navigateTo(first.path)
-}
-
-function clearQuery() {
-  query.value = ''
-}
-
-onKeyStroke('/', (event) => {
-  if (document.activeElement === filterInput.value)
-    return
-  event.preventDefault()
-  filterInput.value?.focus()
-})
 </script>
 
 <template>
@@ -46,31 +28,6 @@ onKeyStroke('/', (event) => {
           {{ entries.length }} routes, read from the router on every load
         </p>
       </header>
-
-      <div class="route-index__filter">
-        <label for="route-filter" class="route-index__small">Filter routes</label>
-        <input
-          id="route-filter"
-          ref="filterInput"
-          v-model="query"
-          class="route-index__input"
-          type="search"
-          placeholder="Filter routes"
-          aria-label="Filter routes"
-          aria-describedby="route-filter-hint"
-          autocomplete="off"
-          spellcheck="false"
-          @keydown.enter.prevent="openFirstMatch"
-          @keydown.esc="clearQuery"
-        >
-        <p id="route-filter-hint" class="route-index__small">
-          <kbd>/</kbd> to focus · <kbd>Enter</kbd> opens the first match · <kbd>Esc</kbd> clears
-        </p>
-      </div>
-
-      <p v-if="matches.length === 0" class="route-index__empty" role="status">
-        No route matches “{{ query }}”.
-      </p>
 
       <section
         v-for="group in groups"
@@ -144,47 +101,11 @@ onKeyStroke('/', (event) => {
   color: var(--index-muted);
 }
 
-.route-index__small kbd {
-  font-family: inherit;
-  color: var(--index-ink);
-}
-
 .route-index__title {
   font-weight: 500;
   font-size: clamp(3.5rem, 7vw, 6rem);
   line-height: 1;
   letter-spacing: -0.025em;
-}
-
-.route-index__filter {
-  display: grid;
-  gap: var(--space-2);
-  margin-block-start: var(--space-6);
-}
-
-.route-index__input {
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--index-rule);
-  border-radius: 0;
-  background: var(--surface-1);
-  color: var(--index-ink);
-  font: 400 1rem/1.4 var(--font-interface);
-  cursor: text;
-}
-
-.route-index__input::placeholder {
-  color: var(--index-muted);
-}
-
-.route-index__input:focus-visible {
-  outline: 2px solid var(--index-focus);
-  outline-offset: 2px;
-}
-
-.route-index__empty {
-  margin-block-start: var(--space-7);
-  color: var(--index-muted);
 }
 
 .route-index__group {

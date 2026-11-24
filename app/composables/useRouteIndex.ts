@@ -80,30 +80,21 @@ export function useRouteIndex() {
       sheet: String(index + 1).padStart(2, '0'),
     }))
 
-  const query = ref('')
+  const buckets = new Map<string, RouteEntry[]>()
+  for (const entry of entries) {
+    const bucket = buckets.get(entry.group)
+    if (bucket)
+      bucket.push(entry)
+    else
+      buckets.set(entry.group, [entry])
+  }
+  const groups: RouteGroup[] = Array.from(buckets, ([key, list]) => ({
+    key: key || 'top-level',
+    label: key === TOP_LEVEL
+      ? 'Top level'
+      : humanize(key),
+    entries: list,
+  }))
 
-  const groups = computed<RouteGroup[]>(() => {
-    const needle = query.value.trim().toLowerCase()
-    const buckets = new Map<string, RouteEntry[]>()
-    for (const entry of entries) {
-      if (needle && !`${entry.title} ${entry.displayPath}`.toLowerCase().includes(needle))
-        continue
-      const bucket = buckets.get(entry.group)
-      if (bucket)
-        bucket.push(entry)
-      else
-        buckets.set(entry.group, [entry])
-    }
-    return Array.from(buckets, ([key, list]) => ({
-      key: key || 'top-level',
-      label: key === TOP_LEVEL
-        ? 'Top level'
-        : humanize(key),
-      entries: list,
-    }))
-  })
-
-  const matches = computed(() => groups.value.flatMap(group => group.entries))
-
-  return { entries, query, groups, matches }
+  return { entries, groups }
 }
