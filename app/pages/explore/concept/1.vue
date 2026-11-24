@@ -20,6 +20,7 @@ const MAX_DPR = 2
 
 interface MastStyle {
   family: string
+  stretch: 'normal' | 'expanded'
   weights: number[]
   tracking: number[]
   wordGap: number
@@ -28,22 +29,23 @@ interface MastStyle {
   uppercase: boolean
 }
 
-/* Two voices for the same composition, switched with ?mast=sans. The serif reads the name as an
-   editorial wordmark: the family ships its italic cut as the 400 face, so weight alone selects
-   heavy roman versus italic, and the heavy cut is tracked open because its foot serifs meet under
-   any tighter fit. The sans is the condensed-caps wordmark the other hero routes already use. */
-const MASTHEADS: Record<'serif' | 'sans', MastStyle> = {
-  serif: {
-    family: '\'PP Editorial New\', serif',
-    weights: [800, 400],
-    tracking: [0.012, -0.02],
-    wordGap: 0.2,
-    leading: 1.06,
+/* Two voices for the same composition, switched with ?mast=sans. The default is the wide heavy
+   grotesk picked from the blind font specimen, set in caps at its 125% width. The sans is the
+   condensed-caps wordmark the other hero routes already use. */
+const MASTHEADS: Record<'expanded' | 'condensed', MastStyle> = {
+  expanded: {
+    family: '\'Archivo Variable\', \'Archivo\', sans-serif',
+    stretch: 'expanded',
+    weights: [800],
+    tracking: [-0.02],
+    wordGap: 0.28,
+    leading: 0.92,
     overlap: 0.82,
-    uppercase: false,
+    uppercase: true,
   },
-  sans: {
+  condensed: {
     family: '\'Bebas Neue\', Impact, sans-serif',
+    stretch: 'normal',
     weights: [400],
     tracking: [-0.015],
     wordGap: 0,
@@ -93,6 +95,117 @@ const FLUID = {
   velocityDissipation: 1.2,
   pressureIterations: 20,
 }
+
+/* The name sits on its own warp layer above the fluid, blended by difference, so ink passing
+   behind a letter shows through it inverted instead of dissolving the letter. Radius is kept in
+   cap heights so one line on a desktop and two stacked lines on a phone ripple at the same
+   scale. */
+const WARP = {
+  pad: 0.18,
+  radius: 0.36,
+  intensity: 0.06,
+  follow: 0.14,
+  hoverFollow: 0.15,
+  velocityGain: 8,
+  velocityAttack: 0.3,
+  velocityRelease: 0.05,
+  velocityDecay: 0.45,
+  rest: 0.002,
+}
+
+const KNOCKOUT_BLEED = 0.75
+const KNOCKOUT_RING = [
+  [0, 0],
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [0.7, 0.7],
+  [-0.7, 0.7],
+  [0.7, -0.7],
+  [-0.7, -0.7],
+] as const
+
+const WARP_VERTEX = `#version 300 es
+in vec2 aPosition;
+out vec2 vUv;
+void main() {
+  vUv = aPosition * 0.5 + 0.5;
+  gl_Position = vec4(aPosition, 0.0, 1.0);
+}`
+
+const WARP_FRAGMENT = `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uText;
+uniform vec2 uMouse;
+uniform vec2 uResolution;
+uniform float uRadius;
+uniform float uIntensity;
+uniform float uTime;
+uniform float uHover;
+uniform float uVelocity;
+out vec4 outColor;
+
+vec2 hash22(vec2 p) {
+  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+  return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(dot(hash22(i), f), dot(hash22(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0)), u.x),
+    mix(dot(hash22(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0)), dot(hash22(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0)), u.x),
+    u.y
+  );
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 3; i++) {
+    v += a * noise(p);
+    p = p * 2.0 + vec2(100.0);
+    a *= 0.5;
+  }
+  return v;
+}
+
+void main() {
+  vec2 uv = vUv;
+  float velBoost = 1.0 + uVelocity * 2.0;
+  float radius = uRadius * (1.0 + uVelocity * 0.4);
+
+  vec2 diff = uv - uMouse;
+  diff.x *= uResolution.x / uResolution.y;
+  float dist = length(diff);
+
+  float outer = smoothstep(radius * 1.5, radius * 0.3, dist) * uHover;
+  float inner = pow(smoothstep(radius, 0.0, dist), 0.6) * uHover;
+  float influence = mix(outer, inner, 0.6);
+
+  vec2 flowDir = normalize(diff + 0.001);
+  vec2 perpDir = vec2(-flowDir.y, flowDir.x);
+  float swirlAngle = fbm(uv * 6.0 + uTime * 0.25) * 3.14159;
+  vec2 swirlDir = vec2(cos(swirlAngle), sin(swirlAngle));
+  float ripple = sin(dist * 12.0 - uTime * 3.0) * 0.08 * influence;
+  vec2 turbulence = vec2(
+    fbm(uv * 10.0 + uTime * 0.25),
+    fbm(uv * 10.0 + uTime * 0.25 + 50.0)
+  ) * 0.12 * influence;
+
+  vec2 displacement = flowDir * influence * 0.12
+    + perpDir * influence * 0.25
+    + swirlDir * influence * 0.35
+    + flowDir * ripple
+    + turbulence;
+  displacement *= uIntensity * velBoost;
+
+  outColor = texture(uText, uv + displacement);
+}`
 
 const PORTRAIT_VERTEX = `#version 300 es
 in vec2 aPosition;
@@ -230,16 +343,33 @@ interface PortraitRenderer {
   uniforms: Record<string, WebGLUniformLocation | null>
 }
 
+interface NameWarp {
+  gl: WebGL2RenderingContext
+  texture: WebGLTexture
+  uniforms: Record<string, WebGLUniformLocation | null>
+}
+
+interface WarpBox {
+  left: number
+  top: number
+  width: number
+  height: number
+  pad: number
+  cap: number
+  fontSize: number
+}
+
 const route = useRoute()
 const mastKey = route.query.mast === 'sans'
-  ? 'sans'
-  : 'serif'
+  ? 'condensed'
+  : 'expanded'
 const mastStyle = MASTHEADS[mastKey]
 const mastWords = profile.name.split(' ').map(word => mastStyle.uppercase
   ? word.toUpperCase()
   : word)
 const mastVars = {
   '--c1-mast-family': mastStyle.family,
+  '--c1-mast-stretch': mastStyle.stretch,
   '--c1-leading': `${mastStyle.leading}`,
   '--c1-overlap': `${mastStyle.overlap}`,
 }
@@ -248,6 +378,7 @@ const rootRef = ref<HTMLElement>()
 const clipRef = ref<HTMLElement>()
 const portraitRef = ref<HTMLCanvasElement>()
 const stageRef = ref<HTMLCanvasElement>()
+const warpRef = ref<HTMLCanvasElement>()
 const ledeProbeRef = ref<HTMLElement>()
 const atmosRef = ref<HTMLElement>()
 
@@ -293,6 +424,21 @@ const fluid = useFluidSimulation()
 const portraitState = { reveal: 0, develop: 0 }
 
 let renderer: PortraitRenderer | null = null
+let warp: NameWarp | null = null
+let warpFrame = 0
+let warpStart = 0
+const warpPointer = {
+  x: 0.5,
+  y: 0.5,
+  smoothX: 0.5,
+  smoothY: 0.5,
+  inside: false,
+  hover: 0,
+  velocity: 0,
+  dx: 0,
+  dy: 0,
+  atRest: false,
+}
 let contentCanvas: HTMLCanvasElement | null = null
 let resizeObserver: ResizeObserver | null = null
 let layoutFrame = 0
@@ -353,6 +499,18 @@ function tickClock() {
 /* Splitting a word into one box per letter drops its kerning pairs, and the canvas raster would
    then disagree with the DOM by a few pixels per pair. Reading every glyph's offset from the
    shaped, unsplit word gives both renderers the same positions. */
+function mastFont(weight: number, px: number) {
+  return `${weight} ${mastStyle.stretch} ${px}px ${mastStyle.family}`
+}
+
+/* Canvas drops the width keyword from the font shorthand in some engines, so the property is set
+   on its own as well; without it the probe measures the 100% cut while the DOM draws the 125%. */
+function setMastFont(ctx: CanvasRenderingContext2D, weight: number, px: number) {
+  ctx.font = mastFont(weight, px)
+  if ('fontStretch' in ctx)
+    ctx.fontStretch = mastStyle.stretch
+}
+
 function measureMasthead(root: HTMLElement, words: string[], stacked: boolean): MastMetrics {
   const ctx = document.createElement('canvas').getContext('2d')!
   const parts = words.map((word, index) => {
@@ -367,6 +525,7 @@ function measureMasthead(root: HTMLElement, words: string[], stacked: boolean): 
       visibility: 'hidden',
       whiteSpace: 'pre',
       fontFamily: mastStyle.family,
+      fontStretch: mastStyle.stretch,
       fontWeight: `${weight}`,
       fontSize: `${MAST_PROBE_PX}px`,
       lineHeight: `${mastStyle.leading}`,
@@ -390,7 +549,7 @@ function measureMasthead(root: HTMLElement, words: string[], stacked: boolean): 
     const baseline = (strut.getBoundingClientRect().bottom - box.top) / MAST_PROBE_PX
     probe.remove()
 
-    ctx.font = `${weight} ${MAST_PROBE_PX}px ${mastStyle.family}`
+    setMastFont(ctx, weight, MAST_PROBE_PX)
     const first = ctx.measureText(word[0]!)
     const last = ctx.measureText(word[word.length - 1]!)
     return {
@@ -629,8 +788,214 @@ function renderPortrait() {
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
 
+function measureWarpBox(): WarpBox | null {
+  const root = rootRef.value
+  const clip = clipRef.value
+  const metrics = mast.value
+  if (!root || !clip || !metrics)
+    return null
+  const frame = root.getBoundingClientRect()
+  const clipBox = clip.getBoundingClientRect()
+  const fontSize = Number.parseFloat(getComputedStyle(clip).fontSize)
+  const pad = Math.round(WARP.pad * fontSize)
+  return {
+    left: clipBox.left - frame.left - pad,
+    top: clipBox.top - frame.top - pad,
+    width: clipBox.width + pad * 2,
+    height: clipBox.height + pad * 2,
+    pad,
+    cap: metrics.capHeight * fontSize,
+    fontSize,
+  }
+}
+
+function rasterizeName(box: WarpBox, dpr: number, fill: string): HTMLCanvasElement {
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(box.width * dpr)
+  canvas.height = Math.round(box.height * dpr)
+  const metrics = mast.value
+  if (!metrics)
+    return canvas
+  const ctx = canvas.getContext('2d')!
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = fill
+  for (const char of metrics.chars) {
+    setMastFont(ctx, char.weight, box.fontSize)
+    ctx.fillText(char.ch, box.pad + char.x * box.fontSize, box.pad + (char.line * mastStyle.leading + metrics.baseline) * box.fontSize)
+  }
+  return canvas
+}
+
+function createNameWarp(canvas: HTMLCanvasElement): NameWarp | null {
+  const gl = canvas.getContext('webgl2', {
+    alpha: true,
+    premultipliedAlpha: true,
+    antialias: false,
+    depth: false,
+    stencil: false,
+  })
+  if (!gl)
+    return null
+
+  const program = gl.createProgram()!
+  gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, WARP_VERTEX))
+  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, WARP_FRAGMENT))
+  gl.bindAttribLocation(program, 0, 'aPosition')
+  gl.linkProgram(program)
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+    throw new Error(gl.getProgramInfoLog(program) ?? 'program link failed')
+  gl.useProgram(program)
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW)
+  gl.enableVertexAttribArray(0)
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
+
+  const texture = gl.createTexture()!
+  gl.activeTexture(gl.TEXTURE0)
+  gl.bindTexture(gl.TEXTURE_2D, texture)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+
+  const uniforms: Record<string, WebGLUniformLocation | null> = {}
+  for (const name of [
+    'uText',
+    'uMouse',
+    'uResolution',
+    'uRadius',
+    'uIntensity',
+    'uTime',
+    'uHover',
+    'uVelocity',
+  ])
+    uniforms[name] = gl.getUniformLocation(program, name)
+  gl.uniform1i(uniforms.uText!, 0)
+  gl.uniform1f(uniforms.uIntensity!, WARP.intensity)
+  gl.clearColor(0, 0, 0, 0)
+
+  return { gl, texture, uniforms }
+}
+
+function placeWarp() {
+  const canvas = warpRef.value
+  const box = measureWarpBox()
+  if (!canvas || !warp || !box)
+    return
+  const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
+  canvas.style.left = `${box.left}px`
+  canvas.style.top = `${box.top}px`
+  canvas.style.width = `${box.width}px`
+  canvas.style.height = `${box.height}px`
+  canvas.width = Math.round(box.width * dpr)
+  canvas.height = Math.round(box.height * dpr)
+
+  const { gl, texture, uniforms } = warp
+  gl.bindTexture(gl.TEXTURE_2D, texture)
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, rasterizeName(box, dpr, BONE))
+  gl.viewport(0, 0, canvas.width, canvas.height)
+  gl.uniform2f(uniforms.uResolution!, canvas.width, canvas.height)
+  gl.uniform1f(uniforms.uRadius!, WARP.radius * box.cap / box.height)
+  warpPointer.atRest = false
+}
+
+function renderWarp(now: number) {
+  warpFrame = requestAnimationFrame(renderWarp)
+  if (!warp)
+    return
+  const p = warpPointer
+  p.smoothX += (p.x - p.smoothX) * WARP.follow
+  p.smoothY += (p.y - p.smoothY) * WARP.follow
+  p.hover += ((p.inside ? 1 : 0) - p.hover) * WARP.hoverFollow
+  const target = Math.min(Math.hypot(p.dx, p.dy) * WARP.velocityGain, 1)
+  p.velocity += (target - p.velocity) * (target > p.velocity
+    ? WARP.velocityAttack
+    : WARP.velocityRelease)
+  p.dx *= WARP.velocityDecay
+  p.dy *= WARP.velocityDecay
+
+  /* At rest the warp is the identity, so once one undistorted frame is on screen the loop keeps
+     tracking the pointer without spending a draw on a picture that cannot change. */
+  if (p.hover < WARP.rest) {
+    if (p.atRest)
+      return
+    p.hover = 0
+    p.atRest = true
+  }
+  else {
+    p.atRest = false
+  }
+
+  const { gl, uniforms } = warp
+  gl.uniform2f(uniforms.uMouse!, p.smoothX, p.smoothY)
+  gl.uniform1f(uniforms.uTime!, (now - warpStart) / 1000)
+  gl.uniform1f(uniforms.uHover!, p.hover)
+  gl.uniform1f(uniforms.uVelocity!, p.velocity)
+  gl.clear(gl.COLOR_BUFFER_BIT)
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+}
+
+function onWarpPointer(event: PointerEvent) {
+  const canvas = warpRef.value
+  if (!canvas)
+    return
+  const rect = canvas.getBoundingClientRect()
+  const x = (event.clientX - rect.left) / rect.width
+  const y = 1 - (event.clientY - rect.top) / rect.height
+  const p = warpPointer
+  p.dx = x - p.x
+  p.dy = y - p.y
+  p.x = x
+  p.y = y
+  p.inside = x >= 0 && x <= 1 && y >= 0 && y <= 1
+}
+
+/* A lifted finger leaves its last position behind; without releasing it the ripple would keep
+   running under a point nobody is touching. */
+function onWarpRelease(event: PointerEvent) {
+  if (event.type === 'pointerleave' || event.pointerType !== 'mouse')
+    warpPointer.inside = false
+}
+
+function startWarp() {
+  const canvas = warpRef.value
+  if (warp || !canvas)
+    return
+  try {
+    warp = createNameWarp(canvas)
+  }
+  catch {
+    warp = null
+  }
+  if (!warp)
+    return
+  warpStart = performance.now()
+  warpFrame = requestAnimationFrame(renderWarp)
+  window.addEventListener('pointermove', onWarpPointer, { passive: true })
+  window.addEventListener('pointerup', onWarpRelease, { passive: true })
+  window.addEventListener('pointercancel', onWarpRelease, { passive: true })
+  document.documentElement.addEventListener('pointerleave', onWarpRelease, { passive: true })
+}
+
+function stopWarp() {
+  cancelAnimationFrame(warpFrame)
+  window.removeEventListener('pointermove', onWarpPointer)
+  window.removeEventListener('pointerup', onWarpRelease)
+  window.removeEventListener('pointercancel', onWarpRelease)
+  document.documentElement.removeEventListener('pointerleave', onWarpRelease)
+  warp?.gl.getExtension('WEBGL_lose_context')?.loseContext()
+  warp = null
+}
+
 /* The fluid pass only displaces a texture, so the poster it liquefies has to exist as one raster:
-   ground, masthead and portrait flattened in the same order the DOM stacks them. */
+   ground and portrait flattened in the order the DOM stacks them. The name is cut out of that
+   plate in black, because the warp layer blends by difference and anything warm left behind a
+   letter would tint it at rest; the fluid still carries ink through the cut. Without a warp layer
+   the name is painted into the plate instead, as the only place it can still be seen. */
 function composeContent(): HTMLCanvasElement | null {
   const root = rootRef.value
   const clip = clipRef.value
@@ -663,21 +1028,20 @@ function composeContent(): HTMLCanvasElement | null {
     ctx.restore()
   }
 
-  const clipBox = clip.getBoundingClientRect()
-  const fontSize = Number.parseFloat(getComputedStyle(clip).fontSize)
-  ctx.textBaseline = 'alphabetic'
-  ctx.fillStyle = BONE
-  const originX = clipBox.left - frame.left
-  const originY = clipBox.top - frame.top
-  for (const char of metrics.chars) {
-    ctx.font = `${char.weight} ${fontSize}px ${mastStyle.family}`
-    ctx.fillText(char.ch, originX + char.x * fontSize, originY + (char.line * mastStyle.leading + metrics.baseline) * fontSize)
-  }
+  const name = measureWarpBox()
+  if (name && !warp)
+    ctx.drawImage(rasterizeName(name, dpr, BONE), name.left, name.top, name.width, name.height)
 
   if (renderer && portrait) {
     renderPortrait()
     const box = portrait.getBoundingClientRect()
     ctx.drawImage(portrait, box.left - frame.left, box.top - frame.top, box.width, box.height)
+  }
+
+  if (name && warp) {
+    const cut = rasterizeName(name, dpr, '#000000')
+    for (const [dx, dy] of KNOCKOUT_RING)
+      ctx.drawImage(cut, name.left + dx * KNOCKOUT_BLEED, name.top + dy * KNOCKOUT_BLEED, name.width, name.height)
   }
 
   return contentCanvas
@@ -686,11 +1050,13 @@ function composeContent(): HTMLCanvasElement | null {
 function goLive() {
   if (!fluidReady || disposed)
     return
+  startWarp()
   const content = composeContent()
   if (!content)
     return
   fluid.resize()
   fluid.setContentCanvas(content)
+  placeWarp()
   isLive.value = true
 }
 
@@ -828,7 +1194,7 @@ onMounted(async () => {
 
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  await Promise.all(mastStyle.weights.map(weight => document.fonts.load(`${weight} ${MAST_PROBE_PX}px ${mastStyle.family}`, mastWords.join('')))).catch(() => [])
+  await Promise.all(mastStyle.weights.map(weight => document.fonts.load(mastFont(weight, MAST_PROBE_PX), mastWords.join('')))).catch(() => [])
   if (disposed)
     return
 
@@ -890,6 +1256,7 @@ onUnmounted(() => {
   cancelAnimationFrame(layoutFrame)
   resizeObserver?.disconnect()
   revertIntro?.()
+  stopWarp()
   fluid.destroy()
   renderer?.gl.getExtension('WEBGL_lose_context')?.loseContext()
   renderer = null
@@ -924,6 +1291,8 @@ onUnmounted(() => {
     </div>
 
     <canvas ref="stageRef" class="c1-stage" aria-hidden="true" />
+
+    <canvas ref="warpRef" class="c1-warp" aria-hidden="true" />
 
     <div class="c1-ui">
       <header class="c1-top">
@@ -1008,7 +1377,7 @@ onUnmounted(() => {
   --c1-mast-top: 104px;
   --c1-size-cap: 20svh;
   --c1-size: min(calc((100vw - 2 * var(--c1-margin)) / var(--c1-fit)), var(--c1-size-cap));
-  --c1-leading: 1.06;
+  --c1-leading: 0.92;
   --c1-overlap: 0.82;
   --c1-mast-height: calc(var(--c1-size) * (var(--c1-lines) * var(--c1-leading) + 0.08));
   --c1-portrait-scale: 1;
@@ -1064,7 +1433,8 @@ onUnmounted(() => {
   left: var(--c1-margin);
   right: var(--c1-margin);
   margin: 0;
-  font-family: var(--c1-mast-family, 'PP Editorial New', serif);
+  font-family: var(--c1-mast-family, 'Archivo Variable', sans-serif);
+  font-stretch: var(--c1-mast-stretch, normal);
   font-size: var(--c1-size);
   line-height: var(--c1-leading);
 }
@@ -1115,6 +1485,19 @@ onUnmounted(() => {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.c1-warp {
+  position: absolute;
+  z-index: 4;
+  display: block;
+  visibility: hidden;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+.is-live .c1-warp {
+  visibility: visible;
 }
 
 .is-live .c1-mast {
