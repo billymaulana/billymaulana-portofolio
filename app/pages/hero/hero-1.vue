@@ -2505,14 +2505,14 @@ onUnmounted(() => {
 
 .chd__grain {
   position: absolute;
+  z-index: 50;
   inset: 0;
-  z-index: 4;
+  background: url('/assets/textures/grain-generated-film-1024.png') repeat;
+  background-size: 512px;
+  mix-blend-mode: screen;
+  opacity: 0.08;
+  filter: contrast(1.9) brightness(0.62);
   pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  background-image: url('/assets/textures/grain.png');
-  background-size: 200px 200px;
-  background-repeat: repeat;
 }
 
 .chd__head {

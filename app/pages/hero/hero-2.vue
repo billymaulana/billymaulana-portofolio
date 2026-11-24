@@ -2560,7 +2560,7 @@ onUnmounted(() => {
       aria-hidden="true"
     />
 
-    <div class="h4__grain opacity-[0.07] pointer-events-none inset-0 absolute z-4 mix-blend-overlay" aria-hidden="true" />
+    <div class="h4__grain" aria-hidden="true" />
 
     <div ref="namesRef" class="h4__names pointer-events-none inset-0 absolute z-5">
       <span ref="nameRef" class="h4__name">{{ MASTHEAD_TEXT }}</span>
@@ -2599,9 +2599,15 @@ onUnmounted(() => {
 }
 
 .h4__grain {
-  background-image: url('/assets/textures/grain.png');
-  background-size: 200px 200px;
-  background-repeat: repeat;
+  position: absolute;
+  z-index: 50;
+  inset: 0;
+  background: url('/assets/textures/grain-generated-film-1024.png') repeat;
+  background-size: 512px;
+  mix-blend-mode: screen;
+  opacity: 0.08;
+  filter: contrast(1.9) brightness(0.62);
+  pointer-events: none;
 }
 
 .h4__name {
