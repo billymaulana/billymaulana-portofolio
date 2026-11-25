@@ -27,12 +27,24 @@ interface MastStyle {
   leading: number
   overlap: number
   uppercase: boolean
+  kern?: Record<string, number>
 }
 
-/* Two voices for the same composition, switched with ?mast=sans. The default is the wide heavy
-   grotesk picked from the blind font specimen, set in caps at its 125% width. The sans is the
+/* Three voices for the same composition. The default is Clash Display in caps; ?mast=archivo is
+   the wide heavy grotesk from the blind font specimen at its 125% width, and ?mast=sans the
    condensed-caps wordmark the other hero routes already use. */
-const MASTHEADS: Record<'expanded' | 'condensed', MastStyle> = {
+const MASTHEADS: Record<'display' | 'expanded' | 'condensed', MastStyle> = {
+  display: {
+    family: '\'Clash Display\', sans-serif',
+    stretch: 'normal',
+    weights: [600],
+    tracking: [-0.0075],
+    wordGap: 0.24,
+    leading: 0.8,
+    overlap: 0.82,
+    uppercase: true,
+    kern: { LY: -0.13, LA: 0.02 },
+  },
   expanded: {
     family: '\'Archivo Variable\', \'Archivo\', sans-serif',
     stretch: 'expanded',
@@ -360,10 +372,11 @@ interface WarpBox {
 }
 
 const route = useRoute()
-const mastKey = route.query.mast === 'sans'
-  ? 'condensed'
-  : 'expanded'
-const mastStyle = MASTHEADS[mastKey]
+const MAST_QUERY: Record<string, keyof typeof MASTHEADS> = {
+  sans: 'condensed',
+  archivo: 'expanded',
+}
+const mastStyle = MASTHEADS[MAST_QUERY[String(route.query.mast ?? '')] ?? 'display']
 const mastWords = profile.name.split(' ').map(word => mastStyle.uppercase
   ? word.toUpperCase()
   : word)
@@ -540,12 +553,15 @@ function measureMasthead(root: HTMLElement, words: string[], stacked: boolean): 
     const box = probe.getBoundingClientRect()
     const range = document.createRange()
     const offsets: number[] = []
+    let kerned = 0
     for (let i = 0; i < word.length; i++) {
+      if (i > 0)
+        kerned += mastStyle.kern?.[word[i - 1]! + word[i]!] ?? 0
       range.setStart(node, i)
       range.setEnd(node, i + 1)
-      offsets.push((range.getBoundingClientRect().left - box.left) / MAST_PROBE_PX)
+      offsets.push((range.getBoundingClientRect().left - box.left) / MAST_PROBE_PX + kerned)
     }
-    const advance = box.width / MAST_PROBE_PX
+    const advance = box.width / MAST_PROBE_PX + kerned
     const baseline = (strut.getBoundingClientRect().bottom - box.top) / MAST_PROBE_PX
     probe.remove()
 
@@ -1370,14 +1386,14 @@ onUnmounted(() => {
 .c1 {
   --c1-margin: 20px;
   --c1-gutter: 16px;
-  --c1-fit: 6.4;
+  --c1-fit: 8.2585;
   --c1-lines: 1;
-  --c1-baseline: 0.82;
-  --c1-cap: 0.8;
+  --c1-baseline: 0.72;
+  --c1-cap: 0.67;
   --c1-mast-top: 104px;
   --c1-size-cap: 20svh;
   --c1-size: min(calc((100vw - 2 * var(--c1-margin)) / var(--c1-fit)), var(--c1-size-cap));
-  --c1-leading: 0.92;
+  --c1-leading: 0.8;
   --c1-overlap: 0.82;
   --c1-mast-height: calc(var(--c1-size) * (var(--c1-lines) * var(--c1-leading) + 0.08));
   --c1-portrait-scale: 1;
@@ -1433,7 +1449,7 @@ onUnmounted(() => {
   left: var(--c1-margin);
   right: var(--c1-margin);
   margin: 0;
-  font-family: var(--c1-mast-family, 'Archivo Variable', sans-serif);
+  font-family: var(--c1-mast-family, 'Clash Display', sans-serif);
   font-stretch: var(--c1-mast-stretch, normal);
   font-size: var(--c1-size);
   line-height: var(--c1-leading);

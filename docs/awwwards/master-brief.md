@@ -24,11 +24,13 @@ Verdict rute: *"bagaimana jika photo itu sebagai background"* · *"tidak enak di
 Ditolak: *"saya tidak suka bentuk shader yang muncul di awal seperti itu karna jelek, hapus saja defaultnya jangan langsung muncul"* · *"saat putih tidak terlihat liqudi"* · *"shader cacat dan jelek"*. · *"b juga jelek kaku"* (gambar diam tanpa gerak tersirat).
 Verdict latar dan keadaan diam (2026-11-24/25): *"saat diam glow ungu tersebut entah mengapa saya merasa jelek dan sangat slop"* · *"shadernya saya kurang suka. saya berharap shader yang cinematic"* · *"saat ada motion dengan muncul liquid plasma juga serasa tidak harmonies"* · *"saya tidak suka juga foto bergerak ketika ada motion"* · *"hapus saja shader karna jelek."* Yang tetap disukai: *"detail dari effect liquid ketika mengenai object itu sudah sangat bagus"*.
 Respons foto terhadap cairan (2026-11-25): *"jika terkena liquid saya ingin seperti ini:https://www.daspritam.in/ lihat foto chain-labs"* — foto tidak diwarnai ulang; pikselnya sendiri terseret aliran, kanal merah terpisah dari hijau-biru, lalu pulih.
+Verdict efek pada foto (2026-11-25 sore): *"effect dari benar benar dari object photo saya bukan sekedar effect yang di timpa"* · *"saya ingin foto tidak diam saja jika terkena liquid, agar kinetic"* · *"saya ragu apakah liquid perlu dipertahankan jika diatas foto saya"* · rujukan yang ia ulang: `referensi/effect/VoidPulse-1.jpg`. Nama: *"buat foto saya dibelakang text billy maulana saja"* · *"jangan ada stroke di text billy maulana"*.
 
 **Objek dan foto.** Disukai: *"object liquid glass di hero"* · *"sculpture heronya"* · *"object silver cahayanya"*. Video dihindari: *"overall bagus, MENGHINDARI video"*.
 Foto Billy pernah ditolak karena eksekusinya: *"fotor saya thermal juga tidak rapih. semua yang saya lihat tidak aesthetic."*
 Perlakuan foto saat diam: *"saya masih kurang sreg jika hitam putih fotonya"* · *"konsep /explore/concept/2?v=a jauh lebih baik dibanding hitam putih"* (sosok termal) · *"ganti foto saya dengan ini … dan coba jangan hitam putih."* (2026-11-25, atas 16 foto yang ia buat sendiri: frontal, afro penuh, latar hitam, pakaian warna jenuh).
 Pilihan sesudah melihat keduanya (2026-11-25): *"jadikan ini default /explore/concept/2?v=a dan hapus yang lain"* (sosok termal) · foto berlingkungan sebagai opsi: *"tanpa filter fulu saya ingin foto tanpa filter di edit dulu agar tonenya sesuai"* · mutu: *"toolong buat enak di lihat filternya sayya melihat di area dagu aneh"* · *"saya ingin gunakan dulu preset filter atau apapun agar kelas foto kualitas photography"*.
+Mutu foto dan filter (2026-11-25 sore): *"Terlalu ungu filternya"* · *"kualitas photographer, agar tetap layak bukan asal filter"* · *"filter=thermal sangat jelek. jauh kualitasnya dari yang saya inginkan"* · *"cropping dari foto saya tidak rapih seperti di area rambut"* · *"saya ingin kualitas awwwards untuk effect di photo dan photo saya"*.
 
 **Cara bekerja.** *"saya ingin claude tidak disuapi referensi yang anda benar benar meniru tapi mempelajari taste … sisi kreatifitas tersebutlah yang saya capek dan frutstasi jika kaku dan seperti robot semua step by step."*
 Aset: *"saya ingin anda bukan asal gunakan tapi mengolah atau membuat juga assets."* Bila gagal: *"jika jelek ganti konsep hingga mendekati yang saya inginkan"*.
@@ -55,7 +57,7 @@ Fakta dari `app/constants/profile.ts`, satu-satunya sumber konten:
 - Tagline: "Transforming pixels into performance. Building interfaces that move millions."
 - Etos: "Always hunting for that perfect 60fps."
 
-Bahan visual: 16 foto buatan Billy di `bahan/edit okeeeee` (sejak 2026-11-25 menggantikan `bahan/profile/IMG_6094` dan `6120` sebagai latar hero). Dipakai: kente frontal berlatar hitam sebagai sosok termal (bawaan), dan dua foto berlingkungan tanpa filter sebagai opsi (gang bermural `f649ag…`, kamar tiga perempat `wl9v77…`). Logo BM, palet termal liquid-2.
+Bahan visual: 16 foto buatan Billy di `bahan/edit okeeeee` (sejak 2026-11-25 menggantikan `bahan/profile/IMG_6094` dan `6120` sebagai latar hero). Dipakai sejak 2026-11-25 sore: kente frontal berlatar hitam, berwarna (bawaan; sosok termalnya lewat `?filter=thermal`); foto berlatar hitam lain sebagai opsi (`block` `2irfuk…`, `blazer` `68dxcg…`); foto berlingkungan sebagai opsi (gang bermural `f649ag…` dalam editan Billy `Untitled Design (4)`, kamar tiga perempat `wl9v77…`). Logo BM, palet termal liquid-2.
 
 Uji SWAP: bila halaman tetap masuk akal dengan nama lain, konsepnya belum milik Billy.
 Nama Billy adalah subjek halaman, bukan label kecil.
@@ -88,6 +90,7 @@ Panduan halaman (bukan gate per frame): dingin C1–C3 dominan, oranye ≤ 25%, 
 - Efek yang menyala sendiri saat diam atau langsung muncul di awal tanpa sebab.
 - Gambar diam yang diberi drift atau tear palsu; foto yang digerakkan (paralaks, condong ke pointer).
 - Shader atau glow latar di belakang potret. Ground hitam rata; gambar hanya dari foto dan dari cairan.
+- Tinta termal digambar di atas foto berwarna natural; pola yang menggantikan foto di dalam gumpalan tinta; garis luar, bayangan, atau lubang hitam di sekitar huruf nama.
 - Keadaan diam yang terbaca hitam-putih (isi terang < 50% berkroma), termasuk foto berwarna yang diredam.
 - Peta suhu wajah yang terputus: garis topeng kelas, lubang dingin di janggut atau mata. Foto yang dipasang sebelum diolah sampai kelas fotografi.
 - Potret garis-pindai Concept 1 diulang; wajah termal yang tidak rapi atau tidak jelas bentuknya.

@@ -406,7 +406,7 @@ function useHeroTextWarp(config: Partial<DistortionConfig> = {}) {
       stencil: false,
       antialias: false,
       premultipliedAlpha: true,
-      preserveDrawingBuffer: false,
+      preserveDrawingBuffer: true,
     }) as WebGL2RenderingContext
 
     if (!gl) {
@@ -416,7 +416,7 @@ function useHeroTextWarp(config: Partial<DistortionConfig> = {}) {
         stencil: false,
         antialias: false,
         premultipliedAlpha: true,
-        preserveDrawingBuffer: false,
+        preserveDrawingBuffer: true,
       })
     }
 
@@ -597,6 +597,22 @@ interface SplatSegment {
   color: FluidColor
 }
 
+const SCAN = {
+  pitch: 4,
+  bend: 40,
+  duty: 0.56,
+  gap: 0.18,
+}
+const COLD_CHROMA = 0.3
+const THREAD = {
+  pitch: 7,
+  row: 7,
+  band: 3,
+  bend: 1.6,
+  zig: 0.42,
+  sway: 14,
+}
+
 function useFluidSimulation() {
   // ── State ──
   let canvas: HTMLCanvasElement | null = null
@@ -706,6 +722,9 @@ function useFluidSimulation() {
   let contentDisplayProgram: ProgramObj | null = null
   let contentTexture: TextureObj | null = null
   let auxTexture: TextureObj | null = null
+  let letterTexture: TextureObj | null = null
+  let letterSource: HTMLCanvasElement | null = null
+  const letterRect = [0, 0, 0, 0]
   let pointerGate: ((u: number, v: number) => boolean) | null = null
 
   const contentDisplay = {
@@ -719,6 +738,7 @@ function useFluidSimulation() {
     tone: 1,
     photo: 0,
     touch: 0,
+    scan: 0,
     shades: new Float32Array(12),
     shadeFade: [0, 0, 1] as [number, number, number],
     reach: [0.03, 0.048] as [number, number],
@@ -1181,6 +1201,11 @@ function useFluidSimulation() {
     uniform float uTone;
     uniform float uPhoto;
     uniform float uTouch;
+    uniform float uScan;
+    uniform float uPx;
+    uniform sampler2D tText;
+    uniform vec4 uTextRect;
+    uniform vec2 uView;
     uniform vec4 uShade[3];
     uniform vec3 uShadeFade;
     uniform vec2 uReach;
@@ -1210,6 +1235,21 @@ function useFluidSimulation() {
     const float STREAK_ROW = 2.6;
     const float STREAK_SPREAD = 0.035;
     const int STREAK_TAPS = 10;
+    const float SCAN_PITCH = ${SCAN.pitch.toFixed(4)};
+    const float SCAN_BEND = ${SCAN.bend.toFixed(4)};
+    const float SCAN_DUTY = ${SCAN.duty.toFixed(4)};
+    const float SCAN_GAP = ${SCAN.gap.toFixed(4)};
+    const float COLD_CHROMA = ${COLD_CHROMA.toFixed(4)};
+    const float THREAD_PITCH = ${THREAD.pitch.toFixed(4)};
+    const float THREAD_ROW = ${THREAD.row.toFixed(4)};
+    const float THREAD_BAND = ${THREAD.band.toFixed(4)};
+    const float THREAD_BEND = ${THREAD.bend.toFixed(4)};
+    const float THREAD_ZIG = ${THREAD.zig.toFixed(4)};
+    const float THREAD_SWAY = ${THREAD.sway.toFixed(4)};
+    const vec3 THREAD_DEEP = vec3(0.078, 0.031, 0.275);
+    const vec3 THREAD_BLUE = vec3(0.196, 0.071, 0.631);
+    const vec3 THREAD_CORAL = vec3(0.933, 0.392, 0.439);
+    const vec3 THREAD_PEACH = vec3(1.000, 0.745, 0.588);
 
     float hash1(float n) {
       return fract(sin(n * 91.3458) * 47453.5453);
@@ -1236,6 +1276,24 @@ function useFluidSimulation() {
       return mix(C9, C10, smoothstep(0.975, 1.00, t));
     }
 
+    vec3 figureColour(float t, float presence) {
+      vec3 c = max(thermal(t) - C0, 0.0);
+      float grey = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      float keep = mix(1.0, mix(COLD_CHROMA, 1.0, smoothstep(0.22, 0.50, t)), presence);
+      return mix(vec3(grey), c, keep);
+    }
+
+    float scanned(float t, float depth) {
+      if (uScan < 0.5)
+        return t;
+      float y = gl_FragCoord.y * uPx - (depth - 0.5) * SCAN_BEND;
+      float dist = abs(fract(y / SCAN_PITCH) - 0.5) * SCAN_PITCH;
+      float halfWidth = SCAN_PITCH * SCAN_DUTY * 0.5;
+      float aa = 0.6 * uPx;
+      float line = 1.0 - smoothstep(halfWidth - aa, halfWidth + aa, dist);
+      return mix(t - SCAN_GAP, t, line);
+    }
+
     /* The figure at one point of the stage, as light and as cover: temperature read through the
        ramp, or the photograph in its own colours. The content texture carries the temperature
        square-root encoded, to keep precision in the cold end, with the matte in alpha; at rest
@@ -1243,16 +1301,55 @@ function useFluidSimulation() {
        there: most of it under warm skin or the lit parts of a photograph, none under cold hair
        or a photograph's shadows. The thresholds sit above the brightest speck of hair, because
        hair that hides the ink strand by strand turns the plasma behind it into grain. */
+    float letterAt(vec2 at) {
+      if (uTextRect.z <= 0.0)
+        return 0.0;
+      vec2 p = (at - uTextRect.xy) / uTextRect.zw;
+      if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0)
+        return 0.0;
+      return texture2D(tText, p).a;
+    }
+
     vec4 figureAt(vec2 at, float lift) {
       vec4 plate = texture2D(tMap, at);
+      float open = 1.0 - letterAt(at);
       float warmth = plate.r * plate.r;
       warmth *= mix(uTone, 1.0, smoothstep(0.30, 0.55, warmth));
-      float skin = warmth * plate.a * uSkinGain * lift;
-      vec3 heat = max(thermal(skin) - C0, 0.0) * clamp(skin * 8.0, 0.0, 1.0);
-      vec3 photo = texture2D(tAux, at).rgb * uSkinGain * lift;
+      float skin = warmth * plate.a * uSkinGain * lift * open;
+      vec3 heat = figureColour(scanned(skin, plate.g), 1.0) * clamp(skin * 8.0, 0.0, 1.0);
+      vec3 photo = texture2D(tAux, at).rgb * uSkinGain * lift * open;
       float lit = smoothstep(0.16, 0.42, dot(photo, vec3(0.2126, 0.7152, 0.0722)));
       float hides = (1.0 - INK_OVER_SKIN) * mix(smoothstep(0.10, 0.36, skin), lit, uPhoto);
       return vec4(mix(heat, photo, uPhoto), hides);
+    }
+
+    vec3 threadsAt(vec2 at, float lift, vec2 px, vec2 vel, vec3 still, float depth) {
+      vec2 o = vec2(1.2) / uView;
+      vec3 base = figureAt(at, lift).rgb * 0.4;
+      base += figureAt(at + vec2(o.x, 0.0), lift).rgb * 0.15;
+      base += figureAt(at - vec2(o.x, 0.0), lift).rgb * 0.15;
+      base += figureAt(at + vec2(0.0, o.y), lift).rgb * 0.15;
+      base += figureAt(at - vec2(0.0, o.y), lift).rgb * 0.15;
+      float tone = pow(clamp((dot(base, vec3(0.2126, 0.7152, 0.0722)) - 0.02) / 0.78, 0.0, 1.0), 0.72);
+      float relief = texture2D(tMap, at).g;
+      float speed = length(vel);
+      float sway = THREAD_SWAY * vel.x / (speed + 160.0);
+      float tri = abs(fract(px.y / THREAD_ROW) - 0.5) * 4.0 - 1.0;
+      float zig = THREAD_ZIG * (1.0 + 0.9 * speed / (speed + 160.0));
+      float dx = THREAD_BEND * THREAD_PITCH * (relief - 0.45) * 2.2 + zig * THREAD_PITCH * (0.25 + 0.75 * tone) * tri + sway;
+      float phase = (px.x + dx) / THREAD_PITCH;
+      float stripe = abs(fract(phase) - 0.5) * THREAD_PITCH;
+      float halfWidth = THREAD_PITCH * (0.05 + 0.43 * pow(tone, 0.9));
+      float line = 1.0 - smoothstep(halfWidth - 0.4, halfWidth + 0.4, stripe);
+      float gate = hash1(floor(px.y / THREAD_BAND) * 12.9898 + floor(phase) * 78.233);
+      line *= smoothstep(gate * 0.16, gate * 0.16 + 0.04, tone);
+      float light = smoothstep(0.02, 0.3, texture2D(tMap, at).a * (1.0 - letterAt(at))) * clamp(uSkinGain, 0.0, 1.0) * lift;
+      vec3 own = base / max(max(base.r, max(base.g, base.b)), 0.001) * (0.35 + 0.65 * pow(tone, 0.6)) * 1.15 * light;
+      vec3 ownGap = still * 0.16 + THREAD_DEEP * 0.5 * tone * light;
+      vec3 hot = mix(THREAD_CORAL, THREAD_PEACH, smoothstep(0.55, 0.95, tone)) * (0.62 + 0.38 * tone) * smoothstep(0.02, 0.2, tone) * light;
+      vec3 hotGap = still * 0.10 + mix(THREAD_DEEP, THREAD_BLUE, smoothstep(0.05, 0.6, tone)) * 1.1 * tone * light;
+      float palette = step(5.5, uTouch);
+      return mix(still, mix(mix(ownGap, hotGap, palette), mix(own, hot, palette), line), depth);
     }
 
     /* How much of the ink the figure hides where it stands at rest, read wider than one texel.
@@ -1322,7 +1419,22 @@ function useFluidSimulation() {
         }
         float lift = mix(1.0, uShadeFade.z, shade);
 
-        if (uTouch < 1.5 || uTouch > 2.5) {
+        if (uTouch > 3.5) {
+          float matte = texture2D(tMap, uv).a * clamp(uSkinGain, 0.0, 1.0) * (1.0 - letterAt(uv));
+          vec3 ink = max(thermal(heat) - C0, 0.0) * smoothstep(0.015, 0.30, heat);
+          vec3 figure = figureAt(uv, lift).rgb;
+          if (uTouch > 4.5 && matte > 0.001) {
+            vec2 px = gl_FragCoord.xy * uPx;
+            float band = floor(px.y / THREAD_BAND);
+            float rowV = (band + 0.5) * THREAD_BAND / uView.y;
+            float reached = clamp(texture2D(tFluid, vec2(vUv.x, rowV)).b, 0.0, 1.3) * uInkGain;
+            float jitter = (hash1(band * 1.37 + 11.0) - 0.5) * 0.55 + (noise1(band * 0.11) - 0.5) * 0.5;
+            float turned = smoothstep(0.10, 0.80, reached + jitter * 0.3 * smoothstep(0.05, 0.6, reached));
+            if (turned > 0.001)
+              figure = threadsAt(uv, lift, px, vel, figure, turned);
+          }
+          col = figure + ink * (1.0 - matte);
+        } else if (uTouch < 1.5 || uTouch > 2.5) {
           /* The liquid carries the picture with it. It is read twice: where the flow has pushed
              the stage, and three times further along, mirrored in y. Split by channel, some
              channels come from the first reading and the rest from the second, so at speed the
@@ -1415,7 +1527,9 @@ function useFluidSimulation() {
           float skin = warmth * figure * uSkinGain * lift;
           float inkHeat = heat * mix(1.0, INK_OVER_SKIN, smoothstep(0.02, 0.22, skin)) * (1.0 - figure * uPhoto);
           float t = skin + inkHeat * (1.0 - skin);
-          col = max(thermal(t) - C0, 0.0) * mix(cover, 1.0, clamp(skin * 8.0, 0.0, 1.0));
+          float presence = clamp(skin * 8.0, 0.0, 1.0);
+          float shown = mix(t, scanned(t, texture2D(tMap, uv2).g), presence);
+          col = figureColour(shown, presence) * mix(cover, 1.0, presence);
           col = mix(col, hues / weight * uSkinGain * lift, figure * uPhoto);
         }
 
@@ -2114,12 +2228,61 @@ function useFluidSimulation() {
     auxTexture.height = source.height
   }
 
+  function setLetterSource(source: HTMLCanvasElement | null, left: number, bottom: number, width: number, height: number) {
+    letterSource = source
+    letterRect[0] = left
+    letterRect[1] = bottom
+    letterRect[2] = width
+    letterRect[3] = height
+  }
+
+  function attachLetters(g: WebGL2RenderingContext | WebGLRenderingContext, id: number): boolean {
+    if (!letterSource || !letterSource.width || !letterSource.height) {
+      contentTexture!.attach(id)
+      return false
+    }
+    if (!letterTexture) {
+      const texture = g.createTexture()!
+      g.bindTexture(g.TEXTURE_2D, texture)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE)
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE)
+      letterTexture = {
+        texture,
+        width: 0,
+        height: 0,
+        attach(unit: number) {
+          g.activeTexture(g.TEXTURE0 + unit)
+          g.bindTexture(g.TEXTURE_2D, texture)
+          return unit
+        },
+      }
+    }
+    letterTexture.attach(id)
+    g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, true)
+    g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, letterSource)
+    g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, false)
+    return true
+  }
+
   function drawContentDisplay(target: FBO | null) {
     if (!contentTexture || !contentDisplayProgram)
       return
     const g = gl!
     g.disable(g.BLEND)
     contentDisplayProgram.bind()
+    const hasLetters = attachLetters(g, 3)
+    g.uniform1i(contentDisplayProgram.uniforms.tText!, 3)
+    g.uniform4f(
+      contentDisplayProgram.uniforms.uTextRect!,
+      letterRect[0]!,
+      letterRect[1]!,
+      hasLetters
+        ? letterRect[2]!
+        : 0,
+      letterRect[3]!,
+    )
     g.uniform1i(contentDisplayProgram.uniforms.tMap!, contentTexture.attach(0))
     g.uniform1i(contentDisplayProgram.uniforms.tFluid!, dye!.read.attach(1))
     g.uniform1i(contentDisplayProgram.uniforms.tAux!, (auxTexture ?? contentTexture).attach(2))
@@ -2133,6 +2296,12 @@ function useFluidSimulation() {
     g.uniform1f(contentDisplayProgram.uniforms.uTone!, contentDisplay.tone)
     g.uniform1f(contentDisplayProgram.uniforms.uPhoto!, auxTexture ? contentDisplay.photo : 0)
     g.uniform1f(contentDisplayProgram.uniforms.uTouch!, contentDisplay.touch)
+    g.uniform1f(contentDisplayProgram.uniforms.uScan!, contentDisplay.scan)
+    const cssPerPixel = canvas && canvas.height
+      ? canvas.clientHeight / canvas.height
+      : 1
+    g.uniform1f(contentDisplayProgram.uniforms.uPx!, cssPerPixel)
+    g.uniform2f(contentDisplayProgram.uniforms.uView!, canvas?.clientWidth || 1, canvas?.clientHeight || 1)
     g.uniform4fv(contentDisplayProgram.uniforms['uShade[0]']!, contentDisplay.shades)
     g.uniform3f(contentDisplayProgram.uniforms.uShadeFade!, contentDisplay.shadeFade[0], contentDisplay.shadeFade[1], contentDisplay.shadeFade[2])
     g.uniform2f(contentDisplayProgram.uniforms.uReach!, contentDisplay.reach[0], contentDisplay.reach[1])
@@ -2767,10 +2936,11 @@ function useFluidSimulation() {
     contentDisplay.skinGain = skin
   }
 
-  function setSceneLook(tone: number, photo: number, touch: number) {
+  function setSceneLook(tone: number, photo: number, touch: number, scan: number) {
     contentDisplay.tone = tone
     contentDisplay.photo = photo
     contentDisplay.touch = touch
+    contentDisplay.scan = scan
   }
 
   /* Up to three shades, four numbers each, in texture coordinates: left edge, right edge, top
@@ -2820,6 +2990,8 @@ function useFluidSimulation() {
     ditheringTexture = null
     contentTexture = null
     auxTexture = null
+    letterTexture = null
+    letterSource = null
     contentDisplayProgram = null
     contentDisplayEnabled = false
     pointerGate = null
@@ -2838,6 +3010,7 @@ function useFluidSimulation() {
     setAuxCanvas,
     setDisplayGains,
     setSceneLook,
+    setLetterSource,
     setLabelShades,
     setCarryReach,
   }
@@ -2869,12 +3042,13 @@ interface SceneBox {
   height: number
 }
 
+type Look = 'colour' | 'grayscale' | 'thermal' | 'void'
+
 interface Portrait {
-  /* A portrait is shown either as temperature or as the photograph in its own colours, graded
-     and already cut to the matte; it carries the picture it needs and its matte. */
-  heat?: string
-  colour?: string
-  matte: string
+  /* Every portrait is kept as four rasters in one register: the photograph in its own colours,
+     graded and cut to black, its temperature, a coarse depth that bends the scan lines, and its
+     matte. Its look is how it is shown when no filter is asked for. */
+  look: Look
   width: number
   height: number
   /* Plate coordinates: the vertical axis through the middle of the hair, the distance from the
@@ -2890,20 +3064,8 @@ interface Portrait {
 /* Each photograph is used whole: skin, hair and cloth in their real outline, cropped by the
    viewport and by nothing else. */
 const PORTRAITS: Record<string, Portrait> = {
-  kente: {
-    heat: '/assets/images/concept-2/portrait-kente-heat.webp',
-    matte: '/assets/images/concept-2/portrait-kente-matte.webp',
-    width: 1824,
-    height: 2392,
-    axis: 888.5,
-    faceUnit: 468.5,
-    crownRow: 20.4,
-    foreheadRow: 563,
-    sleeveRow: 1980,
-  },
   alley: {
-    colour: '/assets/images/concept-2/portrait-alley-colour.webp',
-    matte: '/assets/images/concept-2/portrait-alley-matte.webp',
+    look: 'colour',
     width: 1792,
     height: 2400,
     axis: 903.5,
@@ -2912,9 +3074,68 @@ const PORTRAITS: Record<string, Portrait> = {
     foreheadRow: 566,
     sleeveRow: 2080,
   },
+  kente: {
+    look: 'colour',
+    width: 1824,
+    height: 2392,
+    axis: 888.5,
+    faceUnit: 468.5,
+    crownRow: 20.4,
+    foreheadRow: 563,
+    sleeveRow: 1980,
+  },
+  block: {
+    look: 'colour',
+    width: 2240,
+    height: 3101,
+    axis: 1115.5,
+    faceUnit: 602.6,
+    crownRow: 28,
+    foreheadRow: 729.7,
+    sleeveRow: 2440,
+  },
+  blazer: {
+    look: 'colour',
+    width: 2280,
+    height: 2978,
+    axis: 1112.5,
+    faceUnit: 580,
+    crownRow: 18,
+    foreheadRow: 692.8,
+    sleeveRow: 2510,
+  },
+  studio: {
+    look: 'colour',
+    width: 1792,
+    height: 2400,
+    axis: 913.5,
+    faceUnit: 411.7,
+    crownRow: 110,
+    foreheadRow: 568.6,
+    sleeveRow: 2080,
+  },
+  varsity: {
+    look: 'colour',
+    width: 1824,
+    height: 2304,
+    axis: 901,
+    faceUnit: 413.8,
+    crownRow: 15,
+    foreheadRow: 526.3,
+    sleeveRow: 2153,
+  },
+  geometric: {
+    look: 'colour',
+    width: 1792,
+    height: 2390,
+    axis: 882.5,
+    faceUnit: 287.7,
+    crownRow: 441,
+    foreheadRow: 824.6,
+    sleeveRow: 2390,
+  },
   room: {
-    colour: '/assets/images/concept-2/portrait-room-colour.webp',
-    matte: '/assets/images/concept-2/portrait-room-matte.webp',
+    look: 'colour',
     width: 1792,
     height: 2390,
     axis: 795,
@@ -2925,6 +3146,18 @@ const PORTRAITS: Record<string, Portrait> = {
   },
 }
 const PORTRAIT_DEFAULT = 'kente'
+const LOOKS: Look[] = [
+  'colour',
+  'grayscale',
+  'thermal',
+  'void',
+]
+
+function plateSrc(key: string, kind: 'colour' | 'heat' | 'depth' | 'matte'): string {
+  return `/assets/images/concept-2/portrait-${key}-${kind}.webp`
+}
+
+const MONO_MIX = [0.5, 0.4, 0.1] as const
 
 /* The display pass maps temperature to colour in the shader. The static canvas has no shader,
    so the same ramp is kept here for a lookup table; both must hold the same stops. */
@@ -2957,6 +3190,7 @@ const RAMP_COLOURS = [
 
 const NAME_CLEARANCE = 12
 const CROWN_UNDER_NAME = 6
+const CROWN_IN_NAME = 0.42
 const FACE_PER_VIEWPORT_HEIGHT = 0.215
 const FACE_PER_VIEWPORT_WIDTH = 0.4
 
@@ -2971,18 +3205,6 @@ const SHADE_FADE = 0.16
 const SHADE_LEVEL = 0.3
 const SHADE_SLOTS = 3
 
-const KNOCKOUT_BLEED = 0.75
-const KNOCKOUT_RING = [
-  [0, 0],
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-  [0.7, 0.7],
-  [-0.7, 0.7],
-  [0.7, -0.7],
-  [-0.7, -0.7],
-] as const
 const STATIC_MAX_DPR = 2
 
 const BACKDROP_REVEAL = { at: 1.5, duration: 2 }
@@ -3047,17 +3269,33 @@ const REST_TONE = 0.5
 const CARRY_REACH = 0.6
 
 const route = useRoute()
-const portrait = PORTRAITS[String(route.query.photo ?? '')] ?? PORTRAITS[PORTRAIT_DEFAULT]!
-const showsPhotograph = portrait.colour !== undefined
-/* What the liquid does to the figure: part it by colour channel, keep the two copies whole in
-   the colours of the ramp, or comb it sideways. */
+const requestedPhoto = String(route.query.photo ?? '')
+const portraitKey = Object.keys(PORTRAITS).includes(requestedPhoto)
+  ? requestedPhoto
+  : PORTRAIT_DEFAULT
+const portrait = PORTRAITS[portraitKey]!
+const requestedLook = LOOKS.find(look => look === route.query.filter)
+const look: Look = requestedLook ?? portrait.look
+const showsPhotograph = look === 'colour' || look === 'grayscale'
+const scansLines = look === 'void'
+const sceneTone = look === 'thermal'
+  ? REST_TONE
+  : 1
+const frontsPhoto = route.query.front === 'photo'
+/* What the liquid does to the figure: pass behind it, turn the part it passes behind into threads
+   in the picture's own colours or in the pulse palette, part it by colour channel, keep the two
+   copies whole in the colours of the ramp, or comb it sideways. */
 const TOUCHES: Record<string, number> = {
   split: 0,
   whole: 1,
   comb: 2,
   rgb: 3,
+  behind: 4,
+  thread: 5,
+  pulse: 6,
 }
-const touch = TOUCHES[String(route.query.touch ?? '')] ?? TOUCHES.split!
+const touch = TOUCHES[String(route.query.touch ?? '')] ?? TOUCHES.behind!
+const needsRelief = scansLines || touch >= TOUCHES.thread!
 
 let scene: SceneLayout = {
   axisX: 0,
@@ -3073,7 +3311,7 @@ let gsapCtx: gsap.Context | null = null
 let resizeObserver: ResizeObserver | null = null
 let fluidReady = false
 let figureCanvas: HTMLCanvasElement | null = null
-let colourImage: HTMLImageElement | null = null
+let colourImage: HTMLImageElement | HTMLCanvasElement | null = null
 let rampTable: Uint8ClampedArray | null = null
 let restTable: Float32Array | null = null
 let backdropResizeHandler: (() => void) | null = null
@@ -3203,7 +3441,9 @@ function computeScene() {
 
   const cap = bounds.width * CAP_PER_VIEWPORT
   const inkTop = mastheadBox.top + Math.round(cap * INK_TOP_PER_CAP)
-  const crownTop = inkTop + CROWN_UNDER_NAME
+  const crownTop = frontsPhoto
+    ? inkTop + cap * CROWN_IN_NAME
+    : inkTop + CROWN_UNDER_NAME
   const faceTop = inkTop + cap + NAME_CLEARANCE
   const preferred = Math.min(bounds.height * FACE_PER_VIEWPORT_HEIGHT, bounds.width * FACE_PER_VIEWPORT_WIDTH) / portrait.faceUnit
   const axisX = bounds.width / 2
@@ -3264,10 +3504,10 @@ async function loadImage(src: string): Promise<HTMLImageElement | null> {
   return image
 }
 
-/* The plate the liquid moves: temperature in the colour channels, where there is one, and the
-   matte in alpha. A 2D context can only mask by alpha, so the matte's luminance is moved into
-   its alpha channel first. */
-function composeFigure(heat: HTMLImageElement | null, matte: HTMLImageElement): HTMLCanvasElement | null {
+/* The plate the liquid moves: temperature in red, depth in green where the lines are scanned,
+   and the matte in alpha. A 2D context can only mask by alpha, so the matte's luminance is
+   moved into its alpha channel first. */
+function composeFigure(heat: HTMLImageElement | null, matte: HTMLImageElement, depth: HTMLImageElement | null): HTMLCanvasElement | null {
   const width = matte.naturalWidth
   const height = matte.naturalHeight
   const figure = document.createElement('canvas')
@@ -3294,31 +3534,82 @@ function composeFigure(heat: HTMLImageElement | null, matte: HTMLImageElement): 
     ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, width, height)
   }
+  if (depth)
+    writeDepth(ctx, depth, width, height)
   ctx.globalCompositeOperation = 'destination-in'
   ctx.drawImage(mask, 0, 0)
   return figure
 }
 
-async function loadScene(): Promise<boolean> {
-  const [heat, colour, matte] = await Promise.all([
-    portrait.heat
-      ? loadImage(portrait.heat)
-      : null,
-    portrait.colour
-      ? loadImage(portrait.colour)
-      : null,
-    loadImage(portrait.matte),
-  ])
-  if (!matte || (portrait.heat && !heat) || (portrait.colour && !colour))
-    return false
-  figureCanvas = composeFigure(heat, matte)
-  colourImage = colour
-  return figureCanvas !== null
+function writeDepth(ctx: CanvasRenderingContext2D, depth: HTMLImageElement, width: number, height: number) {
+  const relief = document.createElement('canvas')
+  relief.width = width
+  relief.height = height
+  const reliefCtx = relief.getContext('2d', { willReadFrequently: true })
+  if (!reliefCtx)
+    return
+  reliefCtx.imageSmoothingQuality = 'high'
+  reliefCtx.drawImage(depth, 0, 0, width, height)
+  const source = reliefCtx.getImageData(0, 0, width, height).data
+  const pixels = ctx.getImageData(0, 0, width, height)
+  for (let i = 0; i < pixels.data.length; i += 4)
+    pixels.data[i + 1] = source[i]!
+  ctx.putImageData(pixels, 0, 0)
 }
 
-/* The masthead blends by difference, so anything warm behind a letter would tint it. Painting
-   the letters into the plate as cold ground keeps the name clean at rest, and ink still passes
-   behind it exactly as it does on an empty stage. */
+function toGrayscale(image: HTMLImageElement): HTMLCanvasElement | null {
+  const canvas = document.createElement('canvas')
+  canvas.width = image.naturalWidth
+  canvas.height = image.naturalHeight
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx)
+    return null
+  ctx.drawImage(image, 0, 0)
+  const curve = Uint8ClampedArray.from({ length: 256 }, (_, value) => {
+    const x = value / 255
+    return Math.round((x * 0.55 + x * x * (3 - 2 * x) * 0.45) * 255)
+  })
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const data = pixels.data
+  for (let i = 0; i < data.length; i += 4) {
+    const grey = curve[Math.round(data[i]! * MONO_MIX[0] + data[i + 1]! * MONO_MIX[1] + data[i + 2]! * MONO_MIX[2])]!
+    data[i] = grey
+    data[i + 1] = grey
+    data[i + 2] = grey
+  }
+  ctx.putImageData(pixels, 0, 0)
+  return canvas
+}
+
+async function loadScene(): Promise<boolean> {
+  const [heat, colour, depth, matte] = await Promise.all([
+    showsPhotograph
+      ? null
+      : loadImage(plateSrc(portraitKey, 'heat')),
+    showsPhotograph
+      ? loadImage(plateSrc(portraitKey, 'colour'))
+      : null,
+    needsRelief
+      ? loadImage(plateSrc(portraitKey, 'depth'))
+      : null,
+    loadImage(plateSrc(portraitKey, 'matte')),
+  ])
+  const picture = showsPhotograph
+    ? colour
+    : heat
+  if (!matte || !picture || (needsRelief && !depth))
+    return false
+  figureCanvas = composeFigure(heat, matte, depth)
+  colourImage = colour && look === 'grayscale'
+    ? toGrayscale(colour)
+    : colour
+  return figureCanvas !== null && (!showsPhotograph || colourImage !== null)
+}
+
+/* The masthead blends by difference, so anything warm behind a letter would tint it. On the
+   static canvas the letters are painted into the plate as cold ground; on the live stage the
+   display pass reads the warped letters themselves, so the opening always sits under the letter
+   and never beside it. */
 function knockOutMasthead(ctx: CanvasRenderingContext2D, ratio: number) {
   if (!mastheadBox)
     return
@@ -3334,19 +3625,13 @@ function knockOutMasthead(ctx: CanvasRenderingContext2D, ratio: number) {
   inkCtx.fillStyle = '#000000'
   inkCtx.fillRect(0, 0, ink.width, ink.height)
 
-  const bleed = KNOCKOUT_BLEED * ratio
-  for (const [dx, dy] of KNOCKOUT_RING) {
-    ctx.drawImage(
-      ink,
-      mastheadBox.left * ratio + dx * bleed,
-      mastheadBox.top * ratio + dy * bleed,
-      mastheadBox.width * ratio,
-      mastheadBox.height * ratio,
-    )
-  }
+  ctx.save()
+  ctx.globalCompositeOperation = 'source-atop'
+  ctx.drawImage(ink, mastheadBox.left * ratio, mastheadBox.top * ratio, mastheadBox.width * ratio, mastheadBox.height * ratio)
+  ctx.restore()
 }
 
-function paintScene(target: HTMLCanvasElement, ratio: number) {
+function paintScene(target: HTMLCanvasElement, ratio: number, bakesLetters: boolean) {
   const ctx = target.getContext('2d')
   if (!ctx || !figureCanvas)
     return
@@ -3356,7 +3641,41 @@ function paintScene(target: HTMLCanvasElement, ratio: number) {
   const box = figureRect()
   ctx.drawImage(figureCanvas, box.left * ratio, box.top * ratio, box.width * ratio, box.height * ratio)
 
-  knockOutMasthead(ctx, ratio)
+  if (bakesLetters && !frontsPhoto)
+    knockOutMasthead(ctx, ratio)
+}
+
+function maskMasthead() {
+  const text = textCanvasRef.value
+  if (!text || !figureCanvas || !mastheadBox || !frontsPhoto)
+    return
+  const ratio = Math.min(window.devicePixelRatio || 1, STATIC_MAX_DPR)
+  const mask = document.createElement('canvas')
+  mask.width = Math.max(1, Math.round(mastheadBox.width * ratio))
+  mask.height = Math.max(1, Math.round(mastheadBox.height * ratio))
+  const ctx = mask.getContext('2d')
+  if (!ctx)
+    return
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, mask.width, mask.height)
+  ctx.globalCompositeOperation = 'destination-out'
+  ctx.imageSmoothingQuality = 'high'
+  const box = figureRect()
+  ctx.drawImage(
+    figureCanvas,
+    (box.left - mastheadBox.left) * ratio,
+    (box.top - mastheadBox.top) * ratio,
+    box.width * ratio,
+    box.height * ratio,
+  )
+  const veil = 'rgb(255 255 255 / calc(1 - var(--chd-figure, 1)))'
+  const image = `linear-gradient(${veil}, ${veil}), url(${mask.toDataURL()})`
+  text.style.setProperty('mask-image', image)
+  text.style.setProperty('-webkit-mask-image', image)
+  text.style.setProperty('mask-size', '100% 100%')
+  text.style.setProperty('-webkit-mask-size', '100% 100%')
+  text.style.setProperty('mask-composite', 'add')
+  text.style.setProperty('-webkit-mask-composite', 'source-over')
 }
 
 /* The fluid display pass displaces whatever sits in its content texture by the velocity field,
@@ -3370,10 +3689,21 @@ function paintSceneContent() {
   content.width = canvas.width
   content.height = canvas.height
   const ratio = canvas.width / Math.max(1, canvas.clientWidth)
-  paintScene(content, ratio)
+  paintScene(content, ratio, false)
+  maskMasthead()
   fluid.setContentCanvas(content)
   const width = Math.max(1, canvas.clientWidth)
   const height = Math.max(1, canvas.clientHeight)
+  const letters = frontsPhoto || !mastheadBox
+    ? null
+    : textCanvasRef.value ?? null
+  fluid.setLetterSource(
+    letters,
+    (mastheadBox?.left ?? 0) / width,
+    1 - ((mastheadBox?.top ?? 0) + (mastheadBox?.height ?? 0)) / height,
+    (mastheadBox?.width ?? 0) / width,
+    (mastheadBox?.height ?? 0) / height,
+  )
   fluid.setLabelShades(labelShades(width, height), SHADE_FEATHER / width, SHADE_FADE, SHADE_LEVEL)
   const reach = CARRY_REACH * portrait.faceUnit * scene.figureScale
   fluid.setCarryReach(reach / width, reach / height)
@@ -3383,13 +3713,13 @@ function paintSceneContent() {
   const colours = document.createElement('canvas')
   colours.width = canvas.width
   colours.height = canvas.height
-  paintColours(colours, ratio)
+  paintColours(colours, ratio, false)
   fluid.setAuxCanvas(colours)
 }
 
-/* The colour plate sits on black and is laid out exactly like the figure, with the same letters
-   knocked out of it, so the two rasters can be read with one coordinate. */
-function paintColours(target: HTMLCanvasElement, ratio: number) {
+/* The colour plate sits on black and is laid out exactly like the figure, so the two rasters can
+   be read with one coordinate. */
+function paintColours(target: HTMLCanvasElement, ratio: number, bakesLetters: boolean) {
   const ctx = target.getContext('2d')
   if (!ctx || !colourImage)
     return
@@ -3398,7 +3728,8 @@ function paintColours(target: HTMLCanvasElement, ratio: number) {
   ctx.imageSmoothingQuality = 'high'
   const box = figureRect()
   ctx.drawImage(colourImage, box.left * ratio, box.top * ratio, box.width * ratio, box.height * ratio)
-  knockOutMasthead(ctx, ratio)
+  if (bakesLetters && !frontsPhoto)
+    knockOutMasthead(ctx, ratio)
 }
 
 /* Indexed by the square root of the temperature, like the plate, to keep the cold end fine. */
@@ -3422,12 +3753,12 @@ function buildRampTable(): Uint8ClampedArray {
   return table
 }
 
-function buildRestTable(): Float32Array {
+function buildRestTable(tone: number): Float32Array {
   const table = new Float32Array(256)
   for (let value = 0; value < 256; value++) {
     const warmth = (value / 255) ** 2
     const held = Math.min(1, Math.max(0, (warmth - 0.3) / 0.25))
-    table[value] = warmth * (REST_TONE + (1 - REST_TONE) * held * held * (3 - 2 * held))
+    table[value] = warmth * (tone + (1 - tone) * held * held * (3 - 2 * held))
   }
   return table
 }
@@ -3445,16 +3776,17 @@ function paintStaticScene() {
   const inColour = showsPhotograph && colourImage !== null
   if (inColour) {
     computeScene()
-    paintColours(canvas, ratio)
+    paintColours(canvas, ratio, true)
   }
   else {
-    paintScene(canvas, ratio)
+    paintScene(canvas, ratio, true)
   }
+  maskMasthead()
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx)
     return
   rampTable ??= buildRampTable()
-  restTable ??= buildRestTable()
+  restTable ??= buildRestTable(sceneTone)
   const shades = labelShades(canvas.clientWidth, canvas.clientHeight)
   const feather = SHADE_FEATHER / canvas.clientWidth
   const ramp = (from: number, to: number, value: number) => {
@@ -3468,9 +3800,18 @@ function paintStaticScene() {
   const down = scene.shades.map((_, slot) => Float32Array.from({ length: canvas.height }, (_, y) => {
     return 1 - ramp(shades[slot * 4 + 2]!, shades[slot * 4 + 2]! + SHADE_FADE, 1 - (y + 0.5) / canvas.height)
   }))
+  const halfWidth = SCAN.pitch * SCAN.duty / 2
+  const aa = 0.6 / ratio
+  const scanned = (t: number, depth: number, row: number) => {
+    const y = row + (depth - 0.5) * SCAN.bend
+    const dist = Math.abs(y / SCAN.pitch - Math.floor(y / SCAN.pitch) - 0.5) * SCAN.pitch
+    const line = 1 - ramp(halfWidth - aa, halfWidth + aa, dist)
+    return Math.max(0, t - SCAN.gap * (1 - line))
+  }
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const data = pixels.data
   for (let y = 0; y < canvas.height; y++) {
+    const row = (y + 0.5) / ratio
     for (let x = 0; x < canvas.width; x++) {
       let shade = 0
       for (let slot = 0; slot < across.length; slot++)
@@ -3484,11 +3825,19 @@ function paintStaticScene() {
         continue
       }
       const t = restTable[data[i]!]! * lift
-      const entry = Math.round(Math.sqrt(t) * 255) * 3
+      const shown = scansLines
+        ? scanned(t, data[i + 1]! / 255, row)
+        : t
+      const entry = Math.round(Math.sqrt(shown) * 255) * 3
       const rise = Math.min(1, t * 8)
-      data[i] = rampTable[entry]! * rise
-      data[i + 1] = rampTable[entry + 1]! * rise
-      data[i + 2] = rampTable[entry + 2]! * rise
+      const red = rampTable[entry]!
+      const green = rampTable[entry + 1]!
+      const blue = rampTable[entry + 2]!
+      const grey = red * 0.2126 + green * 0.7152 + blue * 0.0722
+      const keep = COLD_CHROMA + (1 - COLD_CHROMA) * ramp(0.22, 0.5, shown)
+      data[i] = (grey + (red - grey) * keep) * rise
+      data[i + 1] = (grey + (green - grey) * keep) * rise
+      data[i + 2] = (grey + (blue - grey) * keep) * rise
     }
   }
   ctx.putImageData(pixels, 0, 0)
@@ -3506,6 +3855,7 @@ async function showSceneAsImage() {
 
 function applyDisplayGains() {
   fluid.setDisplayGains(displayGains.ink, displayGains.skin)
+  textCanvasRef.value?.style.setProperty('--chd-figure', `${displayGains.skin}`)
 }
 
 /* The ink arrives over the first second of pointer movement instead of at full strength, the
@@ -3546,7 +3896,7 @@ onMounted(async () => {
     })
     if (fluidReady) {
       fluid.setContentCanvas(createBlankContent())
-      fluid.setSceneLook(REST_TONE, showsPhotograph ? 1 : 0, touch)
+      fluid.setSceneLook(sceneTone, showsPhotograph ? 1 : 0, touch, scansLines ? 1 : 0)
       applyDisplayGains()
       resizeObserver = new ResizeObserver(() => {
         fluid.resize()
