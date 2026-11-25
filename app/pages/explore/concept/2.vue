@@ -639,11 +639,11 @@ const RIPPLE = {
 }
 
 const MOTIONS = [
+  'wave',
   'shatter',
   'melt',
   'echo',
   'liquid',
-  'wave',
   'smear',
   'still',
 ] as const
@@ -3412,8 +3412,8 @@ const PLATE_FADE_FOOT = 0.06
    COVER_MIN of its ink lies on the figure), `split` sends the first SPLIT_LETTERS, BILLYM,
    behind and keeps AULANA in front, and `lead` does the opposite. */
 const NAME_DEPTHS = [
-  'front',
   'behind',
+  'front',
   'split',
   'lead',
 ] as const
