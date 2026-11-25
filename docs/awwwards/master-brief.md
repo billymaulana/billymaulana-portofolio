@@ -57,7 +57,7 @@ Fakta dari `app/constants/profile.ts`, satu-satunya sumber konten:
 - Tagline: "Transforming pixels into performance. Building interfaces that move millions."
 - Etos: "Always hunting for that perfect 60fps."
 
-Bahan visual: 16 foto buatan Billy di `bahan/edit okeeeee` (sejak 2026-11-25 menggantikan `bahan/profile/IMG_6094` dan `6120` sebagai latar hero). Dipakai sejak 2026-11-25 sore: kente frontal berlatar hitam, berwarna (bawaan; sosok termalnya lewat `?filter=thermal`); foto berlatar hitam lain sebagai opsi (`block` `2irfuk…`, `blazer` `68dxcg…`); foto berlingkungan sebagai opsi (gang bermural `f649ag…` dalam editan Billy `Untitled Design (4)`, kamar tiga perempat `wl9v77…`). Logo BM, palet termal liquid-2.
+Bahan visual: 16 foto buatan Billy di `bahan/edit okeeeee` (sejak 2026-11-25 menggantikan `bahan/profile/IMG_6094` dan `6120` sebagai latar hero). Dipakai sejak 2026-11-25 malam: potret jalan frontal `fhwuoo…` (`varsity`, berwarna) sebagai bawaan, pilihan Billy: *"set foto default ke ini: photo=varsity"*; potret studio frontal `mjz15x…` dan geometric tiga perempat `3che9m…` sebagai opsi; foto berlatar hitam (kente `wjmaa0…`, `block` `2irfuk…`, `blazer` `68dxcg…`) dan foto berlingkungan (gang `f649ag…` dalam editan `Untitled Design (4)`, kamar `wl9v77…`) tetap sebagai opsi; semua foto berlatar terang dipotong ulang dengan ViTMatte. Respons foto terhadap cairan: hanya `pulse` (benang zigzag koral di atas biru, rumus VoidPulse), dipilih Billy: *"pulse default yang lainnya hapus"*. Logo BM, palet termal liquid-2.
 
 Uji SWAP: bila halaman tetap masuk akal dengan nama lain, konsepnya belum milik Billy.
 Nama Billy adalah subjek halaman, bukan label kecil.

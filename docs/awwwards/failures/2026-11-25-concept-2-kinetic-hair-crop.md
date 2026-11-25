@@ -113,3 +113,23 @@ di-hover.
   sendiri, celahnya foto yang digelapkan, dan kedalamannya naik kontinu mengikuti tinta di belakang sosok. Terukur pada
   kotak wajah + rambut: tumpang-tindih hue diam → efek 80,1% (lantai 70%), massa kroma × 1,49. `touch=pulse` = rumus
   yang sama dengan palet koral di atas biru.
+
+## 9. Pilihan Billy sesudah melihat styleframe
+
+> "pulse default yang lainnya hapus, dan ganti fotonya dengan foto lain coba foto potrait studio atau potrait geometric"
+
+- `pulse` menjadi satu-satunya respons foto terhadap cairan; `behind`, `thread`, dan empat mode lama (split, whole, comb,
+  rgb) dihapus dari kode beserta parameter `?touch=`.
+- Foto bawaan: `studio` (`mjz15x…`, frontal, latar putih), dipotong ulang dengan ViTMatte bertrimap + estimasi warna
+  foreground + penjinakan nada tepi rambut. Opsi `?photo=geometric` (`3che9m…`, tiga perempat) dipotong dengan cara yang
+  sama; tepi kanannya memang tidak fokus di foto sumber dan dikencangkan hanya di pita yang buram.
+- Opsi `varsity` (`fhwuoo…`) dan `room` (`wl9v77…`) menyusul dipotong dengan cara yang sama. Potongan lama berupa
+  siluet stiker dengan lubang di puncak rambut, dan `room` membawa garis pucat dari dinding. Pita kabur `room` dikencangkan
+  hanya di bagian yang halus. Di `varsity`, cemaran hijau-abu dari latar jalan dinetralkan ke warna helai yang terkena
+  cahaya, dan kabut krem dari bokeh dipisahkan dari rambut hanya di bagian yang halus.
+- Yang gagal di tengah jalan: mengunci warna tepi ke rata-rata rambut di dekatnya menghapus tekstur helai yang terkena
+  cahaya, dan tepinya berubah menjadi pita krem rata yang terbaca seperti stroke. Memisahkan latar tanpa syarat tekstur
+  melubangi helai yang warnanya mirip bokeh. Pemisahan latar hanya aman di area yang halus.
+- Sesudah melihat potongan baru, Billy memindahkan foto bawaan ke `varsity`: *"set foto default ke ini: photo=varsity"*.
+- Sinyal taste: palet koral di atas biru (rujukan VoidPulse) dipilih atas benang berwarna foto sendiri. Dari dua potret
+  frontal, Billy memilih potret jalan bercahaya matahari dengan jaket varsity, bukan potret studio berlatar putih.
