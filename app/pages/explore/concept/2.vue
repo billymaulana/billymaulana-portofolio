@@ -604,14 +604,114 @@ const SCAN = {
   gap: 0.18,
 }
 const COLD_CHROMA = 0.3
-const PULSE = {
-  pitch: 7,
-  row: 7,
-  band: 3,
-  bend: 1.6,
-  zig: 0.42,
-  sway: 14,
+/* A thrown piece of the photograph covers half of its reach at a stored drag of `knee`. */
+const DRAG = {
+  knee: 160,
 }
+
+/* A harder touch breaks the photograph into shards, seven CSS px tall and three times as wide, laid in
+   courses. Each shard is carried by the liquid under its centre, turned off the stroke by up to
+   half of `spin` radians, and glows through the warm end of the ramp in proportion to how far it
+   has been thrown. */
+const SHATTER = {
+  width: 21,
+  height: 7,
+  reach: 90,
+  spin: 1.4,
+  glow: 0.85,
+  ember: [0.7, 0.985],
+}
+
+/* The other answers to a touch. `melt` lets each touched column of the photograph run down by
+   up to `melt` CSS px, columns `column` CSS px wide, as heat would soften it; `echo` leaves four
+   copies of the figure behind the stroke, spaced over `echo` CSS px and each a step colder;
+   `liquid` bends the photograph through the liquid like glass, by `liquid` CSS px per unit of the
+   heat's slope, so it warps hardest along the liquid's edges; `smear` drags each
+   touched row out along the stroke, up to `smear` CSS px, into a pale streak; `wave` ripples the
+   touched rows sideways by up to `wave` CSS px, like heat haze over water. */
+const RIPPLE = {
+  melt: 90,
+  column: 3,
+  echo: 150,
+  liquid: 70,
+  smear: 140,
+  wave: 16,
+}
+
+const MOTIONS = [
+  'shatter',
+  'melt',
+  'echo',
+  'liquid',
+  'wave',
+  'smear',
+  'still',
+] as const
+
+/* What the liquid itself looks like: the thermal ramp of the figure, its warm end only, its cold
+   end only, cream smoke, or liquid chrome lit from the upper left. */
+const LIQUIDS = [
+  'thermal',
+  'ember',
+  'cold',
+  'ink',
+  'chrome',
+] as const
+
+/* Motion becomes heat. The figure is shown through the liquid's own ramp, read off a temperature
+   plate graded in Photoshop (skin brightest, cloth and hair cooler, local contrast kept), between
+   `lo` and `hi` with `gamma`. Heat added by the pointer closes up to `shift` of the distance to the
+   top of the ramp, so cold parts gain the most and the face nears white without clipping; a part
+   needs `lag` times its own coldness in heat before it starts to warm, so the face catches first
+   and the hair and edges cool first. */
+const INFRA = {
+  lo: 0.16,
+  hi: 0.8,
+  gamma: 1.1,
+  shift: 0.45,
+  lag: 0.38,
+}
+
+/* How the name answers the liquid. `invert` leaves it to the masthead canvas, whose difference
+   blend turns each letter into the negative of the ink under it; `marble` draws it on the stage,
+   read back along the stored stroke by `displace` per unit of drag so the letters swirl with the
+   ink, edged in the liquid's own hot colour where a sample `fringe` further along differs. */
+const TEXT_MODES = [
+  'invert',
+  'marble',
+] as const
+
+const MARBLE = {
+  displace: 0.001,
+  fringe: 0.003,
+}
+
+/* A blurred look softens the temperature over `radius` CSS px, as a thermal camera's coarse sensor
+   would, and steps it into `bands` with a faint line on each boundary. */
+const THERMAL_BLUR = {
+  radius: 9,
+  bands: 9,
+}
+
+/* The heat the pointer leaves in the figure: moving across it at `full` CSS px per millisecond
+   fills it in `fill` seconds, it falls to 1/e in `cool` seconds, and the warmed region spreads
+   from where the pointer last crossed the figure at `spread` CSS px per second. */
+const HEAT = {
+  full: 1.2,
+  fill: 0.35,
+  cool: 1.7,
+  spread: 760,
+  start: 90,
+}
+
+/* Up to this many spans of the name can sit behind the figure; the display pass takes them as one
+   uniform array. */
+const BEHIND_SLOTS = 6
+
+/* The masthead canvas is white text blended by difference, so over the ground it shows as this
+   colour. Letters drawn behind the figure take the same value, worked back through the screen
+   blend of the stage canvas. */
+const GROUND = [6, 6, 16] as const
 
 function useFluidSimulation() {
   // ── State ──
@@ -735,9 +835,17 @@ function useFluidSimulation() {
     whiteCore: 0.95,
     inkGain: 1,
     skinGain: 1,
-    tone: 1,
+    warm: 1,
+    lookMode: 0,
+    textMode: 0,
+    heat: [0, 0, 0, 0] as [number, number, number, number],
     photo: 0,
     scan: 0,
+    liquid: 0,
+    motion: 0,
+    reach: 0,
+    behind: new Float32Array(BEHIND_SLOTS * 2).fill(2),
+    letters: 0,
     shades: new Float32Array(12),
     shadeFade: [0, 0, 1] as [number, number, number],
   }
@@ -1196,12 +1304,22 @@ function useFluidSimulation() {
     uniform float uWhite;
     uniform float uInkGain;
     uniform float uSkinGain;
-    uniform float uTone;
+    uniform float uWarm;
+    uniform float uLook;
+    uniform float uText;
+    uniform float uClock;
+    uniform vec3 uInfra;
+    uniform vec4 uHeat;
     uniform float uPhoto;
     uniform float uScan;
+    uniform float uLiquid;
+    uniform float uMotion;
+    uniform float uReach;
     uniform float uPx;
     uniform sampler2D tText;
     uniform vec4 uTextRect;
+    uniform vec2 uBehind[${BEHIND_SLOTS}];
+    uniform float uLetters;
     uniform vec2 uView;
     uniform vec4 uShade[3];
     uniform vec3 uShadeFade;
@@ -1223,16 +1341,20 @@ function useFluidSimulation() {
     const float SCAN_DUTY = ${SCAN.duty.toFixed(4)};
     const float SCAN_GAP = ${SCAN.gap.toFixed(4)};
     const float COLD_CHROMA = ${COLD_CHROMA.toFixed(4)};
-    const float PULSE_PITCH = ${PULSE.pitch.toFixed(4)};
-    const float PULSE_ROW = ${PULSE.row.toFixed(4)};
-    const float PULSE_BAND = ${PULSE.band.toFixed(4)};
-    const float PULSE_BEND = ${PULSE.bend.toFixed(4)};
-    const float PULSE_ZIG = ${PULSE.zig.toFixed(4)};
-    const float PULSE_SWAY = ${PULSE.sway.toFixed(4)};
-    const vec3 PULSE_DEEP = vec3(0.078, 0.031, 0.275);
-    const vec3 PULSE_BLUE = vec3(0.196, 0.071, 0.631);
-    const vec3 PULSE_CORAL = vec3(0.933, 0.392, 0.439);
-    const vec3 PULSE_PEACH = vec3(1.000, 0.745, 0.588);
+    const float DRAG_KNEE = ${DRAG.knee.toFixed(4)};
+    const float MELT_COLUMN = ${RIPPLE.column.toFixed(4)};
+    const vec2 SHARD = vec2(${SHATTER.width.toFixed(4)}, ${SHATTER.height.toFixed(4)});
+    const float SHARD_SPIN = ${SHATTER.spin.toFixed(4)};
+    const float SHARD_GLOW = ${SHATTER.glow.toFixed(4)};
+    const float EMBER_LO = ${SHATTER.ember[0]!.toFixed(4)};
+    const float EMBER_HI = ${SHATTER.ember[1]!.toFixed(4)};
+    const float INFRA_SHIFT = ${INFRA.shift.toFixed(4)};
+    const float MARBLE_DISPLACE = ${MARBLE.displace.toFixed(5)};
+    const float MARBLE_FRINGE = ${MARBLE.fringe.toFixed(5)};
+    const float BLUR_RADIUS = ${THERMAL_BLUR.radius.toFixed(4)};
+    const float BLUR_BANDS = ${THERMAL_BLUR.bands.toFixed(4)};
+    const float INFRA_LAG = ${INFRA.lag.toFixed(4)};
+    const vec3 GROUND = vec3(${GROUND.map(channel => (channel / 255).toFixed(5)).join(', ')});
 
     float hash1(float n) {
       return fract(sin(n * 91.3458) * 47453.5453);
@@ -1276,6 +1398,38 @@ function useFluidSimulation() {
       return mix(t - SCAN_GAP, t, line);
     }
 
+    float grain(vec2 p) {
+      return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+    }
+
+    /* A second ramp for the speckled look: deep indigo through blue and cyan to a hard yellow,
+       the palette of an older thermal sensor. */
+    vec3 sensorColour(float t) {
+      t = clamp(t, 0.0, 1.0);
+      if (t < 0.3)
+        return mix(vec3(0.03, 0.02, 0.18), vec3(0.14, 0.09, 0.58), smoothstep(0.0, 0.3, t));
+      if (t < 0.5)
+        return mix(vec3(0.14, 0.09, 0.58), vec3(0.08, 0.38, 0.98), smoothstep(0.3, 0.5, t));
+      if (t < 0.68)
+        return mix(vec3(0.08, 0.38, 0.98), vec3(0.22, 0.88, 0.98), smoothstep(0.5, 0.68, t));
+      if (t < 0.86)
+        return mix(vec3(0.22, 0.88, 0.98), vec3(0.96, 0.94, 0.24), smoothstep(0.68, 0.86, t));
+      return mix(vec3(0.96, 0.94, 0.24), vec3(1.0, 0.98, 0.84), smoothstep(0.86, 1.0, t));
+    }
+
+    /* Temperature and matte averaged over a ring, for the blurred look. */
+    vec2 softPlate(vec2 at) {
+      vec2 r = vec2(BLUR_RADIUS) / uView;
+      vec4 centre = texture2D(tMap, at);
+      vec2 sum = vec2(centre.r * centre.r, centre.a) * 0.2;
+      for (int i = 0; i < 8; i++) {
+        float a = float(i) * 0.785398;
+        vec4 ring = texture2D(tMap, at + vec2(cos(a), sin(a)) * r);
+        sum += vec2(ring.r * ring.r, ring.a) * 0.1;
+      }
+      return sum;
+    }
+
     float letterAt(vec2 at) {
       if (uTextRect.z <= 0.0)
         return 0.0;
@@ -1285,45 +1439,127 @@ function useFluidSimulation() {
       return texture2D(tText, p).a;
     }
 
-    /* The figure at one point of the stage: temperature read through the ramp, or the
-       photograph in its own colours. The content texture carries the temperature square-root
-       encoded, to keep precision in the cold end, with the matte in alpha; at rest the cold
-       range is held back. */
-    vec3 figureAt(vec2 at, float lift) {
-      vec4 plate = texture2D(tMap, at);
-      float open = 1.0 - letterAt(at);
-      float warmth = plate.r * plate.r;
-      warmth *= mix(uTone, 1.0, smoothstep(0.30, 0.55, warmth));
-      float skin = warmth * plate.a * uSkinGain * lift * open;
-      vec3 heat = figureColour(scanned(skin, plate.g)) * clamp(skin * 8.0, 0.0, 1.0);
-      vec3 photo = texture2D(tAux, at).rgb * uSkinGain * lift * open;
-      return mix(heat, photo, uPhoto);
+    /* Whether this column of the name belongs to a letter that sits behind the figure. */
+    float behindAt(vec2 at) {
+      if (uTextRect.z <= 0.0)
+        return 0.0;
+      float x = (at.x - uTextRect.x) / uTextRect.z;
+      float back = 0.0;
+      for (int i = 0; i < ${BEHIND_SLOTS}; i++)
+        back = max(back, step(uBehind[i].x, x) * step(x, uBehind[i].y));
+      return back;
     }
 
-    vec3 pulseAt(vec2 at, float lift, vec2 px, vec2 vel, vec3 still, float depth) {
-      vec2 o = vec2(1.2) / uView;
-      vec3 base = figureAt(at, lift) * 0.4;
-      base += figureAt(at + vec2(o.x, 0.0), lift) * 0.15;
-      base += figureAt(at - vec2(o.x, 0.0), lift) * 0.15;
-      base += figureAt(at + vec2(0.0, o.y), lift) * 0.15;
-      base += figureAt(at - vec2(0.0, o.y), lift) * 0.15;
-      float tone = pow(clamp((dot(base, vec3(0.2126, 0.7152, 0.0722)) - 0.02) / 0.78, 0.0, 1.0), 0.72);
-      float relief = texture2D(tMap, at).g;
-      float speed = length(vel);
-      float sway = PULSE_SWAY * vel.x / (speed + 160.0);
-      float tri = abs(fract(px.y / PULSE_ROW) - 0.5) * 4.0 - 1.0;
-      float zig = PULSE_ZIG * (1.0 + 0.9 * speed / (speed + 160.0));
-      float dx = PULSE_BEND * PULSE_PITCH * (relief - 0.45) * 2.2 + zig * PULSE_PITCH * (0.25 + 0.75 * tone) * tri + sway;
-      float phase = (px.x + dx) / PULSE_PITCH;
-      float stripe = abs(fract(phase) - 0.5) * PULSE_PITCH;
-      float halfWidth = PULSE_PITCH * (0.05 + 0.43 * pow(tone, 0.9));
-      float line = 1.0 - smoothstep(halfWidth - 0.4, halfWidth + 0.4, stripe);
-      float gate = hash1(floor(px.y / PULSE_BAND) * 12.9898 + floor(phase) * 78.233);
-      line *= smoothstep(gate * 0.16, gate * 0.16 + 0.04, tone);
-      float light = smoothstep(0.02, 0.3, texture2D(tMap, at).a * (1.0 - letterAt(at))) * clamp(uSkinGain, 0.0, 1.0) * lift;
-      vec3 thread = mix(PULSE_CORAL, PULSE_PEACH, smoothstep(0.55, 0.95, tone)) * (0.62 + 0.38 * tone) * smoothstep(0.02, 0.2, tone) * light;
-      vec3 gap = still * 0.10 + mix(PULSE_DEEP, PULSE_BLUE, smoothstep(0.05, 0.6, tone)) * 1.1 * tone * light;
-      return mix(still, mix(gap, thread, line), depth);
+    /* The figure at one point of the stage, seen in infrared: its temperature, square-root
+       encoded in the content texture with the matte in alpha, read through the ramp and lifted by
+       the heat the pointer has left there. A photograph shown in its own colours gives way to the
+       same infrared wherever that heat is. The opening under the letters is read by the caller on
+       the screen, because the photograph may slide while the letters stay put. */
+    vec3 figureAt(vec2 at, float lift, float open, float boost) {
+      vec4 plate = texture2D(tMap, at);
+      float level = plate.r * plate.r;
+      float cover = plate.a;
+      if (uLook > 0.5 && uLook < 1.5) {
+        vec2 soft = softPlate(at);
+        level = soft.x;
+        cover = soft.y;
+      }
+      float body = cover * uSkinGain * lift * open;
+      float lag = INFRA_LAG * (1.0 - level);
+      float rise = smoothstep(lag, lag + 0.3, boost) * boost;
+      float rest = mix(uInfra.x, uInfra.y, pow(level, uInfra.z)) * mix(0.3, 1.0, uWarm);
+      float t = rest + (1.0 - rest) * INFRA_SHIFT * rise;
+      vec3 heat;
+      if (uLook > 1.5) {
+        heat = sensorColour(t + (grain(gl_FragCoord.xy) - 0.5) * 0.1) * body;
+      }
+      else if (uLook > 0.5) {
+        float band = fract(clamp(t, 0.0, 1.0) * BLUR_BANDS);
+        float banded = mix(t, (floor(t * BLUR_BANDS) + 0.5) / BLUR_BANDS, 0.5);
+        float line = 1.0 - smoothstep(0.0, 0.07, min(band, 1.0 - band));
+        heat = (figureColour(clamp(banded, 0.0, 1.0)) + line * 0.08) * body;
+      }
+      else {
+        heat = figureColour(scanned(clamp(t, 0.0, 1.0), plate.g)) * body;
+      }
+      vec3 photo = texture2D(tAux, at).rgb * uSkinGain * lift * open;
+      return mix(heat, photo, uPhoto * (1.0 - smoothstep(0.04, 0.5, rise)));
+    }
+
+    /* How far the piece of photograph under this pixel has moved, in CSS pixels, and how hot it
+       is. The drag is read once per piece, at
+       its centre, so its edges stay straight; it follows the stored stroke direction and fades
+       with the ink, which is what brings the pieces back. A strip only slides sideways. */
+    float heatAt(vec2 at) {
+      vec3 ink = texture2D(tFluid, at).rgb;
+      float raw = clamp(ink.b, 0.0, 1.6) * 0.62 + length(ink.rg) * 0.0042;
+      return pow(1.0 - exp(-raw * uInkGain * uInkGain * 1.35), 0.62);
+    }
+
+    vec4 driftAt(vec2 px) {
+      if (uMotion < 0.5 || uReach <= 0.0 || (uMotion > 2.5 && uMotion < 3.5) || (uMotion > 4.5 && uMotion < 5.5))
+        return vec4(0.0);
+      if (uMotion > 5.5) {
+        vec2 at = px / uView;
+        vec2 e = vec2(6.0) / uView;
+        vec2 slope = vec2(heatAt(at + vec2(e.x, 0.0)) - heatAt(at - vec2(e.x, 0.0)), heatAt(at + vec2(0.0, e.y)) - heatAt(at - vec2(0.0, e.y)));
+        float grip = smoothstep(0.02, 0.3, heatAt(at));
+        return vec4(slope * uReach, grip * 0.3, 0.0);
+      }
+      if (uMotion > 3.5) {
+        float swell = smoothstep(0.06, 0.5, clamp(texture2D(tFluid, vec2(vUv.x, px.y / uView.y)).b, 0.0, 1.3) * uInkGain);
+        float wave = sin(px.y * 0.34 + uClock * 5.2) * 0.6 + sin(px.y * 0.11 - uClock * 2.3) * 0.4;
+        return vec4(uReach * swell * wave, 0.0, swell * 0.55, 0.0);
+      }
+      if (uMotion < 1.5) {
+        float column = floor(px.x / MELT_COLUMN);
+        float x = (column + 0.5) * MELT_COLUMN / uView.x;
+        float above = clamp(texture2D(tFluid, vec2(x, (px.y + uReach * 0.35) / uView.y)).b, 0.0, 1.3);
+        float here = clamp(texture2D(tFluid, vec2(x, px.y / uView.y)).b, 0.0, 1.3);
+        float grip = smoothstep(0.05, 0.5, max(above, here) * uInkGain);
+        float drip = uReach * grip * mix(0.2, 1.0, hash1(column * 3.17 + 0.5)) * mix(0.55, 1.0, noise1(column * 0.37));
+        return vec4(0.0, -drip, grip * 0.5, 0.0);
+      }
+      float course = floor(px.y / SHARD.y);
+      float bond = mod(course, 2.0) * 0.5 * SHARD.x;
+      vec2 cell = vec2(floor((px.x + bond) / SHARD.x), course);
+      vec2 centre = vec2((cell.x + 0.5) * SHARD.x - bond, (cell.y + 0.5) * SHARD.y);
+      vec3 drag = texture2D(tFluid, centre / uView).rgb;
+      float grip = smoothstep(0.06, 0.55, clamp(drag.b, 0.0, 1.3) * uInkGain);
+      if (grip <= 0.0)
+        return vec4(0.0);
+      vec2 thrown = drag.rg / (length(drag.rg) + DRAG_KNEE);
+      float spin = (hash1(cell.x * 3.91 + cell.y * 17.3) - 0.5) * SHARD_SPIN;
+      thrown = vec2(thrown.x * cos(spin) - thrown.y * sin(spin), thrown.x * sin(spin) + thrown.y * cos(spin));
+      float weight = mix(0.35, 1.0, hash1(cell.x * 7.13 + cell.y * 31.7));
+      vec2 move = uReach * weight * grip * thrown;
+      float glow = clamp(length(thrown) * weight * 1.6, 0.0, 1.0) * grip;
+      return vec4(move, glow, 0.0);
+    }
+
+    vec3 toStage(vec3 shown) {
+      return clamp((shown - GROUND) / (1.0 - GROUND), 0.0, 1.0);
+    }
+
+    /* The colour of the liquid at a given heat, in the style asked for. Chrome takes its shape
+       from the slope of the heat field and is lit from the upper left. */
+    vec3 liquidColour(float h, vec2 at) {
+      if (uLiquid < 0.5)
+        return max(thermal(h) - C0, 0.0);
+      if (uLiquid < 1.5)
+        return max(thermal(mix(0.58, 1.0, h)) - C0, 0.0) * smoothstep(0.0, 0.25, h);
+      if (uLiquid < 2.5)
+        return max(thermal(h * 0.62) - C0, 0.0) * 1.2;
+      if (uLiquid < 3.5)
+        return (1.0 - GROUND) * pow(h, 1.3);
+      vec2 e = vec2(1.5) / uView;
+      float gx = heatAt(at + vec2(e.x, 0.0)) - heatAt(at - vec2(e.x, 0.0));
+      float gy = heatAt(at + vec2(0.0, e.y)) - heatAt(at - vec2(0.0, e.y));
+      vec3 n = normalize(vec3(-gx * 6.0, -gy * 6.0, 1.0));
+      vec3 l = normalize(vec3(-0.45, 0.6, 0.65));
+      float spec = pow(max(dot(reflect(-l, n), vec3(0.0, 0.0, 1.0)), 0.0), 28.0);
+      float body = 0.12 + 0.55 * h * (0.4 + 0.6 * n.z);
+      return vec3(body) * vec3(0.92, 0.94, 1.0) + spec * 0.9 * smoothstep(0.05, 0.3, h);
     }
 
     void main() {
@@ -1376,19 +1612,90 @@ function useFluidSimulation() {
         }
         float lift = mix(1.0, uShadeFade.z, shade);
 
-        float matte = texture2D(tMap, uv).a * clamp(uSkinGain, 0.0, 1.0) * (1.0 - letterAt(uv));
-        vec3 figure = figureAt(uv, lift);
+        vec2 px = gl_FragCoord.xy * uPx;
+        vec4 drift = driftAt(px);
+        vec2 slid = uv - drift.xy / uView;
+        vec2 mush = uText > 0.5
+          ? vel * MARBLE_DISPLACE
+          : vec2(0.0);
+        float letter = letterAt(uv - mush) * (uText > 0.5 ? uLetters : 1.0);
+        float back = behindAt(uv - mush);
+        float open = 1.0 - letter * (1.0 - back);
+        float matte = texture2D(tMap, slid).a * clamp(uSkinGain, 0.0, 1.0) * open;
+        /* Heat in the figure: where the ink lies now, and the region the pointer has warmed,
+           spreading from where it last crossed the figure. */
+        float soaked = smoothstep(0.03, 0.45, presence * uInkGain);
+        float warmed = (1.0 - smoothstep(uHeat.z * 0.55, uHeat.z, distance(px, uHeat.xy))) * uHeat.w;
+        float boost = clamp(max(soaked, warmed), 0.0, 1.0);
+        vec3 figure = figureAt(slid, lift, open, boost);
         if (matte > 0.001) {
-          vec2 px = gl_FragCoord.xy * uPx;
-          float band = floor(px.y / PULSE_BAND);
-          float rowV = (band + 0.5) * PULSE_BAND / uView.y;
-          float reached = clamp(texture2D(tFluid, vec2(vUv.x, rowV)).b, 0.0, 1.3) * uInkGain;
-          float jitter = (hash1(band * 1.37 + 11.0) - 0.5) * 0.55 + (noise1(band * 0.11) - 0.5) * 0.5;
-          float depth = smoothstep(0.10, 0.80, reached + jitter * 0.3 * smoothstep(0.05, 0.6, reached));
-          if (depth > 0.001)
-            figure = pulseAt(uv, lift, px, vel, figure, depth);
+          /* A thrown piece burns through the warm end of the ramp by its own brightness and keeps
+             that brightness, so the hair stays dark with amber strands, a cheek turns amber and a
+             highlight cream, and the face stays readable inside them. */
+          if (drift.z > 0.001) {
+            float glowTone = clamp(dot(figure, vec3(0.2126, 0.7152, 0.0722)) * 1.4, 0.0, 1.0);
+            vec3 ember = max(thermal(mix(EMBER_LO, EMBER_HI, glowTone)) - C0, 0.0) * (0.18 + 0.82 * glowTone) * matte;
+            figure = mix(figure, ember, drift.z * SHARD_GLOW);
+          }
         }
-        col = figure + max(thermal(heat) - C0, 0.0) * cover * (1.0 - matte);
+        /* Echoes: copies of the figure left behind the stroke, each a step further and colder,
+           like a thermal camera's stroboscope. */
+        if (uMotion > 4.5 && uMotion < 5.5) {
+          float grip = smoothstep(0.05, 0.5, presence * uInkGain);
+          if (grip > 0.001) {
+            vec2 toward = vel / (length(vel) + DRAG_KNEE);
+            vec3 echoes = vec3(0.0);
+            for (int i = 1; i <= 4; i++) {
+              float k = float(i);
+              vec2 at = slid + toward * uReach * k / 4.0 / uView;
+              vec3 ghost = figureAt(at, lift, 1.0, boost);
+              float tone = dot(ghost, vec3(0.2126, 0.7152, 0.0722));
+              vec3 tinted = max(thermal(clamp(0.78 - 0.13 * k + 0.3 * tone, 0.0, 1.0)) - C0, 0.0) * texture2D(tMap, at).a;
+              echoes = max(echoes, tinted * (1.0 - k * 0.16));
+            }
+            figure = mix(figure, max(figure, echoes), grip);
+          }
+        }
+
+        /* A smeared row: the photograph read back along the stroke and averaged into a pale
+           streak that can run past the figure's edge. */
+        if (uMotion > 2.5 && uMotion < 3.5) {
+          float row = floor(px.y / 2.0);
+          vec3 stroke = texture2D(tFluid, vec2(vUv.x, (row + 0.5) * 2.0 / uView.y)).rgb;
+          float grip = smoothstep(0.05, 0.5, clamp(stroke.b, 0.0, 1.3) * uInkGain);
+          if (grip > 0.001) {
+            float toward = stroke.r >= 0.0 ? 1.0 : -1.0;
+            float reachPx = uReach * grip * mix(0.25, 1.0, hash1(row * 7.31 + 1.7));
+            vec3 trail = vec3(0.0);
+            for (int i = 1; i <= 6; i++)
+              trail += figureAt(slid - vec2(toward * reachPx * float(i) / 6.0 / uView.x, 0.0), lift, 1.0, boost);
+            trail /= 6.0;
+            float pale = dot(trail, vec3(0.2126, 0.7152, 0.0722));
+            figure = max(figure, mix(trail, vec3(pale) * vec3(1.0, 0.97, 0.9) * 1.3, 0.6) * grip);
+          }
+        }
+
+        /* The name. Inverted, the masthead canvas draws the letters in front and only those behind
+           the figure are laid here, at the negative the difference blend would give them. In
+           marble, every letter is drawn here, cream with an accent-blue edge, and laid in front of
+           or under the figure; both are worked back through the screen blend of this canvas. */
+        vec3 under = liquidColour(heat, uv) * cover;
+        if (uText < 0.5) {
+          float behind = letter * back * uLetters;
+          if (behind > 0.0)
+            under = mix(under, toStage(1.0 - (under + GROUND - under * GROUND)), behind);
+          col = figure + under * (1.0 - matte);
+        }
+        else {
+          float rim = abs(letterAt(uv - vel * (MARBLE_DISPLACE + MARBLE_FRINGE)) * uLetters - letter);
+          vec3 inked = toStage(1.0 - GROUND);
+          vec3 edged = toStage(liquidColour(0.85, uv) + (1.0 - GROUND) * 0.15);
+          under = mix(under, inked, letter * back);
+          under = mix(under, edged, rim * back);
+          col = figure + under * (1.0 - matte);
+          col = mix(col, inked, letter * (1.0 - back));
+          col = mix(col, edged, rim * (1.0 - back));
+        }
 
         /* A half-step dither: the cold end of the ramp spans a few dozen 8-bit levels across
            hundreds of pixels and would band without it. */
@@ -2150,9 +2457,19 @@ function useFluidSimulation() {
     g.uniform1f(contentDisplayProgram.uniforms.uWhite!, contentDisplay.whiteCore)
     g.uniform1f(contentDisplayProgram.uniforms.uInkGain!, contentDisplay.inkGain)
     g.uniform1f(contentDisplayProgram.uniforms.uSkinGain!, contentDisplay.skinGain)
-    g.uniform1f(contentDisplayProgram.uniforms.uTone!, contentDisplay.tone)
+    g.uniform1f(contentDisplayProgram.uniforms.uWarm!, contentDisplay.warm)
+    g.uniform1f(contentDisplayProgram.uniforms.uLook!, contentDisplay.lookMode)
+    g.uniform1f(contentDisplayProgram.uniforms.uText!, contentDisplay.textMode)
+    g.uniform1f(contentDisplayProgram.uniforms.uClock!, performance.now() / 1000)
+    g.uniform3f(contentDisplayProgram.uniforms.uInfra!, INFRA.lo, INFRA.hi, INFRA.gamma)
+    g.uniform4f(contentDisplayProgram.uniforms.uHeat!, contentDisplay.heat[0], contentDisplay.heat[1], contentDisplay.heat[2], contentDisplay.heat[3])
     g.uniform1f(contentDisplayProgram.uniforms.uPhoto!, auxTexture ? contentDisplay.photo : 0)
     g.uniform1f(contentDisplayProgram.uniforms.uScan!, contentDisplay.scan)
+    g.uniform1f(contentDisplayProgram.uniforms.uLiquid!, contentDisplay.liquid)
+    g.uniform1f(contentDisplayProgram.uniforms.uMotion!, contentDisplay.motion)
+    g.uniform1f(contentDisplayProgram.uniforms.uReach!, contentDisplay.reach)
+    g.uniform2fv(contentDisplayProgram.uniforms['uBehind[0]']!, contentDisplay.behind)
+    g.uniform1f(contentDisplayProgram.uniforms.uLetters!, contentDisplay.letters)
     const cssPerPixel = canvas && canvas.height
       ? canvas.clientHeight / canvas.height
       : 1
@@ -2786,15 +3103,35 @@ function useFluidSimulation() {
     return true
   }
 
-  function setDisplayGains(ink: number, skin: number) {
+  function setDisplayGains(ink: number, skin: number, warm: number) {
     contentDisplay.inkGain = ink
     contentDisplay.skinGain = skin
+    contentDisplay.warm = warm
   }
 
-  function setSceneLook(tone: number, photo: number, scan: number) {
-    contentDisplay.tone = tone
+  function setSceneLook(photo: number, scan: number, lookMode: number, textMode: number) {
+    contentDisplay.lookMode = lookMode
+    contentDisplay.textMode = textMode
     contentDisplay.photo = photo
     contentDisplay.scan = scan
+  }
+
+  function setTouchLook(liquid: number, motion: number, reach: number) {
+    contentDisplay.liquid = liquid
+    contentDisplay.motion = motion
+    contentDisplay.reach = reach
+  }
+
+  function setHeat(x: number, y: number, radius: number, energy: number) {
+    contentDisplay.heat = [x, y, radius, energy]
+  }
+
+  function setBehindLetters(ranges: Float32Array) {
+    contentDisplay.behind.set(ranges.subarray(0, contentDisplay.behind.length))
+  }
+
+  function setLetterGain(gain: number) {
+    contentDisplay.letters = gain
   }
 
   /* Up to three shades, four numbers each, in texture coordinates: left edge, right edge, top
@@ -2856,6 +3193,10 @@ function useFluidSimulation() {
     setAuxCanvas,
     setDisplayGains,
     setSceneLook,
+    setTouchLook,
+    setHeat,
+    setBehindLetters,
+    setLetterGain,
     setLetterSource,
     setLabelShades,
   }
@@ -2887,12 +3228,14 @@ interface SceneBox {
   height: number
 }
 
-type Look = 'colour' | 'grayscale' | 'thermal' | 'void'
+type Look = 'thermal' | 'void' | 'blur' | 'noise' | 'cinema' | 'colour' | 'grayscale'
 
 interface Portrait {
-  /* Every portrait is kept as four rasters in one register: the photograph in its own colours,
-     graded and cut to black, its temperature, a coarse depth that bends the scan lines, and its
-     matte. Its look is how it is shown when no filter is asked for. */
+  /* Every portrait is kept as five rasters in one register: the photograph in its own colours,
+     cut to black; the same photograph relit as if taken against the dark (light falling off from
+     the face, edges sinking into the ground, the sheen taken off the hair) and pulled into the
+     amber and void of the page; its temperature; a coarse depth that bends the scan lines; and
+     its matte. Its look is how it is shown when no filter is asked for. */
   look: Look
   width: number
   height: number
@@ -2909,48 +3252,48 @@ interface Portrait {
 /* Each photograph is used whole: skin, hair and cloth in their real outline, cropped by the
    viewport and by nothing else. */
 const PORTRAITS: Record<string, Portrait> = {
-  alley: {
-    look: 'colour',
+  pattern: {
+    look: 'thermal',
+    width: 1216,
+    height: 1536,
+    axis: 607.5,
+    faceUnit: 289.6,
+    crownRow: 45,
+    foreheadRow: 367,
+    sleeveRow: 1459,
+  },
+  school: {
+    look: 'thermal',
+    width: 1216,
+    height: 1536,
+    axis: 608,
+    faceUnit: 287.6,
+    crownRow: 44,
+    foreheadRow: 375,
+    sleeveRow: 1475,
+  },
+  mural: {
+    look: 'thermal',
+    width: 1216,
+    height: 1536,
+    axis: 607.5,
+    faceUnit: 254.7,
+    crownRow: 61,
+    foreheadRow: 358,
+    sleeveRow: 1536,
+  },
+  neon: {
+    look: 'thermal',
     width: 1792,
     height: 2400,
-    axis: 903.5,
-    faceUnit: 423.5,
-    crownRow: 121,
-    foreheadRow: 566,
-    sleeveRow: 2080,
-  },
-  kente: {
-    look: 'colour',
-    width: 1824,
-    height: 2392,
-    axis: 888.5,
-    faceUnit: 468.5,
-    crownRow: 20.4,
-    foreheadRow: 563,
-    sleeveRow: 1980,
-  },
-  block: {
-    look: 'colour',
-    width: 2240,
-    height: 3101,
-    axis: 1115.5,
-    faceUnit: 602.6,
-    crownRow: 28,
-    foreheadRow: 729.7,
-    sleeveRow: 2440,
-  },
-  blazer: {
-    look: 'colour',
-    width: 2280,
-    height: 2978,
-    axis: 1112.5,
-    faceUnit: 580,
-    crownRow: 18,
-    foreheadRow: 692.8,
-    sleeveRow: 2510,
+    axis: 788,
+    faceUnit: 442.7,
+    crownRow: 254,
+    foreheadRow: 777,
+    sleeveRow: 2245,
   },
   studio: {
-    look: 'colour',
+    look: 'thermal',
     width: 2240,
     height: 3000,
     axis: 1142,
@@ -2960,7 +3303,7 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 3000,
   },
   varsity: {
-    look: 'colour',
+    look: 'thermal',
     width: 2280,
     height: 2880,
     axis: 1124,
@@ -2970,7 +3313,7 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 2719,
   },
   geometric: {
-    look: 'colour',
+    look: 'thermal',
     width: 2240,
     height: 2988,
     axis: 1108,
@@ -2980,7 +3323,7 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 2988,
   },
   room: {
-    look: 'colour',
+    look: 'thermal',
     width: 2240,
     height: 2988,
     axis: 980,
@@ -2990,16 +3333,24 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 2609,
   },
 }
-const PORTRAIT_DEFAULT = 'varsity'
+const PORTRAIT_DEFAULT = 'geometric'
+const PORTRAIT_KEYS = Object.keys(PORTRAITS)
 const LOOKS: Look[] = [
-  'colour',
-  'grayscale',
   'thermal',
   'void',
+  'blur',
+  'noise',
+  'cinema',
+  'colour',
+  'grayscale',
 ]
 
-function plateSrc(key: string, kind: 'colour' | 'heat' | 'depth' | 'matte'): string {
+function plateSrc(key: string, kind: 'cinema' | 'colour' | 'heat' | 'depth' | 'matte'): string {
   return `/assets/images/concept-2/portrait-${key}-${kind}.webp`
+}
+
+function thumbSrc(key: string): string {
+  return `/assets/images/concept-2/thumbs/${key}.webp`
 }
 
 const MONO_MIX = [0.5, 0.4, 0.1] as const
@@ -3033,11 +3384,42 @@ const RAMP_COLOURS = [
   [255, 254, 245],
 ]
 
+/* The top of the hair never rises above the middle of the letters, so the name keeps its upper
+   half clear of the figure whichever letters the hair passes in front of. */
 const NAME_CLEARANCE = 12
-const CROWN_UNDER_NAME = 6
-const CROWN_IN_NAME = 0.42
-const FACE_PER_VIEWPORT_HEIGHT = 0.215
-const FACE_PER_VIEWPORT_WIDTH = 0.4
+const CROWN_AT_CAP = 0.5
+
+/* The page is set on twelve columns across the content width between the side margins, the
+   width the name already fills. The head, hair edge to hair edge about HAIR_PER_FACE face units
+   wide, spans a whole number of them centred on the middle line: four on a desktop, six on a
+   tablet, ten on a phone. */
+const GRID_COLUMNS = 12
+const HAIR_PER_FACE = 3.1
+const HAIR_COLUMNS = [
+  { from: 1024, columns: 4 },
+  { from: 600, columns: 8 },
+  { from: 0, columns: 12 },
+]
+
+/* The plate fades to black over this share of its width at the sides and of its height at the
+   bottom, so where the photograph's frame cuts the sleeves the figure sinks into the ground instead
+   of ending on a straight line, and its size can follow the grid alone. */
+const PLATE_FADE_SIDE = 0.08
+const PLATE_FADE_FOOT = 0.06
+
+/* Which letters of the name sit behind the figure: `front` keeps the whole name over it,
+   `behind` sends every letter the hair reaches behind it (a letter counts as reached when
+   COVER_MIN of its ink lies on the figure), `split` sends the first SPLIT_LETTERS, BILLYM,
+   behind and keeps AULANA in front, and `lead` does the opposite. */
+const NAME_DEPTHS = [
+  'front',
+  'behind',
+  'split',
+  'lead',
+] as const
+type NameDepth = typeof NAME_DEPTHS[number]
+const COVER_MIN = 0.03
+const SPLIT_LETTERS = 6
 
 /* Behind each footer label that stands on it, the figure keeps SHADE_LEVEL of its light. The
    shade is as wide as the label plus SHADE_PAD, starts SHADE_GAP above it and runs to the bottom
@@ -3052,7 +3434,8 @@ const SHADE_SLOTS = 3
 
 const STATIC_MAX_DPR = 2
 
-const BACKDROP_REVEAL = { at: 1.5, duration: 2 }
+const BACKDROP_REVEAL = { at: 0, duration: 0.35, warm: 1.2 }
+const LETTER_REVEAL = 0.8
 const INK_ARRIVAL = 1.2
 
 /* Motion and ink must share one lifetime. At velocity 3.2 / density 1.1 the flow was dead after
@@ -3096,11 +3479,12 @@ const textCanvasRef = ref<HTMLCanvasElement>()
 const navRef = ref<HTMLElement>()
 const footRef = ref<HTMLElement>()
 const isTextReady = ref(false)
+const stageDrawsName = ref(false)
 
 const backdropCanvasRef = ref<HTMLCanvasElement>()
 const showStaticBackdrop = ref(false)
 
-const displayGains = { ink: 0, skin: 0 }
+const displayGains = { ink: 0, skin: 0, warm: 0 }
 
 interface SceneLayout {
   axisX: number
@@ -3108,9 +3492,6 @@ interface SceneLayout {
   figureScale: number
   shades: SceneBox[]
 }
-
-/* Shown as temperature, the figure holds its cold range back to half until the ink touches it. */
-const REST_TONE = 0.5
 
 const route = useRoute()
 const requestedPhoto = String(route.query.photo ?? '')
@@ -3120,12 +3501,208 @@ const portraitKey = Object.keys(PORTRAITS).includes(requestedPhoto)
 const portrait = PORTRAITS[portraitKey]!
 const requestedLook = LOOKS.find(look => look === route.query.filter)
 const look: Look = requestedLook ?? portrait.look
-const showsPhotograph = look === 'colour' || look === 'grayscale'
+const showsPhotograph = look === 'cinema' || look === 'colour' || look === 'grayscale'
 const scansLines = look === 'void'
-const sceneTone = look === 'thermal'
-  ? REST_TONE
-  : 1
-const frontsPhoto = route.query.front === 'photo'
+const requestedDepth = NAME_DEPTHS.find(depth => depth === route.query.name)
+const nameDepth: NameDepth = requestedDepth ?? (route.query.front === 'photo'
+  ? 'behind'
+  : NAME_DEPTHS[0])
+const liquidLook = Math.max(0, LIQUIDS.findIndex(name => name === route.query.liquid))
+const motion = MOTIONS.find(name => name === route.query.motion) ?? MOTIONS[0]
+const MOTION_LOOK = {
+  shatter: { mode: 2, reach: SHATTER.reach },
+  melt: { mode: 1, reach: RIPPLE.melt },
+  smear: { mode: 3, reach: RIPPLE.smear },
+  wave: { mode: 4, reach: RIPPLE.wave },
+  echo: { mode: 5, reach: RIPPLE.echo },
+  liquid: { mode: 6, reach: RIPPLE.liquid },
+  still: { mode: 0, reach: 0 },
+} as const
+const textMode = TEXT_MODES.find(name => name === route.query.text) ?? TEXT_MODES[0]
+const lookMode = look === 'blur'
+  ? 1
+  : look === 'noise'
+    ? 2
+    : 0
+const showsPanel = import.meta.dev && route.query.panel !== '0'
+
+interface PanelOption {
+  label: string
+  query: Record<string, string>
+  active: boolean
+}
+
+interface PanelGroup {
+  label: string
+  options: PanelOption[]
+}
+
+const PANEL_GROUPS: PanelGroup[] = [
+  {
+    label: 'Filter',
+    options: [
+      {
+        label: 'Termal',
+        query: { filter: 'thermal' },
+        active: look === 'thermal',
+      },
+      {
+        label: 'Garis',
+        query: { filter: 'void' },
+        active: look === 'void',
+      },
+      {
+        label: 'Blur',
+        query: { filter: 'blur' },
+        active: look === 'blur',
+      },
+      {
+        label: 'Bintik',
+        query: { filter: 'noise' },
+        active: look === 'noise',
+      },
+      {
+        label: 'Sinematik',
+        query: { filter: 'cinema' },
+        active: look === 'cinema',
+      },
+      {
+        label: 'Asli',
+        query: { filter: 'colour' },
+        active: look === 'colour',
+      },
+    ],
+  },
+  {
+    label: 'Cairan',
+    options: [
+      {
+        label: 'Termal',
+        query: { liquid: 'thermal' },
+        active: liquidLook === 0,
+      },
+      {
+        label: 'Bara',
+        query: { liquid: 'ember' },
+        active: liquidLook === 1,
+      },
+      {
+        label: 'Dingin',
+        query: { liquid: 'cold' },
+        active: liquidLook === 2,
+      },
+      {
+        label: 'Tinta',
+        query: { liquid: 'ink' },
+        active: liquidLook === 3,
+      },
+      {
+        label: 'Krom',
+        query: { liquid: 'chrome' },
+        active: liquidLook === 4,
+      },
+    ],
+  },
+  {
+    label: 'Gerak',
+    options: [
+      {
+        label: 'Pecah',
+        query: { motion: 'shatter' },
+        active: motion === 'shatter',
+      },
+      {
+        label: 'Leleh',
+        query: { motion: 'melt' },
+        active: motion === 'melt',
+      },
+      {
+        label: 'Stroboskop',
+        query: { motion: 'echo' },
+        active: motion === 'echo',
+      },
+      {
+        label: 'Cair',
+        query: { motion: 'liquid' },
+        active: motion === 'liquid',
+      },
+      {
+        label: 'Gelombang',
+        query: { motion: 'wave' },
+        active: motion === 'wave',
+      },
+      {
+        label: 'Sapuan',
+        query: { motion: 'smear' },
+        active: motion === 'smear',
+      },
+      {
+        label: 'Diam',
+        query: { motion: 'still' },
+        active: motion === 'still',
+      },
+    ],
+  },
+  {
+    label: 'Nama',
+    options: [
+      {
+        label: 'Depan',
+        query: { name: 'front' },
+        active: nameDepth === 'front',
+      },
+      {
+        label: 'Belakang',
+        query: { name: 'behind' },
+        active: nameDepth === 'behind',
+      },
+      {
+        label: 'BILLYM belakang',
+        query: { name: 'split' },
+        active: nameDepth === 'split',
+      },
+      {
+        label: 'BILLYM depan',
+        query: { name: 'lead' },
+        active: nameDepth === 'lead',
+      },
+    ],
+  },
+  {
+    label: 'Teks',
+    options: [
+      {
+        label: 'Balik',
+        query: { text: 'invert' },
+        active: textMode === 'invert',
+      },
+      {
+        label: 'Marmer',
+        query: { text: 'marble' },
+        active: textMode === 'marble',
+      },
+    ],
+  },
+]
+
+const PANEL_STATE_KEY = 'chd-panel-open'
+const panelOpen = ref(false)
+
+function panelHref(change: Record<string, string>): string {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(route.query)) {
+    if (typeof value === 'string' && key !== 'front')
+      query.set(key, value)
+  }
+  for (const [key, value] of Object.entries(change))
+    query.set(key, value)
+  return `${route.path}?${query.toString()}`
+}
+
+function togglePanel() {
+  panelOpen.value = !panelOpen.value
+  sessionStorage.setItem(PANEL_STATE_KEY, panelOpen.value ? '1' : '0')
+}
 let scene: SceneLayout = {
   axisX: 0,
   top: 0,
@@ -3223,6 +3800,12 @@ function renderMasthead(fontSize: number): HTMLCanvasElement {
   ctx.textBaseline = 'alphabetic'
   ctx.fillText(MASTHEAD_TEXT, m.actualBoundingBoxLeft, padTop + m.actualBoundingBoxAscent)
 
+  const starts = Array.from({ length: MASTHEAD_TEXT.length + 1 }, (_, index) => m.actualBoundingBoxLeft + ctx.measureText(MASTHEAD_TEXT.slice(0, index)).width)
+  canvas.dataset.starts = starts.join(',')
+  canvas.dataset.spacing = String(canSpace
+    ? spacing
+    : 0)
+
   return canvas
 }
 
@@ -3245,11 +3828,10 @@ function paintStaticMasthead() {
   ctx.drawImage(source, 0, 0)
 }
 
-/* The top of the hair stays under the top edge of the letters and the forehead under their
-   baseline, so the name always lies on the hair: never on the face, and never with hair showing
-   above it. The figure is as small as the photograph allows: it has to reach the bottom edge,
-   and where it is narrower than the viewport, the viewport has to end above the row on which the
-   sleeves run out of the plate. */
+/* The top of the hair stays at or under the middle of the letters and the forehead under their
+   baseline, so the name always meets the hair and never the face, and the upper half of every
+   letter stays clear. Its size comes from the grid, and grows only where the photograph would
+   otherwise end above the bottom edge. */
 function computeScene() {
   const section = sectionRef.value
   const foot = footRef.value
@@ -3270,18 +3852,14 @@ function computeScene() {
 
   const cap = bounds.width * CAP_PER_VIEWPORT
   const inkTop = mastheadBox.top + Math.round(cap * INK_TOP_PER_CAP)
-  const crownTop = frontsPhoto
-    ? inkTop + cap * CROWN_IN_NAME
-    : inkTop + CROWN_UNDER_NAME
+  const crownTop = inkTop + cap * CROWN_AT_CAP
   const faceTop = inkTop + cap + NAME_CLEARANCE
-  const preferred = Math.min(bounds.height * FACE_PER_VIEWPORT_HEIGHT, bounds.width * FACE_PER_VIEWPORT_WIDTH) / portrait.faceUnit
+  const column = mastheadBox.width / GRID_COLUMNS
+  const columns = HAIR_COLUMNS.find(step => bounds.width >= step.from)?.columns ?? GRID_COLUMNS
+  const preferred = (columns * column) / (HAIR_PER_FACE * portrait.faceUnit)
   const axisX = bounds.width / 2
-  const spansWidth = Math.max(axisX / portrait.axis, (bounds.width - axisX) / (portrait.width - portrait.axis))
-  const clearsSleeves = Math.min(
-    (bounds.height - faceTop) / (portrait.sleeveRow - portrait.foreheadRow),
-    (bounds.height - crownTop) / (portrait.sleeveRow - portrait.crownRow),
-  )
-  const figureScale = Math.max(preferred, Math.min(spansWidth, clearsSleeves))
+  const reachesFoot = (bounds.height - crownTop) / (portrait.height - portrait.crownRow)
+  const figureScale = Math.max(preferred, reachesFoot)
   const left = axisX - portrait.axis * figureScale
   const right = left + portrait.width * figureScale
   scene = {
@@ -3410,13 +3988,24 @@ function toGrayscale(image: HTMLImageElement): HTMLCanvasElement | null {
   return canvas
 }
 
+let scenePromise: Promise<boolean> | null = null
+
+function ensureScene(): Promise<boolean> {
+  scenePromise ??= loadScene()
+  return scenePromise
+}
+
+function photoPlate(): 'cinema' | 'colour' {
+  return look === 'cinema'
+    ? look
+    : 'colour'
+}
+
 async function loadScene(): Promise<boolean> {
   const [heat, colour, depth, matte] = await Promise.all([
+    loadImage(plateSrc(portraitKey, 'heat')),
     showsPhotograph
-      ? null
-      : loadImage(plateSrc(portraitKey, 'heat')),
-    showsPhotograph
-      ? loadImage(plateSrc(portraitKey, 'colour'))
+      ? loadImage(plateSrc(portraitKey, photoPlate()))
       : null,
     loadImage(plateSrc(portraitKey, 'depth')),
     loadImage(plateSrc(portraitKey, 'matte')),
@@ -3424,7 +4013,7 @@ async function loadScene(): Promise<boolean> {
   const picture = showsPhotograph
     ? colour
     : heat
-  if (!matte || !picture || !depth)
+  if (!matte || !picture || !depth || !heat)
     return false
   figureCanvas = composeFigure(heat, matte, depth)
   colourImage = colour && look === 'grayscale'
@@ -3433,10 +4022,175 @@ async function loadScene(): Promise<boolean> {
   return figureCanvas !== null && (!showsPhotograph || colourImage !== null)
 }
 
+/* Each letter of the masthead as the span of its advance, from where it starts to where the
+   tracking after it begins. Ink can overhang the span (the arm of a Y over the foot of an L), so
+   the spans come from the font's metrics rather than from gaps in the ink. */
+function letterSpans(source: HTMLCanvasElement): Array<[number, number]> {
+  const starts = (source.dataset.starts ?? '').split(',').map(Number)
+  const spacing = Number(source.dataset.spacing ?? 0)
+  if (starts.length !== MASTHEAD_TEXT.length + 1 || starts.some(value => !Number.isFinite(value)))
+    return []
+  return MASTHEAD_TEXT.split('').map((_, index) => [starts[index]!, starts[index + 1]! - spacing] as [number, number])
+}
+
+/* How much of each letter's ink lies on the figure, sampled at half the masthead's resolution. */
+function letterCover(source: HTMLCanvasElement, runs: Array<[number, number]>): number[] {
+  if (!figureCanvas || !mastheadBox)
+    return runs.map(() => 0)
+  const scale = 0.5
+  const width = Math.max(1, Math.round(source.width * scale))
+  const height = Math.max(1, Math.round(source.height * scale))
+  const probe = document.createElement('canvas')
+  probe.width = width
+  probe.height = height
+  const ctx = probe.getContext('2d', { willReadFrequently: true })
+  if (!ctx)
+    return runs.map(() => 0)
+  const box = figureRect()
+  const sx = width / mastheadBox.width
+  const sy = height / mastheadBox.height
+  ctx.drawImage(figureCanvas, (box.left - mastheadBox.left) * sx, (box.top - mastheadBox.top) * sy, box.width * sx, box.height * sy)
+  const figure = ctx.getImageData(0, 0, width, height).data
+  ctx.clearRect(0, 0, width, height)
+  ctx.drawImage(source, 0, 0, width, height)
+  const ink = ctx.getImageData(0, 0, width, height).data
+  return runs.map(([from, to]) => {
+    let inked = 0
+    let covered = 0
+    for (let x = Math.floor(from * scale); x < Math.min(width, Math.ceil(to * scale)); x++) {
+      for (let y = 0; y < height; y++) {
+        const i = (y * width + x) * 4 + 3
+        if (ink[i]! > 127) {
+          inked++
+          if (figure[i]! > 127)
+            covered++
+        }
+      }
+    }
+    return inked
+      ? covered / inked
+      : 0
+  })
+}
+
+function chooseBehind(cover: number[]): boolean[] {
+  if (nameDepth === 'split')
+    return cover.map((_, index) => index < SPLIT_LETTERS)
+  if (nameDepth === 'lead')
+    return cover.map((_, index) => index >= SPLIT_LETTERS)
+  return cover.map(value => nameDepth === 'behind' && value >= COVER_MIN)
+}
+
+/* Spans of the masthead, as fractions of its width, whose letters sit behind the figure.
+   Neighbouring letters behind the figure share one span, cut halfway across the gaps. */
+let behindRanges: number[] = []
+
+function updateNameDepth() {
+  if (!mastheadBox) {
+    behindRanges = []
+    return
+  }
+  const source = renderMasthead(computeMastheadFontSize())
+  const runs = letterSpans(source)
+  if (!runs.length) {
+    behindRanges = []
+    return
+  }
+  const behind = chooseBehind(letterCover(source, runs))
+  const edge = (index: number) => index <= 0
+    ? 0
+    : index >= runs.length
+      ? 1
+      : (runs[index - 1]![1] + runs[index]![0]) / 2 / source.width
+  const ranges: number[] = []
+  for (let index = 0; index < runs.length; index++) {
+    if (!behind[index])
+      continue
+    const from = edge(index)
+    const to = edge(index + 1)
+    const last = ranges.length - 1
+    if (last > 0 && Math.abs(ranges[last]! - from) < 1e-6)
+      ranges[last] = to
+    else
+      ranges.push(from, to)
+  }
+  behindRanges = ranges.slice(0, BEHIND_SLOTS * 2)
+}
+
+function maskBehindLetters() {
+  const text = textCanvasRef.value
+  if (!text)
+    return
+  if (!behindRanges.length) {
+    text.style.removeProperty('mask-image')
+    text.style.removeProperty('-webkit-mask-image')
+    return
+  }
+  const stops: string[] = []
+  let at = 0
+  for (let index = 0; index < behindRanges.length; index += 2) {
+    const from = (behindRanges[index]! * 100).toFixed(3)
+    const to = (behindRanges[index + 1]! * 100).toFixed(3)
+    stops.push(`#000 ${at}%`, `#000 ${from}%`, `transparent ${from}%`, `transparent ${to}%`)
+    at = Number(to)
+  }
+  stops.push(`#000 ${at}%`, '#000 100%')
+  const image = `linear-gradient(90deg, ${stops.join(', ')})`
+  text.style.setProperty('mask-image', image)
+  text.style.setProperty('-webkit-mask-image', image)
+}
+
+function behindUniforms(): Float32Array {
+  const slots = new Float32Array(BEHIND_SLOTS * 2).fill(2)
+  slots.set(behindRanges)
+  return slots
+}
+
+function clipToRanges(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  ctx.beginPath()
+  for (let index = 0; index < behindRanges.length; index += 2)
+    ctx.rect(behindRanges[index]! * width, 0, (behindRanges[index + 1]! - behindRanges[index]!) * width, height)
+}
+
+/* Without a shader the letters behind the figure are painted once into the static scene: the
+   masthead colour over the ground, cut away wherever the figure's matte covers it, then added
+   onto the figure, which already sits on black. */
+function paintBehindLetters(ctx: CanvasRenderingContext2D, ratio: number) {
+  if (!mastheadBox || !behindRanges.length || !figureCanvas)
+    return
+  const width = Math.max(1, Math.round(mastheadBox.width * ratio))
+  const height = Math.max(1, Math.round(mastheadBox.height * ratio))
+  const layer = document.createElement('canvas')
+  layer.width = width
+  layer.height = height
+  const layerCtx = layer.getContext('2d')
+  if (!layerCtx)
+    return
+  layerCtx.drawImage(renderMasthead(computeMastheadFontSize()), 0, 0, width, height)
+  layerCtx.globalCompositeOperation = 'destination-in'
+  layerCtx.fillStyle = '#ffffff'
+  clipToRanges(layerCtx, width, height)
+  layerCtx.fill()
+  const lettered = GROUND.map((channel) => {
+    const ground = channel / 255
+    return Math.round(((1 - 2 * ground) / (1 - ground)) * 255)
+  })
+  layerCtx.globalCompositeOperation = 'source-in'
+  layerCtx.fillStyle = `rgb(${lettered.join(' ')})`
+  layerCtx.fillRect(0, 0, width, height)
+  layerCtx.globalCompositeOperation = 'destination-out'
+  const box = figureRect()
+  layerCtx.drawImage(figureCanvas, (box.left - mastheadBox.left) * ratio, (box.top - mastheadBox.top) * ratio, box.width * ratio, box.height * ratio)
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.drawImage(layer, mastheadBox.left * ratio, mastheadBox.top * ratio)
+  ctx.restore()
+}
+
 /* The masthead blends by difference, so anything warm behind a letter would tint it. On the
-   static canvas the letters are painted into the plate as cold ground; on the live stage the
-   display pass reads the warped letters themselves, so the opening always sits under the letter
-   and never beside it. */
+   static canvas the letters in front are painted into the plate as cold ground; on the live stage
+   the display pass reads the warped letters themselves, so the opening always sits under the
+   letter and never beside it. */
 function knockOutMasthead(ctx: CanvasRenderingContext2D, ratio: number) {
   if (!mastheadBox)
     return
@@ -3448,6 +4202,11 @@ function knockOutMasthead(ctx: CanvasRenderingContext2D, ratio: number) {
   if (!inkCtx)
     return
   inkCtx.drawImage(source, 0, 0)
+  if (behindRanges.length) {
+    inkCtx.globalCompositeOperation = 'destination-out'
+    clipToRanges(inkCtx, ink.width, ink.height)
+    inkCtx.fill()
+  }
   inkCtx.globalCompositeOperation = 'source-in'
   inkCtx.fillStyle = '#000000'
   inkCtx.fillRect(0, 0, ink.width, ink.height)
@@ -3455,6 +4214,63 @@ function knockOutMasthead(ctx: CanvasRenderingContext2D, ratio: number) {
   ctx.save()
   ctx.globalCompositeOperation = 'source-atop'
   ctx.drawImage(ink, mastheadBox.left * ratio, mastheadBox.top * ratio, mastheadBox.width * ratio, mastheadBox.height * ratio)
+  ctx.restore()
+}
+
+/* Fades the plate's sides and foot into the ground. On the colour raster, which sits on black,
+   black is laid over the edges; on the figure raster the matte is worn away instead, so the ink and
+   the touch effects follow the same edge. */
+function fadePlateEdges(ctx: CanvasRenderingContext2D, ratio: number, wearsMatte: boolean) {
+  const box = figureRect()
+  const left = box.left * ratio
+  const top = box.top * ratio
+  const width = box.width * ratio
+  const height = box.height * ratio
+  const side = width * PLATE_FADE_SIDE
+  const foot = height * PLATE_FADE_FOOT
+  ctx.save()
+  ctx.globalCompositeOperation = wearsMatte
+    ? 'destination-out'
+    : 'source-over'
+  const edges: Array<[number, number, number, number, number, number, number, number]> = [
+    [
+      left,
+      0,
+      left + side,
+      0,
+      left,
+      top,
+      side,
+      height,
+    ],
+    [
+      left + width,
+      0,
+      left + width - side,
+      0,
+      left + width - side,
+      top,
+      side,
+      height,
+    ],
+    [
+      0,
+      top + height,
+      0,
+      top + height - foot,
+      left,
+      top + height - foot,
+      width,
+      foot,
+    ],
+  ]
+  for (const [x0, y0, x1, y1, rx, ry, rw, rh] of edges) {
+    const gradient = ctx.createLinearGradient(x0, y0, x1, y1)
+    gradient.addColorStop(0, 'rgb(0 0 0 / 1)')
+    gradient.addColorStop(1, 'rgb(0 0 0 / 0)')
+    ctx.fillStyle = gradient
+    ctx.fillRect(rx, ry, rw, rh)
+  }
   ctx.restore()
 }
 
@@ -3467,42 +4283,10 @@ function paintScene(target: HTMLCanvasElement, ratio: number, bakesLetters: bool
   ctx.imageSmoothingQuality = 'high'
   const box = figureRect()
   ctx.drawImage(figureCanvas, box.left * ratio, box.top * ratio, box.width * ratio, box.height * ratio)
+  fadePlateEdges(ctx, ratio, true)
 
-  if (bakesLetters && !frontsPhoto)
+  if (bakesLetters)
     knockOutMasthead(ctx, ratio)
-}
-
-function maskMasthead() {
-  const text = textCanvasRef.value
-  if (!text || !figureCanvas || !mastheadBox || !frontsPhoto)
-    return
-  const ratio = Math.min(window.devicePixelRatio || 1, STATIC_MAX_DPR)
-  const mask = document.createElement('canvas')
-  mask.width = Math.max(1, Math.round(mastheadBox.width * ratio))
-  mask.height = Math.max(1, Math.round(mastheadBox.height * ratio))
-  const ctx = mask.getContext('2d')
-  if (!ctx)
-    return
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, mask.width, mask.height)
-  ctx.globalCompositeOperation = 'destination-out'
-  ctx.imageSmoothingQuality = 'high'
-  const box = figureRect()
-  ctx.drawImage(
-    figureCanvas,
-    (box.left - mastheadBox.left) * ratio,
-    (box.top - mastheadBox.top) * ratio,
-    box.width * ratio,
-    box.height * ratio,
-  )
-  const veil = 'rgb(255 255 255 / calc(1 - var(--chd-figure, 1)))'
-  const image = `linear-gradient(${veil}, ${veil}), url(${mask.toDataURL()})`
-  text.style.setProperty('mask-image', image)
-  text.style.setProperty('-webkit-mask-image', image)
-  text.style.setProperty('mask-size', '100% 100%')
-  text.style.setProperty('-webkit-mask-size', '100% 100%')
-  text.style.setProperty('mask-composite', 'add')
-  text.style.setProperty('-webkit-mask-composite', 'source-over')
 }
 
 /* The fluid display pass displaces whatever sits in its content texture by the velocity field,
@@ -3517,20 +4301,22 @@ function paintSceneContent() {
   content.height = canvas.height
   const ratio = canvas.width / Math.max(1, canvas.clientWidth)
   paintScene(content, ratio, false)
-  maskMasthead()
+  updateNameDepth()
+  maskBehindLetters()
   fluid.setContentCanvas(content)
   const width = Math.max(1, canvas.clientWidth)
   const height = Math.max(1, canvas.clientHeight)
-  const letters = frontsPhoto || !mastheadBox
-    ? null
-    : textCanvasRef.value ?? null
   fluid.setLetterSource(
-    letters,
+    mastheadBox
+      ? textCanvasRef.value ?? null
+      : null,
     (mastheadBox?.left ?? 0) / width,
     1 - ((mastheadBox?.top ?? 0) + (mastheadBox?.height ?? 0)) / height,
     (mastheadBox?.width ?? 0) / width,
     (mastheadBox?.height ?? 0) / height,
   )
+  fluid.setBehindLetters(behindUniforms())
+  buildHitGrid()
   fluid.setLabelShades(labelShades(width, height), SHADE_FEATHER / width, SHADE_FADE, SHADE_LEVEL)
 
   if (!colourImage)
@@ -3553,7 +4339,8 @@ function paintColours(target: HTMLCanvasElement, ratio: number, bakesLetters: bo
   ctx.imageSmoothingQuality = 'high'
   const box = figureRect()
   ctx.drawImage(colourImage, box.left * ratio, box.top * ratio, box.width * ratio, box.height * ratio)
-  if (bakesLetters && !frontsPhoto)
+  fadePlateEdges(ctx, ratio, false)
+  if (bakesLetters)
     knockOutMasthead(ctx, ratio)
 }
 
@@ -3578,13 +4365,10 @@ function buildRampTable(): Uint8ClampedArray {
   return table
 }
 
-function buildRestTable(tone: number): Float32Array {
+function buildRestTable(): Float32Array {
   const table = new Float32Array(256)
-  for (let value = 0; value < 256; value++) {
-    const warmth = (value / 255) ** 2
-    const held = Math.min(1, Math.max(0, (warmth - 0.3) / 0.25))
-    table[value] = warmth * (tone + (1 - tone) * held * held * (3 - 2 * held))
-  }
+  for (let value = 0; value < 256; value++)
+    table[value] = INFRA.lo + (INFRA.hi - INFRA.lo) * ((value / 255) ** 2) ** INFRA.gamma
   return table
 }
 
@@ -3599,19 +4383,18 @@ function paintStaticScene() {
   canvas.width = Math.round(canvas.clientWidth * ratio)
   canvas.height = Math.round(canvas.clientHeight * ratio)
   const inColour = showsPhotograph && colourImage !== null
-  if (inColour) {
-    computeScene()
+  computeScene()
+  updateNameDepth()
+  maskBehindLetters()
+  if (inColour)
     paintColours(canvas, ratio, true)
-  }
-  else {
+  else
     paintScene(canvas, ratio, true)
-  }
-  maskMasthead()
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx)
     return
   rampTable ??= buildRampTable()
-  restTable ??= buildRestTable(sceneTone)
+  restTable ??= buildRestTable()
   const shades = labelShades(canvas.clientWidth, canvas.clientHeight)
   const feather = SHADE_FEATHER / canvas.clientWidth
   const ramp = (from: number, to: number, value: number) => {
@@ -3666,11 +4449,12 @@ function paintStaticScene() {
     }
   }
   ctx.putImageData(pixels, 0, 0)
+  paintBehindLetters(ctx, ratio)
 }
 
 async function showSceneAsImage() {
   showStaticBackdrop.value = true
-  if (!figureCanvas && !await loadScene())
+  if (!await ensureScene())
     return
   await nextTick()
   paintStaticScene()
@@ -3679,7 +4463,7 @@ async function showSceneAsImage() {
 }
 
 function applyDisplayGains() {
-  fluid.setDisplayGains(displayGains.ink, displayGains.skin)
+  fluid.setDisplayGains(displayGains.ink, displayGains.skin, displayGains.warm)
   textCanvasRef.value?.style.setProperty('--chd-figure', `${displayGains.skin}`)
 }
 
@@ -3694,7 +4478,111 @@ function onFirstPointerMove() {
   })
 }
 
+const letterGain = { value: 0 }
+
+const heatState = {
+  energy: 0,
+  radius: HEAT.start,
+  x: 0,
+  y: 0,
+  lastX: 0,
+  lastY: 0,
+  lastTime: 0,
+}
+
+interface HitGrid {
+  alpha: Uint8ClampedArray
+  width: number
+  height: number
+  box: SceneBox
+}
+
+let hitGrid: HitGrid | null = null
+
+/* A coarse copy of the figure's matte in its on-screen box, so a pointer event can tell cheaply
+   whether it crossed the figure. */
+function buildHitGrid() {
+  if (!figureCanvas)
+    return
+  const box = figureRect()
+  const width = 160
+  const height = Math.max(1, Math.round(width * box.height / Math.max(1, box.width)))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx)
+    return
+  ctx.drawImage(figureCanvas, 0, 0, width, height)
+  hitGrid = {
+    alpha: ctx.getImageData(0, 0, width, height).data,
+    width,
+    height,
+    box,
+  }
+}
+
+function onFigure(x: number, y: number): boolean {
+  if (!hitGrid)
+    return false
+  const u = (x - hitGrid.box.left) / hitGrid.box.width
+  const v = (y - hitGrid.box.top) / hitGrid.box.height
+  if (u < 0 || u >= 1 || v < 0 || v >= 1)
+    return false
+  return hitGrid.alpha[(Math.floor(v * hitGrid.height) * hitGrid.width + Math.floor(u * hitGrid.width)) * 4 + 3]! > 80
+}
+
+function onHeatMove(event: PointerEvent) {
+  const bounds = sectionRef.value?.getBoundingClientRect()
+  if (!bounds)
+    return
+  const x = event.clientX - bounds.left
+  const y = event.clientY - bounds.top
+  const now = performance.now()
+  const elapsed = heatState.lastTime
+    ? Math.min(100, now - heatState.lastTime)
+    : 16
+  const speed = Math.hypot(x - heatState.lastX, y - heatState.lastY) / Math.max(1, elapsed)
+  heatState.lastX = x
+  heatState.lastY = y
+  heatState.lastTime = now
+  if (!onFigure(x, y))
+    return
+  if (heatState.energy < 0.02) {
+    heatState.x = x
+    heatState.y = y
+    heatState.radius = HEAT.start
+  }
+  heatState.x += (x - heatState.x) * 0.3
+  heatState.y += (y - heatState.y) * 0.3
+  heatState.energy = Math.min(1, heatState.energy + Math.min(1, speed / HEAT.full) * (elapsed / 1000) / HEAT.fill)
+}
+
+function tickHeat(_time: number, deltaMs: number) {
+  const seconds = Math.min(0.1, deltaMs / 1000)
+  heatState.energy *= Math.exp(-seconds / HEAT.cool)
+  if (heatState.energy > 0.02)
+    heatState.radius += HEAT.spread * seconds * (0.35 + heatState.energy)
+  const height = sectionRef.value?.clientHeight ?? window.innerHeight
+  fluid.setHeat(heatState.x, height - heatState.y, heatState.radius, heatState.energy)
+}
+
+/* Letters drawn behind the figure live in the stage canvas, so they fade in on the same curve as
+   the masthead canvas does in CSS. */
+watch(isTextReady, (ready) => {
+  if (!ready)
+    return
+  gsap.to(letterGain, {
+    value: 1,
+    duration: LETTER_REVEAL,
+    ease: 'expo.out',
+    onUpdate: () => fluid.setLetterGain(letterGain.value),
+  })
+})
+
 onMounted(async () => {
+  void ensureScene()
+  panelOpen.value = sessionStorage.getItem(PANEL_STATE_KEY) === '1'
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const introShells = [navRef.value, footRef.value].filter(Boolean)
   if (!prefersReduced)
@@ -3721,7 +4609,10 @@ onMounted(async () => {
     })
     if (fluidReady) {
       fluid.setContentCanvas(createBlankContent())
-      fluid.setSceneLook(sceneTone, showsPhotograph ? 1 : 0, scansLines ? 1 : 0)
+      fluid.setSceneLook(showsPhotograph ? 1 : 0, scansLines ? 1 : 0, lookMode, textMode === 'marble'
+        ? 1
+        : 0)
+      fluid.setTouchLook(liquidLook, MOTION_LOOK[motion].mode, MOTION_LOOK[motion].reach)
       applyDisplayGains()
       resizeObserver = new ResizeObserver(() => {
         fluid.resize()
@@ -3730,6 +4621,8 @@ onMounted(async () => {
       resizeObserver.observe(fluidCanvasRef.value)
     }
   }
+
+  stageDrawsName.value = fluidReady && !prefersReduced && textMode === 'marble'
 
   if (prefersReduced) {
     paintStaticMasthead()
@@ -3772,9 +4665,11 @@ onMounted(async () => {
 
   await nextTick()
   if (fluidReady) {
-    if (await loadScene())
+    if (await ensureScene())
       paintSceneContent()
     sectionRef.value?.addEventListener('pointermove', onFirstPointerMove, { once: true })
+    sectionRef.value?.addEventListener('pointermove', onHeatMove, { passive: true })
+    gsap.ticker.add(tickHeat)
   }
   else {
     await showSceneAsImage()
@@ -3798,14 +4693,20 @@ onMounted(async () => {
       defaults: { ease: 'expo.out' },
     })
 
-    /* The figure is revealed by raising its gain from zero: as temperature it develops out of
-       the ground through the cold end of the ramp, and in its own colours it comes up out of
-       black, instead of fading in as a finished picture. */
+    /* The figure comes up at once as a cold silhouette and warms to its resting temperature,
+       the way a thermal camera settles after it is switched on, instead of fading in as a
+       finished picture. */
     if (fluidReady) {
       tl.to(displayGains, {
         skin: 1,
         duration: BACKDROP_REVEAL.duration,
         ease: 'power3.out',
+        onUpdate: applyDisplayGains,
+      }, BACKDROP_REVEAL.at)
+      tl.to(displayGains, {
+        warm: 1,
+        duration: BACKDROP_REVEAL.warm,
+        ease: 'expo.out',
         onUpdate: applyDisplayGains,
       }, BACKDROP_REVEAL.at)
     }
@@ -3821,8 +4722,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  gsap.killTweensOf(displayGains)
+  gsap.killTweensOf([displayGains, letterGain])
   sectionRef.value?.removeEventListener('pointermove', onFirstPointerMove)
+  sectionRef.value?.removeEventListener('pointermove', onHeatMove)
+  gsap.ticker.remove(tickHeat)
   gsapCtx?.revert()
   fluid.destroy()
   textDistortion?.destroy()
@@ -3856,7 +4759,7 @@ onUnmounted(() => {
 
     <div class="chd__grain" aria-hidden="true" />
 
-    <div ref="headRef" class="chd__head" :class="{ 'chd__head--ready': isTextReady }">
+    <div ref="headRef" class="chd__head" :class="{ 'chd__head--ready': isTextReady, 'chd__head--stage': stageDrawsName }">
       <canvas
         ref="textCanvasRef"
         class="chd__text-canvas"
@@ -3895,6 +4798,63 @@ onUnmounted(() => {
         <a class="chd__foot-link" href="#work">View work <span aria-hidden="true">&#8600;</span></a>
       </div>
     </div>
+
+    <aside
+      v-if="showsPanel"
+      class="chd__panel"
+      aria-label="Pilihan eksplorasi"
+      @pointermove.stop
+    >
+      <button
+        type="button"
+        class="chd__panel-toggle"
+        :aria-expanded="panelOpen"
+        @click="togglePanel"
+      >
+        Panel
+      </button>
+      <div v-show="panelOpen" class="chd__panel-body">
+        <div class="chd__panel-group">
+          <p class="chd__panel-label">
+            Foto
+          </p>
+          <ul class="chd__panel-photos">
+            <li v-for="key in PORTRAIT_KEYS" :key="key">
+              <a
+                class="chd__panel-photo"
+                :class="{ 'chd__panel-photo--active': key === portraitKey }"
+                :href="panelHref({ photo: key })"
+                :aria-label="`Foto ${key}`"
+                :aria-current="key === portraitKey ? 'true' : undefined"
+              >
+                <img
+                  :src="thumbSrc(key)"
+                  alt=""
+                  width="48"
+                  height="60"
+                  decoding="async"
+                >
+              </a>
+            </li>
+          </ul>
+        </div>
+        <div v-for="group in PANEL_GROUPS" :key="group.label" class="chd__panel-group">
+          <p class="chd__panel-label">
+            {{ group.label }}
+          </p>
+          <div class="chd__panel-options">
+            <a
+              v-for="option in group.options"
+              :key="option.label"
+              class="chd__panel-option"
+              :class="{ 'chd__panel-option--active': option.active }"
+              :href="panelHref(option.query)"
+              :aria-current="option.active ? 'true' : undefined"
+            >{{ option.label }}</a>
+          </div>
+        </div>
+      </div>
+    </aside>
   </section>
 </template>
 
@@ -3964,6 +4924,11 @@ onUnmounted(() => {
 
 .chd__head--ready .chd__text-canvas {
   opacity: 1;
+}
+
+.chd__head--stage .chd__text-canvas,
+.chd__head--stage.chd__head--ready .chd__text-canvas {
+  opacity: 0;
 }
 
 .chd__nav {
@@ -4061,6 +5026,120 @@ onUnmounted(() => {
 .chd__foot-clients {
   text-align: right;
   margin-right: -0.18em;
+}
+
+.chd__panel {
+  position: absolute;
+  z-index: 60;
+  top: 50%;
+  right: var(--chd-pad);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  transform: translateY(-50%);
+  font-family: 'Satoshi', 'Inter', system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  color: rgba(242, 239, 234, 0.92);
+}
+
+.chd__panel-toggle {
+  padding: 0.375rem 0.8125rem;
+  border: 1px solid rgba(242, 239, 234, 0.16);
+  border-radius: 999px;
+  background: rgba(6, 6, 16, 0.72);
+  backdrop-filter: blur(8px);
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chd__panel-toggle:hover,
+.chd__panel-toggle[aria-expanded='true'] {
+  border-color: rgba(242, 239, 234, 0.48);
+}
+
+.chd__panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8125rem;
+  width: 14.5rem;
+  padding: 0.8125rem;
+  border: 1px solid rgba(242, 239, 234, 0.12);
+  border-radius: 0.75rem;
+  background: rgba(6, 6, 16, 0.86);
+  backdrop-filter: blur(12px);
+}
+
+.chd__panel-label {
+  margin: 0 0 0.5rem;
+  color: rgba(232, 232, 236, 0.56);
+}
+
+.chd__panel-photos {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chd__panel-photo {
+  display: block;
+  overflow: hidden;
+  border-radius: 0.25rem;
+  outline: 1px solid transparent;
+  outline-offset: 1px;
+  opacity: 0.72;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), outline-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chd__panel-photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.chd__panel-photo:hover,
+.chd__panel-photo--active {
+  opacity: 1;
+}
+
+.chd__panel-photo--active {
+  outline-color: #F2EFEA;
+}
+
+.chd__panel-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.chd__panel-option {
+  padding: 0.3125rem 0.625rem;
+  border: 1px solid rgba(242, 239, 234, 0.16);
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chd__panel-option:hover {
+  border-color: rgba(242, 239, 234, 0.48);
+}
+
+.chd__panel-option--active {
+  border-color: #F2EFEA;
+  background: #F2EFEA;
+  color: #060610;
 }
 
 @media (max-width: 768px) {
