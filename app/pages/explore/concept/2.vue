@@ -604,7 +604,7 @@ const SCAN = {
   gap: 0.18,
 }
 const COLD_CHROMA = 0.3
-const THREAD = {
+const PULSE = {
   pitch: 7,
   row: 7,
   band: 3,
@@ -737,11 +737,9 @@ function useFluidSimulation() {
     skinGain: 1,
     tone: 1,
     photo: 0,
-    touch: 0,
     scan: 0,
     shades: new Float32Array(12),
     shadeFade: [0, 0, 1] as [number, number, number],
-    reach: [0.03, 0.048] as [number, number],
   }
 
   function hexToRgb(hex: string): [number, number, number] {
@@ -1200,7 +1198,6 @@ function useFluidSimulation() {
     uniform float uSkinGain;
     uniform float uTone;
     uniform float uPhoto;
-    uniform float uTouch;
     uniform float uScan;
     uniform float uPx;
     uniform sampler2D tText;
@@ -1208,7 +1205,6 @@ function useFluidSimulation() {
     uniform vec2 uView;
     uniform vec4 uShade[3];
     uniform vec3 uShadeFade;
-    uniform vec2 uReach;
     varying vec2 vUv;
 
     const vec3 C0 = vec3(0.020, 0.020, 0.027);
@@ -1222,34 +1218,21 @@ function useFluidSimulation() {
     const vec3 C8 = vec3(0.996, 0.898, 0.365);
     const vec3 C9 = vec3(0.999, 0.961, 0.702);
     const vec3 C10 = vec3(1.000, 0.996, 0.961);
-    const float INK_OVER_SKIN = 0.08;
-    const float CARRY_FAR = 0.00028;
-    const float CARRY_NEAR = 0.3333;
-    const float CARRY_SPEED = 120.0;
-    const float COVER_NEAR = 0.09;
-    const float COVER_FAR = 0.18;
-    const float COVER_GAIN = 2.2;
-    const float COVER_VACATED = 0.45;
-    const float BLUE_COVER = 0.15;
-    const float STREAK_REACH = 0.2;
-    const float STREAK_ROW = 2.6;
-    const float STREAK_SPREAD = 0.035;
-    const int STREAK_TAPS = 10;
     const float SCAN_PITCH = ${SCAN.pitch.toFixed(4)};
     const float SCAN_BEND = ${SCAN.bend.toFixed(4)};
     const float SCAN_DUTY = ${SCAN.duty.toFixed(4)};
     const float SCAN_GAP = ${SCAN.gap.toFixed(4)};
     const float COLD_CHROMA = ${COLD_CHROMA.toFixed(4)};
-    const float THREAD_PITCH = ${THREAD.pitch.toFixed(4)};
-    const float THREAD_ROW = ${THREAD.row.toFixed(4)};
-    const float THREAD_BAND = ${THREAD.band.toFixed(4)};
-    const float THREAD_BEND = ${THREAD.bend.toFixed(4)};
-    const float THREAD_ZIG = ${THREAD.zig.toFixed(4)};
-    const float THREAD_SWAY = ${THREAD.sway.toFixed(4)};
-    const vec3 THREAD_DEEP = vec3(0.078, 0.031, 0.275);
-    const vec3 THREAD_BLUE = vec3(0.196, 0.071, 0.631);
-    const vec3 THREAD_CORAL = vec3(0.933, 0.392, 0.439);
-    const vec3 THREAD_PEACH = vec3(1.000, 0.745, 0.588);
+    const float PULSE_PITCH = ${PULSE.pitch.toFixed(4)};
+    const float PULSE_ROW = ${PULSE.row.toFixed(4)};
+    const float PULSE_BAND = ${PULSE.band.toFixed(4)};
+    const float PULSE_BEND = ${PULSE.bend.toFixed(4)};
+    const float PULSE_ZIG = ${PULSE.zig.toFixed(4)};
+    const float PULSE_SWAY = ${PULSE.sway.toFixed(4)};
+    const vec3 PULSE_DEEP = vec3(0.078, 0.031, 0.275);
+    const vec3 PULSE_BLUE = vec3(0.196, 0.071, 0.631);
+    const vec3 PULSE_CORAL = vec3(0.933, 0.392, 0.439);
+    const vec3 PULSE_PEACH = vec3(1.000, 0.745, 0.588);
 
     float hash1(float n) {
       return fract(sin(n * 91.3458) * 47453.5453);
@@ -1276,11 +1259,10 @@ function useFluidSimulation() {
       return mix(C9, C10, smoothstep(0.975, 1.00, t));
     }
 
-    vec3 figureColour(float t, float presence) {
+    vec3 figureColour(float t) {
       vec3 c = max(thermal(t) - C0, 0.0);
       float grey = dot(c, vec3(0.2126, 0.7152, 0.0722));
-      float keep = mix(1.0, mix(COLD_CHROMA, 1.0, smoothstep(0.22, 0.50, t)), presence);
-      return mix(vec3(grey), c, keep);
+      return mix(vec3(grey), c, mix(COLD_CHROMA, 1.0, smoothstep(0.22, 0.50, t)));
     }
 
     float scanned(float t, float depth) {
@@ -1294,13 +1276,6 @@ function useFluidSimulation() {
       return mix(t - SCAN_GAP, t, line);
     }
 
-    /* The figure at one point of the stage, as light and as cover: temperature read through the
-       ramp, or the photograph in its own colours. The content texture carries the temperature
-       square-root encoded, to keep precision in the cold end, with the matte in alpha; at rest
-       the cold range is held back. The fourth component is how much of the ink the figure hides
-       there: most of it under warm skin or the lit parts of a photograph, none under cold hair
-       or a photograph's shadows. The thresholds sit above the brightest speck of hair, because
-       hair that hides the ink strand by strand turns the plasma behind it into grain. */
     float letterAt(vec2 at) {
       if (uTextRect.z <= 0.0)
         return 0.0;
@@ -1310,63 +1285,45 @@ function useFluidSimulation() {
       return texture2D(tText, p).a;
     }
 
-    vec4 figureAt(vec2 at, float lift) {
+    /* The figure at one point of the stage: temperature read through the ramp, or the
+       photograph in its own colours. The content texture carries the temperature square-root
+       encoded, to keep precision in the cold end, with the matte in alpha; at rest the cold
+       range is held back. */
+    vec3 figureAt(vec2 at, float lift) {
       vec4 plate = texture2D(tMap, at);
       float open = 1.0 - letterAt(at);
       float warmth = plate.r * plate.r;
       warmth *= mix(uTone, 1.0, smoothstep(0.30, 0.55, warmth));
       float skin = warmth * plate.a * uSkinGain * lift * open;
-      vec3 heat = figureColour(scanned(skin, plate.g), 1.0) * clamp(skin * 8.0, 0.0, 1.0);
+      vec3 heat = figureColour(scanned(skin, plate.g)) * clamp(skin * 8.0, 0.0, 1.0);
       vec3 photo = texture2D(tAux, at).rgb * uSkinGain * lift * open;
-      float lit = smoothstep(0.16, 0.42, dot(photo, vec3(0.2126, 0.7152, 0.0722)));
-      float hides = (1.0 - INK_OVER_SKIN) * mix(smoothstep(0.10, 0.36, skin), lit, uPhoto);
-      return vec4(mix(heat, photo, uPhoto), hides);
+      return mix(heat, photo, uPhoto);
     }
 
-    vec3 threadsAt(vec2 at, float lift, vec2 px, vec2 vel, vec3 still, float depth) {
+    vec3 pulseAt(vec2 at, float lift, vec2 px, vec2 vel, vec3 still, float depth) {
       vec2 o = vec2(1.2) / uView;
-      vec3 base = figureAt(at, lift).rgb * 0.4;
-      base += figureAt(at + vec2(o.x, 0.0), lift).rgb * 0.15;
-      base += figureAt(at - vec2(o.x, 0.0), lift).rgb * 0.15;
-      base += figureAt(at + vec2(0.0, o.y), lift).rgb * 0.15;
-      base += figureAt(at - vec2(0.0, o.y), lift).rgb * 0.15;
+      vec3 base = figureAt(at, lift) * 0.4;
+      base += figureAt(at + vec2(o.x, 0.0), lift) * 0.15;
+      base += figureAt(at - vec2(o.x, 0.0), lift) * 0.15;
+      base += figureAt(at + vec2(0.0, o.y), lift) * 0.15;
+      base += figureAt(at - vec2(0.0, o.y), lift) * 0.15;
       float tone = pow(clamp((dot(base, vec3(0.2126, 0.7152, 0.0722)) - 0.02) / 0.78, 0.0, 1.0), 0.72);
       float relief = texture2D(tMap, at).g;
       float speed = length(vel);
-      float sway = THREAD_SWAY * vel.x / (speed + 160.0);
-      float tri = abs(fract(px.y / THREAD_ROW) - 0.5) * 4.0 - 1.0;
-      float zig = THREAD_ZIG * (1.0 + 0.9 * speed / (speed + 160.0));
-      float dx = THREAD_BEND * THREAD_PITCH * (relief - 0.45) * 2.2 + zig * THREAD_PITCH * (0.25 + 0.75 * tone) * tri + sway;
-      float phase = (px.x + dx) / THREAD_PITCH;
-      float stripe = abs(fract(phase) - 0.5) * THREAD_PITCH;
-      float halfWidth = THREAD_PITCH * (0.05 + 0.43 * pow(tone, 0.9));
+      float sway = PULSE_SWAY * vel.x / (speed + 160.0);
+      float tri = abs(fract(px.y / PULSE_ROW) - 0.5) * 4.0 - 1.0;
+      float zig = PULSE_ZIG * (1.0 + 0.9 * speed / (speed + 160.0));
+      float dx = PULSE_BEND * PULSE_PITCH * (relief - 0.45) * 2.2 + zig * PULSE_PITCH * (0.25 + 0.75 * tone) * tri + sway;
+      float phase = (px.x + dx) / PULSE_PITCH;
+      float stripe = abs(fract(phase) - 0.5) * PULSE_PITCH;
+      float halfWidth = PULSE_PITCH * (0.05 + 0.43 * pow(tone, 0.9));
       float line = 1.0 - smoothstep(halfWidth - 0.4, halfWidth + 0.4, stripe);
-      float gate = hash1(floor(px.y / THREAD_BAND) * 12.9898 + floor(phase) * 78.233);
+      float gate = hash1(floor(px.y / PULSE_BAND) * 12.9898 + floor(phase) * 78.233);
       line *= smoothstep(gate * 0.16, gate * 0.16 + 0.04, tone);
       float light = smoothstep(0.02, 0.3, texture2D(tMap, at).a * (1.0 - letterAt(at))) * clamp(uSkinGain, 0.0, 1.0) * lift;
-      vec3 own = base / max(max(base.r, max(base.g, base.b)), 0.001) * (0.35 + 0.65 * pow(tone, 0.6)) * 1.15 * light;
-      vec3 ownGap = still * 0.16 + THREAD_DEEP * 0.5 * tone * light;
-      vec3 hot = mix(THREAD_CORAL, THREAD_PEACH, smoothstep(0.55, 0.95, tone)) * (0.62 + 0.38 * tone) * smoothstep(0.02, 0.2, tone) * light;
-      vec3 hotGap = still * 0.10 + mix(THREAD_DEEP, THREAD_BLUE, smoothstep(0.05, 0.6, tone)) * 1.1 * tone * light;
-      float palette = step(5.5, uTouch);
-      return mix(still, mix(mix(ownGap, hotGap, palette), mix(own, hot, palette), line), depth);
-    }
-
-    /* How much of the ink the figure hides where it stands at rest, read wider than one texel.
-       Taken point by point, the moustache, the nostrils and the eyes of a photograph are
-       shadows inside a lit face, and the ink would tint exactly those; and the cover would end
-       on the outline of the skin, which draws the face as a cut-out with a dark seam wherever
-       bright ink lies beside it. Two rings of taps make the small shadows part of the face
-       and let the cover run out over the first strands of hair, so the ink cools down the
-       ramp as it nears the skin. */
-    float restCover(vec2 at, float lift) {
-      float sum = figureAt(at, lift).a;
-      for (int i = 0; i < 8; i++) {
-        float turn = float(i) * 0.7853982;
-        float ring = mod(float(i), 2.0) < 0.5 ? COVER_NEAR : COVER_FAR;
-        sum += figureAt(at + vec2(cos(turn), sin(turn)) * uReach * ring, lift).a;
-      }
-      return min(1.0 - INK_OVER_SKIN, sum / 9.0 * COVER_GAIN);
+      vec3 thread = mix(PULSE_CORAL, PULSE_PEACH, smoothstep(0.55, 0.95, tone)) * (0.62 + 0.38 * tone) * smoothstep(0.02, 0.2, tone) * light;
+      vec3 gap = still * 0.10 + mix(PULSE_DEEP, PULSE_BLUE, smoothstep(0.05, 0.6, tone)) * 1.1 * tone * light;
+      return mix(still, mix(gap, thread, line), depth);
     }
 
     void main() {
@@ -1419,119 +1376,19 @@ function useFluidSimulation() {
         }
         float lift = mix(1.0, uShadeFade.z, shade);
 
-        if (uTouch > 3.5) {
-          float matte = texture2D(tMap, uv).a * clamp(uSkinGain, 0.0, 1.0) * (1.0 - letterAt(uv));
-          vec3 ink = max(thermal(heat) - C0, 0.0) * smoothstep(0.015, 0.30, heat);
-          vec3 figure = figureAt(uv, lift).rgb;
-          if (uTouch > 4.5 && matte > 0.001) {
-            vec2 px = gl_FragCoord.xy * uPx;
-            float band = floor(px.y / THREAD_BAND);
-            float rowV = (band + 0.5) * THREAD_BAND / uView.y;
-            float reached = clamp(texture2D(tFluid, vec2(vUv.x, rowV)).b, 0.0, 1.3) * uInkGain;
-            float jitter = (hash1(band * 1.37 + 11.0) - 0.5) * 0.55 + (noise1(band * 0.11) - 0.5) * 0.5;
-            float turned = smoothstep(0.10, 0.80, reached + jitter * 0.3 * smoothstep(0.05, 0.6, reached));
-            if (turned > 0.001)
-              figure = threadsAt(uv, lift, px, vel, figure, turned);
-          }
-          col = figure + ink * (1.0 - matte);
-        } else if (uTouch < 1.5 || uTouch > 2.5) {
-          /* The liquid carries the picture with it. It is read twice: where the flow has pushed
-             the stage, and three times further along, mirrored in y. Split by channel, some
-             channels come from the first reading and the rest from the second, so at speed the
-             picture parts into two copies that close up again as the flow dies. Kept whole,
-             the two copies stay in the colours of the ramp and the brighter one wins.
-
-             The dye holds speeds in the hundreds for a fresh stroke and the plasma is tuned to
-             linger for seconds. Carried in proportion to that, a face is thrown clear off its
-             place, its pixels replaced by the dark around it, and stays torn for as long as
-             the ink lives. So the push grows with the square of the speed while the flow is
-             slow, which settles the picture in about a second while the plasma lives on, and
-             it eases out toward a reach that is a fraction of the face.
-
-             The ink is not split. It is cooled before the ramp wherever the figure stands
-             warm, at rest or carried, so it never sits as a bright disc on the face, and
-             where it is half hidden it walks down the ramp instead of turning into a dimmed
-             yellow. */
-          float speed = length(vel);
-          vec2 pull = vec2(-vel.x, vel.y) * CARRY_FAR * speed / (speed + CARRY_SPEED);
-          float over = length(pull / uReach);
-          float used = 1.0 - exp(-over);
-          float ease = used / max(over, 0.0001);
-          vec4 near = figureAt(uv + vec2(pull.x, -pull.y) * ease * CARRY_NEAR, lift);
-          vec4 far = figureAt(uv + pull * ease, lift);
-
-          /* Which channels part. On a photograph it is the reference's own split, red against
-             green and blue. Drawn as temperature, the figure has no cyan to part from: its
-             hot end is red and green together, and the same split throws a pure green wedge
-             across a cheek. There only blue leaves, which keeps the hot copy orange and makes
-             the second copy indigo, both colours of the ramp. A copy that carries blue alone
-             brings almost no light, so it hides almost none of the ink; hiding it all cut a
-             dark curl out of the plasma. */
-          vec3 picture = max(near.rgb, far.rgb);
-          float farCover = far.a;
-          if (uTouch > 2.5 || (uTouch < 0.5 && uPhoto > 0.5)) {
-            picture = vec3(near.r, far.g, far.b);
-          } else if (uTouch < 0.5) {
-            picture = vec3(near.r, near.g, far.b);
-            farCover *= BLUE_COVER;
-          }
-
-          /* Where the flow has carried the face off its place, what it left behind would stay
-             black between the skin and the ink, so there the cover gives way and lets the ink
-             in, cooled to the violet end. */
-          float veil = restCover(uv, lift) * mix(1.0, COVER_VACATED, smoothstep(0.05, 0.4, used));
-          float hidden = max(max(near.a, farCover), veil);
-          float left = heat * (1.0 - hidden);
-          col = picture + max(thermal(left) - C0, 0.0) * smoothstep(0.015, 0.30, left);
-        } else {
-          /* Where the ink touches the scene it is combed sideways. The reach of each pixel row
-             is a smooth noise along y, so neighbouring rows slide together as bands, with a
-             finer comb on top; the temperature is averaged along that reach. The touch is the
-             ink spread sideways first, otherwise the smear would stop at the round edge of a
-             fresh splat. The reach follows the ink, so the smear is born with a stroke and
-             relaxes as the ink retires, and at rest every tap lands on the same texel. */
-          float spread = 0.0;
-          for (int i = 0; i < 5; i++) {
-            float o = (float(i) - 2.0) * STREAK_SPREAD;
-            spread += clamp(texture2D(tFluid, vec2(vUv.x + o, vUv.y)).b, 0.0, 1.2) * (1.0 - abs(float(i) - 2.0) * 0.3);
-          }
-          float touch = smoothstep(0.02, 0.9, spread / 2.8) * uInkGain;
-          float y = gl_FragCoord.y;
-          float band = noise1(y / 34.0 + 7.0) - 0.5;
-          float comb = 0.45 + 0.55 * noise1(y / STREAK_ROW);
-          float reach = STREAK_REACH * touch * (band * 2.0) * comb;
-          float sum = 0.0;
-          vec3 hues = vec3(0.0);
-          float alpha = 0.0;
-          float weight = 0.0;
-          for (int i = 0; i < STREAK_TAPS; i++) {
-            float k = float(i) / float(STREAK_TAPS - 1);
-            float w = 1.0 - 0.75 * k;
-            vec2 at = vec2(uv2.x + reach * k, uv2.y);
-            vec4 tap = texture2D(tMap, at);
-            sum += tap.r * tap.r * tap.a * w;
-            hues += texture2D(tAux, at).rgb * w;
-            alpha += tap.a * w;
-            weight += w;
-          }
-
-          /* The ink that touches the figure brings its held-back cold range out again. */
-          float figure = alpha / weight;
-          float warmth = sum / max(alpha, 0.0001);
-          warmth *= mix(mix(uTone, 1.0, touch), 1.0, smoothstep(0.30, 0.55, warmth));
-
-          /* The ramp is applied after ink and skin are summed. Over the photograph the ink
-             counts for a fraction of what it is on the empty stage and the sum stays affine in
-             the skin temperature, so a stroke across the face lifts it without flattening the
-             features into the white end of the ramp. */
-          float skin = warmth * figure * uSkinGain * lift;
-          float inkHeat = heat * mix(1.0, INK_OVER_SKIN, smoothstep(0.02, 0.22, skin)) * (1.0 - figure * uPhoto);
-          float t = skin + inkHeat * (1.0 - skin);
-          float presence = clamp(skin * 8.0, 0.0, 1.0);
-          float shown = mix(t, scanned(t, texture2D(tMap, uv2).g), presence);
-          col = figureColour(shown, presence) * mix(cover, 1.0, presence);
-          col = mix(col, hues / weight * uSkinGain * lift, figure * uPhoto);
+        float matte = texture2D(tMap, uv).a * clamp(uSkinGain, 0.0, 1.0) * (1.0 - letterAt(uv));
+        vec3 figure = figureAt(uv, lift);
+        if (matte > 0.001) {
+          vec2 px = gl_FragCoord.xy * uPx;
+          float band = floor(px.y / PULSE_BAND);
+          float rowV = (band + 0.5) * PULSE_BAND / uView.y;
+          float reached = clamp(texture2D(tFluid, vec2(vUv.x, rowV)).b, 0.0, 1.3) * uInkGain;
+          float jitter = (hash1(band * 1.37 + 11.0) - 0.5) * 0.55 + (noise1(band * 0.11) - 0.5) * 0.5;
+          float depth = smoothstep(0.10, 0.80, reached + jitter * 0.3 * smoothstep(0.05, 0.6, reached));
+          if (depth > 0.001)
+            figure = pulseAt(uv, lift, px, vel, figure, depth);
         }
+        col = figure + max(thermal(heat) - C0, 0.0) * cover * (1.0 - matte);
 
         /* A half-step dither: the cold end of the ramp spans a few dozen 8-bit levels across
            hundreds of pixels and would band without it. */
@@ -2295,7 +2152,6 @@ function useFluidSimulation() {
     g.uniform1f(contentDisplayProgram.uniforms.uSkinGain!, contentDisplay.skinGain)
     g.uniform1f(contentDisplayProgram.uniforms.uTone!, contentDisplay.tone)
     g.uniform1f(contentDisplayProgram.uniforms.uPhoto!, auxTexture ? contentDisplay.photo : 0)
-    g.uniform1f(contentDisplayProgram.uniforms.uTouch!, contentDisplay.touch)
     g.uniform1f(contentDisplayProgram.uniforms.uScan!, contentDisplay.scan)
     const cssPerPixel = canvas && canvas.height
       ? canvas.clientHeight / canvas.height
@@ -2304,7 +2160,6 @@ function useFluidSimulation() {
     g.uniform2f(contentDisplayProgram.uniforms.uView!, canvas?.clientWidth || 1, canvas?.clientHeight || 1)
     g.uniform4fv(contentDisplayProgram.uniforms['uShade[0]']!, contentDisplay.shades)
     g.uniform3f(contentDisplayProgram.uniforms.uShadeFade!, contentDisplay.shadeFade[0], contentDisplay.shadeFade[1], contentDisplay.shadeFade[2])
-    g.uniform2f(contentDisplayProgram.uniforms.uReach!, contentDisplay.reach[0], contentDisplay.reach[1])
     blit!(target)
   }
 
@@ -2936,10 +2791,9 @@ function useFluidSimulation() {
     contentDisplay.skinGain = skin
   }
 
-  function setSceneLook(tone: number, photo: number, touch: number, scan: number) {
+  function setSceneLook(tone: number, photo: number, scan: number) {
     contentDisplay.tone = tone
     contentDisplay.photo = photo
-    contentDisplay.touch = touch
     contentDisplay.scan = scan
   }
 
@@ -2952,14 +2806,6 @@ function useFluidSimulation() {
       across,
       up,
       level,
-    ]
-  }
-
-  /* How far the liquid may carry the picture, in texture coordinates along x and y. */
-  function setCarryReach(across: number, up: number) {
-    contentDisplay.reach = [
-      across,
-      up,
     ]
   }
 
@@ -3012,7 +2858,6 @@ function useFluidSimulation() {
     setSceneLook,
     setLetterSource,
     setLabelShades,
-    setCarryReach,
   }
 }
 
@@ -3106,46 +2951,46 @@ const PORTRAITS: Record<string, Portrait> = {
   },
   studio: {
     look: 'colour',
-    width: 1792,
-    height: 2400,
-    axis: 913.5,
-    faceUnit: 411.7,
-    crownRow: 110,
-    foreheadRow: 568.6,
-    sleeveRow: 2080,
+    width: 2240,
+    height: 3000,
+    axis: 1142,
+    faceUnit: 514.7,
+    crownRow: 132,
+    foreheadRow: 710.6,
+    sleeveRow: 3000,
   },
   varsity: {
     look: 'colour',
-    width: 1824,
-    height: 2304,
-    axis: 901,
-    faceUnit: 413.8,
-    crownRow: 15,
-    foreheadRow: 526.3,
-    sleeveRow: 2153,
+    width: 2280,
+    height: 2880,
+    axis: 1124,
+    faceUnit: 517.3,
+    crownRow: 31,
+    foreheadRow: 657.8,
+    sleeveRow: 2719,
   },
   geometric: {
     look: 'colour',
-    width: 1792,
-    height: 2390,
-    axis: 882.5,
-    faceUnit: 287.7,
-    crownRow: 441,
-    foreheadRow: 824.6,
-    sleeveRow: 2390,
+    width: 2240,
+    height: 2988,
+    axis: 1108,
+    faceUnit: 359.6,
+    crownRow: 550,
+    foreheadRow: 1030.8,
+    sleeveRow: 2988,
   },
   room: {
     look: 'colour',
-    width: 1792,
-    height: 2390,
-    axis: 795,
-    faceUnit: 456,
-    crownRow: 236,
-    foreheadRow: 758,
-    sleeveRow: 1977,
+    width: 2240,
+    height: 2988,
+    axis: 980,
+    faceUnit: 583.9,
+    crownRow: 304,
+    foreheadRow: 972.3,
+    sleeveRow: 2609,
   },
 }
-const PORTRAIT_DEFAULT = 'kente'
+const PORTRAIT_DEFAULT = 'varsity'
 const LOOKS: Look[] = [
   'colour',
   'grayscale',
@@ -3266,7 +3111,6 @@ interface SceneLayout {
 
 /* Shown as temperature, the figure holds its cold range back to half until the ink touches it. */
 const REST_TONE = 0.5
-const CARRY_REACH = 0.6
 
 const route = useRoute()
 const requestedPhoto = String(route.query.photo ?? '')
@@ -3282,21 +3126,6 @@ const sceneTone = look === 'thermal'
   ? REST_TONE
   : 1
 const frontsPhoto = route.query.front === 'photo'
-/* What the liquid does to the figure: pass behind it, turn the part it passes behind into threads
-   in the picture's own colours or in the pulse palette, part it by colour channel, keep the two
-   copies whole in the colours of the ramp, or comb it sideways. */
-const TOUCHES: Record<string, number> = {
-  split: 0,
-  whole: 1,
-  comb: 2,
-  rgb: 3,
-  behind: 4,
-  thread: 5,
-  pulse: 6,
-}
-const touch = TOUCHES[String(route.query.touch ?? '')] ?? TOUCHES.behind!
-const needsRelief = scansLines || touch >= TOUCHES.thread!
-
 let scene: SceneLayout = {
   axisX: 0,
   top: 0,
@@ -3589,15 +3418,13 @@ async function loadScene(): Promise<boolean> {
     showsPhotograph
       ? loadImage(plateSrc(portraitKey, 'colour'))
       : null,
-    needsRelief
-      ? loadImage(plateSrc(portraitKey, 'depth'))
-      : null,
+    loadImage(plateSrc(portraitKey, 'depth')),
     loadImage(plateSrc(portraitKey, 'matte')),
   ])
   const picture = showsPhotograph
     ? colour
     : heat
-  if (!matte || !picture || (needsRelief && !depth))
+  if (!matte || !picture || !depth)
     return false
   figureCanvas = composeFigure(heat, matte, depth)
   colourImage = colour && look === 'grayscale'
@@ -3705,8 +3532,6 @@ function paintSceneContent() {
     (mastheadBox?.height ?? 0) / height,
   )
   fluid.setLabelShades(labelShades(width, height), SHADE_FEATHER / width, SHADE_FADE, SHADE_LEVEL)
-  const reach = CARRY_REACH * portrait.faceUnit * scene.figureScale
-  fluid.setCarryReach(reach / width, reach / height)
 
   if (!colourImage)
     return
@@ -3896,7 +3721,7 @@ onMounted(async () => {
     })
     if (fluidReady) {
       fluid.setContentCanvas(createBlankContent())
-      fluid.setSceneLook(sceneTone, showsPhotograph ? 1 : 0, touch, scansLines ? 1 : 0)
+      fluid.setSceneLook(sceneTone, showsPhotograph ? 1 : 0, scansLines ? 1 : 0)
       applyDisplayGains()
       resizeObserver = new ResizeObserver(() => {
         fluid.resize()
