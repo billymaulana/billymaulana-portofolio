@@ -716,15 +716,13 @@ function useFluidSimulation() {
     whiteCore: 0.95,
     inkGain: 1,
     skinGain: 1,
-    light: 0,
     tone: 1,
-    mono: 0,
-    grade: 0,
-    ground: 0,
-    horizon: 0.27,
-    rows: 150,
+    photo: 0,
+    touch: 0,
+    shades: new Float32Array(12),
+    shadeFade: [0, 0, 1] as [number, number, number],
+    reach: [0.03, 0.048] as [number, number],
   }
-  const displayStart = performance.now()
 
   function hexToRgb(hex: string): [number, number, number] {
     const h = hex.replace('#', '')
@@ -1180,16 +1178,12 @@ function useFluidSimulation() {
     uniform float uWhite;
     uniform float uInkGain;
     uniform float uSkinGain;
-    uniform float uTime;
-    uniform float uAspect;
-    uniform float uLight;
     uniform float uTone;
-    uniform float uMono;
-    uniform float uGrade;
-    uniform float uGround;
-    uniform float uHorizon;
-    uniform float uRows;
-    uniform float uRowPx;
+    uniform float uPhoto;
+    uniform float uTouch;
+    uniform vec4 uShade[3];
+    uniform vec3 uShadeFade;
+    uniform vec2 uReach;
     varying vec2 vUv;
 
     const vec3 C0 = vec3(0.020, 0.020, 0.027);
@@ -1204,6 +1198,14 @@ function useFluidSimulation() {
     const vec3 C9 = vec3(0.999, 0.961, 0.702);
     const vec3 C10 = vec3(1.000, 0.996, 0.961);
     const float INK_OVER_SKIN = 0.08;
+    const float CARRY_FAR = 0.00028;
+    const float CARRY_NEAR = 0.3333;
+    const float CARRY_SPEED = 120.0;
+    const float COVER_NEAR = 0.09;
+    const float COVER_FAR = 0.18;
+    const float COVER_GAIN = 2.2;
+    const float COVER_VACATED = 0.45;
+    const float BLUE_COVER = 0.15;
     const float STREAK_REACH = 0.2;
     const float STREAK_ROW = 2.6;
     const float STREAK_SPREAD = 0.035;
@@ -1220,32 +1222,6 @@ function useFluidSimulation() {
       return mix(hash1(i), hash1(i + 1.0), f);
     }
 
-    float hash2(vec2 p) {
-      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-    }
-
-    float noise2(vec2 p) {
-      vec2 i = floor(p);
-      vec2 f = fract(p);
-      f = f * f * (3.0 - 2.0 * f);
-      return mix(
-        mix(hash2(i), hash2(i + vec2(1.0, 0.0)), f.x),
-        mix(hash2(i + vec2(0.0, 1.0)), hash2(i + vec2(1.0, 1.0)), f.x),
-        f.y
-      );
-    }
-
-    float fbm(vec2 p) {
-      float amplitude = 0.5;
-      float sum = 0.0;
-      for (int i = 0; i < 4; i++) {
-        sum += amplitude * noise2(p);
-        p = p * 2.02 + vec2(11.3, 7.1);
-        amplitude *= 0.5;
-      }
-      return sum;
-    }
-
     vec3 thermal(float t) {
       t = clamp(t, 0.0, 1.0);
       if (t < 0.13) return mix(C0, C1, smoothstep(0.00, 0.13, t));
@@ -1260,12 +1236,40 @@ function useFluidSimulation() {
       return mix(C9, C10, smoothstep(0.975, 1.00, t));
     }
 
-    /* Light entering through a slatted opening somewhere above the right corner: two unequal
-       trains of beams, measured by the angle around that opening. */
-    float shafts(float angle) {
-      float wide = smoothstep(0.30, 0.80, 0.5 + 0.5 * sin(angle * 9.0 + 1.3));
-      float fine = smoothstep(0.50, 0.95, 0.5 + 0.5 * sin(angle * 23.0 - 0.7));
-      return wide * 0.7 + fine * 0.3;
+    /* The figure at one point of the stage, as light and as cover: temperature read through the
+       ramp, or the photograph in its own colours. The content texture carries the temperature
+       square-root encoded, to keep precision in the cold end, with the matte in alpha; at rest
+       the cold range is held back. The fourth component is how much of the ink the figure hides
+       there: most of it under warm skin or the lit parts of a photograph, none under cold hair
+       or a photograph's shadows. The thresholds sit above the brightest speck of hair, because
+       hair that hides the ink strand by strand turns the plasma behind it into grain. */
+    vec4 figureAt(vec2 at, float lift) {
+      vec4 plate = texture2D(tMap, at);
+      float warmth = plate.r * plate.r;
+      warmth *= mix(uTone, 1.0, smoothstep(0.30, 0.55, warmth));
+      float skin = warmth * plate.a * uSkinGain * lift;
+      vec3 heat = max(thermal(skin) - C0, 0.0) * clamp(skin * 8.0, 0.0, 1.0);
+      vec3 photo = texture2D(tAux, at).rgb * uSkinGain * lift;
+      float lit = smoothstep(0.16, 0.42, dot(photo, vec3(0.2126, 0.7152, 0.0722)));
+      float hides = (1.0 - INK_OVER_SKIN) * mix(smoothstep(0.10, 0.36, skin), lit, uPhoto);
+      return vec4(mix(heat, photo, uPhoto), hides);
+    }
+
+    /* How much of the ink the figure hides where it stands at rest, read wider than one texel.
+       Taken point by point, the moustache, the nostrils and the eyes of a photograph are
+       shadows inside a lit face, and the ink would tint exactly those; and the cover would end
+       on the outline of the skin, which draws the face as a cut-out with a dark seam wherever
+       bright ink lies beside it. Two rings of taps make the small shadows part of the face
+       and let the cover run out over the first strands of hair, so the ink cools down the
+       ramp as it nears the skin. */
+    float restCover(vec2 at, float lift) {
+      float sum = figureAt(at, lift).a;
+      for (int i = 0; i < 8; i++) {
+        float turn = float(i) * 0.7853982;
+        float ring = mod(float(i), 2.0) < 0.5 ? COVER_NEAR : COVER_FAR;
+        sum += figureAt(at + vec2(cos(turn), sin(turn)) * uReach * ring, lift).a;
+      }
+      return min(1.0 - INK_OVER_SKIN, sum / 9.0 * COVER_GAIN);
     }
 
     void main() {
@@ -1276,9 +1280,6 @@ function useFluidSimulation() {
       vec2 uv = vUv;
       vec2 uv2 = uv - vel * uDisplace;
 
-      /* The photograph carries its own relief in the blue channel: zero along the outline,
-         rising towards the face. It only steers the light; the picture itself never moves. */
-      float relief = texture2D(tMap, uv2).b;
       vec3 base = texture2D(tMap, uv2).rgb;
 
       vec2 shift = vel * uChromatic;
@@ -1303,117 +1304,120 @@ function useFluidSimulation() {
            mendekati 1 tanpa pernah menyentuhnya — gradasi tetap hidup sampai
            piksel terpanas. */
         float raw = presence * 0.62 + speed * 0.0042;
-        float heat = pow(1.0 - exp(-raw * 1.35), 0.62) * uInkGain;
+        /* The ink arrives over the first second of movement. Its gain sits inside the curve:
+           scaled after it, a fresh stroke whose core is already saturated lands on one value
+           of the ramp and shows as a flat disc. */
+        float heat = pow(1.0 - exp(-raw * uInkGain * uInkGain * 1.35), 0.62);
         float cover = smoothstep(0.015, 0.30, heat);
 
-        /* Where the ink touches the scene it is combed sideways. The reach of each pixel row is
-           a smooth noise along y, so neighbouring rows slide together as bands, with a finer
-           comb on top; the temperature is averaged along that reach. The touch is the ink
-           spread sideways first, otherwise the smear would stop at the round edge of a fresh
-           splat. The reach follows the ink, so the smear is born with a stroke and relaxes as
-           the ink retires, and at rest every tap lands on the same texel. */
-        float spread = 0.0;
-        for (int i = 0; i < 5; i++) {
-          float o = (float(i) - 2.0) * STREAK_SPREAD;
-          spread += clamp(texture2D(tFluid, vec2(vUv.x + o, vUv.y)).b, 0.0, 1.2) * (1.0 - abs(float(i) - 2.0) * 0.3);
+        /* The figure loses its light behind each small label that stands on it, so cloth of any
+           colour ends up dark there and keeps its colour everywhere else. A shade is a property
+           of the stage, not of the photograph, and the ink is not part of it. */
+        float shade = 0.0;
+        for (int i = 0; i < 3; i++) {
+          vec4 s = uShade[i];
+          float across = smoothstep(s.x - uShadeFade.x, s.x, uv.x) * (1.0 - smoothstep(s.y, s.y + uShadeFade.x, uv.x));
+          float down = 1.0 - smoothstep(s.z, s.z + uShadeFade.y, uv.y);
+          shade = max(shade, across * down * s.w);
         }
-        float touch = smoothstep(0.02, 0.9, spread / 2.8) * uInkGain;
-        float y = gl_FragCoord.y;
-        float band = noise1(y / 34.0 + 7.0) - 0.5;
-        float comb = 0.45 + 0.55 * noise1(y / STREAK_ROW);
-        float reach = STREAK_REACH * touch * (band * 2.0) * comb;
-        float sum = 0.0;
-        float tones = 0.0;
-        vec3 hues = vec3(0.0);
-        float alpha = 0.0;
-        float weight = 0.0;
-        for (int i = 0; i < STREAK_TAPS; i++) {
-          float k = float(i) / float(STREAK_TAPS - 1);
-          float w = 1.0 - 0.75 * k;
-          vec2 at = vec2(uv2.x + reach * k, uv2.y);
-          vec4 tap = texture2D(tMap, at);
-          sum += tap.r * tap.r * tap.a * w;
-          tones += tap.g * tap.a * w;
-          hues += texture2D(tAux, at).rgb * w;
-          alpha += tap.a * w;
-          weight += w;
+        float lift = mix(1.0, uShadeFade.z, shade);
+
+        if (uTouch < 1.5 || uTouch > 2.5) {
+          /* The liquid carries the picture with it. It is read twice: where the flow has pushed
+             the stage, and three times further along, mirrored in y. Split by channel, some
+             channels come from the first reading and the rest from the second, so at speed the
+             picture parts into two copies that close up again as the flow dies. Kept whole,
+             the two copies stay in the colours of the ramp and the brighter one wins.
+
+             The dye holds speeds in the hundreds for a fresh stroke and the plasma is tuned to
+             linger for seconds. Carried in proportion to that, a face is thrown clear off its
+             place, its pixels replaced by the dark around it, and stays torn for as long as
+             the ink lives. So the push grows with the square of the speed while the flow is
+             slow, which settles the picture in about a second while the plasma lives on, and
+             it eases out toward a reach that is a fraction of the face.
+
+             The ink is not split. It is cooled before the ramp wherever the figure stands
+             warm, at rest or carried, so it never sits as a bright disc on the face, and
+             where it is half hidden it walks down the ramp instead of turning into a dimmed
+             yellow. */
+          float speed = length(vel);
+          vec2 pull = vec2(-vel.x, vel.y) * CARRY_FAR * speed / (speed + CARRY_SPEED);
+          float over = length(pull / uReach);
+          float used = 1.0 - exp(-over);
+          float ease = used / max(over, 0.0001);
+          vec4 near = figureAt(uv + vec2(pull.x, -pull.y) * ease * CARRY_NEAR, lift);
+          vec4 far = figureAt(uv + pull * ease, lift);
+
+          /* Which channels part. On a photograph it is the reference's own split, red against
+             green and blue. Drawn as temperature, the figure has no cyan to part from: its
+             hot end is red and green together, and the same split throws a pure green wedge
+             across a cheek. There only blue leaves, which keeps the hot copy orange and makes
+             the second copy indigo, both colours of the ramp. A copy that carries blue alone
+             brings almost no light, so it hides almost none of the ink; hiding it all cut a
+             dark curl out of the plasma. */
+          vec3 picture = max(near.rgb, far.rgb);
+          float farCover = far.a;
+          if (uTouch > 2.5 || (uTouch < 0.5 && uPhoto > 0.5)) {
+            picture = vec3(near.r, far.g, far.b);
+          } else if (uTouch < 0.5) {
+            picture = vec3(near.r, near.g, far.b);
+            farCover *= BLUE_COVER;
+          }
+
+          /* Where the flow has carried the face off its place, what it left behind would stay
+             black between the skin and the ink, so there the cover gives way and lets the ink
+             in, cooled to the violet end. */
+          float veil = restCover(uv, lift) * mix(1.0, COVER_VACATED, smoothstep(0.05, 0.4, used));
+          float hidden = max(max(near.a, farCover), veil);
+          float left = heat * (1.0 - hidden);
+          col = picture + max(thermal(left) - C0, 0.0) * smoothstep(0.015, 0.30, left);
+        } else {
+          /* Where the ink touches the scene it is combed sideways. The reach of each pixel row
+             is a smooth noise along y, so neighbouring rows slide together as bands, with a
+             finer comb on top; the temperature is averaged along that reach. The touch is the
+             ink spread sideways first, otherwise the smear would stop at the round edge of a
+             fresh splat. The reach follows the ink, so the smear is born with a stroke and
+             relaxes as the ink retires, and at rest every tap lands on the same texel. */
+          float spread = 0.0;
+          for (int i = 0; i < 5; i++) {
+            float o = (float(i) - 2.0) * STREAK_SPREAD;
+            spread += clamp(texture2D(tFluid, vec2(vUv.x + o, vUv.y)).b, 0.0, 1.2) * (1.0 - abs(float(i) - 2.0) * 0.3);
+          }
+          float touch = smoothstep(0.02, 0.9, spread / 2.8) * uInkGain;
+          float y = gl_FragCoord.y;
+          float band = noise1(y / 34.0 + 7.0) - 0.5;
+          float comb = 0.45 + 0.55 * noise1(y / STREAK_ROW);
+          float reach = STREAK_REACH * touch * (band * 2.0) * comb;
+          float sum = 0.0;
+          vec3 hues = vec3(0.0);
+          float alpha = 0.0;
+          float weight = 0.0;
+          for (int i = 0; i < STREAK_TAPS; i++) {
+            float k = float(i) / float(STREAK_TAPS - 1);
+            float w = 1.0 - 0.75 * k;
+            vec2 at = vec2(uv2.x + reach * k, uv2.y);
+            vec4 tap = texture2D(tMap, at);
+            sum += tap.r * tap.r * tap.a * w;
+            hues += texture2D(tAux, at).rgb * w;
+            alpha += tap.a * w;
+            weight += w;
+          }
+
+          /* The ink that touches the figure brings its held-back cold range out again. */
+          float figure = alpha / weight;
+          float warmth = sum / max(alpha, 0.0001);
+          warmth *= mix(mix(uTone, 1.0, touch), 1.0, smoothstep(0.30, 0.55, warmth));
+
+          /* The ramp is applied after ink and skin are summed. Over the photograph the ink
+             counts for a fraction of what it is on the empty stage and the sum stays affine in
+             the skin temperature, so a stroke across the face lifts it without flattening the
+             features into the white end of the ramp. */
+          float skin = warmth * figure * uSkinGain * lift;
+          float inkHeat = heat * mix(1.0, INK_OVER_SKIN, smoothstep(0.02, 0.22, skin)) * (1.0 - figure * uPhoto);
+          float t = skin + inkHeat * (1.0 - skin);
+          col = max(thermal(t) - C0, 0.0) * mix(cover, 1.0, clamp(skin * 8.0, 0.0, 1.0));
+          col = mix(col, hues / weight * uSkinGain * lift, figure * uPhoto);
         }
-
-        /* The content texture carries the photograph as a temperature, square-root encoded to
-           keep precision in the cold end, with its matte in alpha. At rest its cold range can be
-           held back, and the ink that touches it brings the full range out again. */
-        float figure = alpha / weight;
-        float warmth = sum / max(alpha, 0.0001);
-        warmth *= mix(mix(uTone, 1.0, touch), 1.0, smoothstep(0.30, 0.55, warmth));
-
-        /* The same beams cross the air behind the photograph and the photograph itself. In the
-           air they are only seen where haze drifts through them. On the figure they add light
-           to whatever stands out towards the camera and are bent by that relief, so they wrap
-           the head instead of lying flat on it; nothing is darkened, because half-lit skin
-           turns to mud. */
-        vec3 air = vec3(0.0);
-        float lit = 1.0;
-        if (uLight > 0.5) {
-          vec2 from = vec2(uv.x * uAspect, uv.y) - vec2(uAspect * 1.05, 1.25);
-          float angle = atan(from.y, from.x) + sin(uTime * 0.11) * 0.035;
-          float haze = smoothstep(0.25, 0.85, fbm(vec2(uv.x * uAspect, uv.y) * 1.25 + vec2(uTime * 0.021, -uTime * 0.013)));
-          float reach = 1.0 / (1.0 + dot(from, from) * 0.5);
-          air = vec3(0.93, 0.91, 0.88) * shafts(angle) * reach * (0.09 + 0.34 * haze);
-          lit = 0.9 + 0.3 * shafts(angle + relief * 0.1) * smoothstep(0.1, 0.6, relief);
-        }
-
-        /* The ground has a temperature of its own, read through the same ramp as the figure and
-           the ink, so the three belong to one exposure. It lies behind the figure and behind the
-           letters, and the ink displaces it like everything else in the scene. */
-        float groundHeat = 0.0;
-        float inkGate = 1.0;
-        vec2 place = vec2(uv2.x * uAspect, uv2.y);
-        if (uGround > 0.5 && uGround < 1.5) {
-          vec2 from = place - vec2(uAspect * 1.05, 1.25);
-          float angle = atan(from.y, from.x) + sin(uTime * 0.11) * 0.035;
-          float haze = smoothstep(0.25, 0.85, fbm(place * 1.25 + vec2(uTime * 0.021, -uTime * 0.013)));
-          float fall = 1.0 / (1.0 + dot(from, from) * 0.5);
-          groundHeat = shafts(angle) * fall * (0.07 + 0.30 * haze) + 0.03 * haze * fall;
-          warmth += 0.07 * shafts(angle + relief * 0.1) * smoothstep(0.1, 0.6, relief);
-        } else if (uGround > 1.5 && uGround < 2.5) {
-          float rise = uv2.y - uHorizon;
-          float along = 0.55 + 0.45 * fbm(vec2(place.x * 1.4 + uTime * 0.008, 2.3));
-          float core = exp(-rise * rise / (2.0 * 0.0035 * 0.0035));
-          float sky = step(0.0, rise) * (0.28 * exp(-rise / 0.05) + 0.05 * exp(-rise / 0.22));
-          float glitter = noise2(vec2(place.x * 6.0, rise * 260.0 + uTime * 0.35));
-          float water = step(rise, 0.0) * 0.30 * exp(rise / 0.16) * (0.35 + 0.65 * glitter);
-          groundHeat = (core * 0.34 + sky + water) * along;
-        } else if (uGround > 2.5) {
-          float rows = uv2.y * uRows;
-          float off = abs(fract(rows) - 0.5);
-          float phase = hash1(floor(rows) * 0.37) * 6.2831;
-          float pulse = 0.5 + 0.5 * sin(place.x * 2.2 - uTime * 0.35 + phase);
-          float width = mix(0.11, 0.5, smoothstep(0.02, 0.55, heat));
-          float edge = 0.9 / uRowPx;
-          float line = 1.0 - smoothstep(width - edge, width + edge, off);
-          groundHeat = (0.085 + 0.035 * pulse) * line;
-          inkGate = mix(line, 1.0, smoothstep(0.25, 0.6, heat));
-        }
-
-        /* The ramp is applied after ink, skin and ground are summed. Over the photograph the ink
-           counts for a fraction of what it is on the empty stage and the sum stays affine in the
-           skin temperature, so a stroke across the face lifts it without flattening the features
-           into the white end of the ramp. */
-        float skin = warmth * figure * uSkinGain;
-        float ground = groundHeat * (1.0 - figure) * uSkinGain;
-        float inkHeat = heat * mix(1.0, INK_OVER_SKIN, smoothstep(0.02, 0.22, skin)) * mix(1.0, inkGate, 1.0 - figure);
-        float still = skin + ground;
-        float t = still + inkHeat * (1.0 - still);
-
-        float body = mix(cover * mix(1.0, inkGate, 1.0 - figure), 1.0, clamp(still * 8.0, 0.0, 1.0));
-        col = max(thermal(t) - C0, 0.0) * body;
-
-        if (uMono > 0.5) {
-          float reveal = smoothstep(0.0, 0.5, touch + heat);
-          vec3 mono = mix(vec3(0.93, 0.91, 0.88) * (tones / weight), hues / weight, uGrade) * lit * uSkinGain;
-          col = mix(mono, col, max(reveal, 1.0 - figure));
-        }
-        col += air * (1.0 - figure) * uSkinGain;
 
         /* A half-step dither: the cold end of the ramp spans a few dozen 8-bit levels across
            hundreds of pixels and would band without it. */
@@ -2126,16 +2130,12 @@ function useFluidSimulation() {
     g.uniform1f(contentDisplayProgram.uniforms.uWhite!, contentDisplay.whiteCore)
     g.uniform1f(contentDisplayProgram.uniforms.uInkGain!, contentDisplay.inkGain)
     g.uniform1f(contentDisplayProgram.uniforms.uSkinGain!, contentDisplay.skinGain)
-    g.uniform1f(contentDisplayProgram.uniforms.uTime!, (performance.now() - displayStart) / 1000)
-    g.uniform1f(contentDisplayProgram.uniforms.uAspect!, g.drawingBufferWidth / g.drawingBufferHeight)
-    g.uniform1f(contentDisplayProgram.uniforms.uLight!, contentDisplay.light)
     g.uniform1f(contentDisplayProgram.uniforms.uTone!, contentDisplay.tone)
-    g.uniform1f(contentDisplayProgram.uniforms.uMono!, contentDisplay.mono)
-    g.uniform1f(contentDisplayProgram.uniforms.uGrade!, auxTexture ? contentDisplay.grade : 0)
-    g.uniform1f(contentDisplayProgram.uniforms.uGround!, contentDisplay.ground)
-    g.uniform1f(contentDisplayProgram.uniforms.uHorizon!, contentDisplay.horizon)
-    g.uniform1f(contentDisplayProgram.uniforms.uRows!, contentDisplay.rows)
-    g.uniform1f(contentDisplayProgram.uniforms.uRowPx!, g.drawingBufferHeight / contentDisplay.rows)
+    g.uniform1f(contentDisplayProgram.uniforms.uPhoto!, auxTexture ? contentDisplay.photo : 0)
+    g.uniform1f(contentDisplayProgram.uniforms.uTouch!, contentDisplay.touch)
+    g.uniform4fv(contentDisplayProgram.uniforms['uShade[0]']!, contentDisplay.shades)
+    g.uniform3f(contentDisplayProgram.uniforms.uShadeFade!, contentDisplay.shadeFade[0], contentDisplay.shadeFade[1], contentDisplay.shadeFade[2])
+    g.uniform2f(contentDisplayProgram.uniforms.uReach!, contentDisplay.reach[0], contentDisplay.reach[1])
     blit!(target)
   }
 
@@ -2767,17 +2767,30 @@ function useFluidSimulation() {
     contentDisplay.skinGain = skin
   }
 
-  function setSceneLook(light: number, tone: number, mono: number, grade: number) {
-    contentDisplay.light = light
+  function setSceneLook(tone: number, photo: number, touch: number) {
     contentDisplay.tone = tone
-    contentDisplay.mono = mono
-    contentDisplay.grade = grade
+    contentDisplay.photo = photo
+    contentDisplay.touch = touch
   }
 
-  function setGround(kind: number, horizon: number, rows: number) {
-    contentDisplay.ground = kind
-    contentDisplay.horizon = horizon
-    contentDisplay.rows = Math.max(1, rows)
+  /* Up to three shades, four numbers each, in texture coordinates: left edge, right edge, top
+     edge measured up from the bottom of the canvas, and whether the shade is on. The figure keeps
+     `level` of its light inside a shade; `across` and `up` are the widths of its soft edges. */
+  function setLabelShades(shades: Float32Array, across: number, up: number, level: number) {
+    contentDisplay.shades.set(shades.subarray(0, contentDisplay.shades.length))
+    contentDisplay.shadeFade = [
+      across,
+      up,
+      level,
+    ]
+  }
+
+  /* How far the liquid may carry the picture, in texture coordinates along x and y. */
+  function setCarryReach(across: number, up: number) {
+    contentDisplay.reach = [
+      across,
+      up,
+    ]
   }
 
   function resize() {
@@ -2825,7 +2838,8 @@ function useFluidSimulation() {
     setAuxCanvas,
     setDisplayGains,
     setSceneLook,
-    setGround,
+    setLabelShades,
+    setCarryReach,
   }
 }
 
@@ -2856,69 +2870,61 @@ interface SceneBox {
 }
 
 interface Portrait {
-  /* Four greyscale plates of one photograph: temperature, its own tones, its matte, and its
-     relief (zero along the outline, rising towards the face). The fifth is the photograph in
-     its own colours, graded and already cut to the matte. */
-  heat: string
-  tone: string
+  /* A portrait is shown either as temperature or as the photograph in its own colours, graded
+     and already cut to the matte; it carries the picture it needs and its matte. */
+  heat?: string
+  colour?: string
   matte: string
-  relief: string
-  colour: string
   width: number
   height: number
-  /* Plate coordinates of the vertical axis between the eyes, the line through both eyes, and
-     the distance from that line down to the chin. Layout is solved for these three alone. */
+  /* Plate coordinates: the vertical axis through the middle of the hair, the distance from the
+     eye line down to the chin, the top of the hair, the row where the forehead comes out from
+     under it, and the first row on which the figure is cut off by the side of the plate. */
   axis: number
-  eyeLine: number
   faceUnit: number
-  /* In face units: how far above the eye line the skin turns hotter than violet, and how much
-     further the hair reaches to the left of the axis than to the right. */
-  foreheadAboveEyes: number
-  hairCentreOffset: number
-  /* Share of the viewport width where the axis sits while the scroll label is on screen. */
-  axisBesideLabel: number
-  /* The face unit as a share of the viewport height: a close portrait fills the stage with the
-     face, a bust keeps the face small and lets the shoulders carry the lower half. */
-  facePerViewportHeight: number
+  crownRow: number
+  foreheadRow: number
+  sleeveRow: number
 }
 
 /* Each photograph is used whole: skin, hair and cloth in their real outline, cropped by the
    viewport and by nothing else. */
 const PORTRAITS: Record<string, Portrait> = {
-  turned: {
-    heat: '/assets/images/concept-2/figure-6120.webp',
-    tone: '/assets/images/concept-2/figure-6120-tone.webp',
-    matte: '/assets/images/concept-2/figure-6120-matte.webp',
-    relief: '/assets/images/concept-2/figure-6120-relief.webp',
-    colour: '/assets/images/concept-2/figure-6120-colour.webp',
-    width: 2271,
-    height: 2499,
-    axis: 1344,
-    eyeLine: 660.8,
-    faceUnit: 342.8,
-    foreheadAboveEyes: 0.38,
-    hairCentreOffset: 0.25,
-    axisBesideLabel: 0.47,
-    facePerViewportHeight: 0.215,
+  kente: {
+    heat: '/assets/images/concept-2/portrait-kente-heat.webp',
+    matte: '/assets/images/concept-2/portrait-kente-matte.webp',
+    width: 1824,
+    height: 2392,
+    axis: 888.5,
+    faceUnit: 468.5,
+    crownRow: 20.4,
+    foreheadRow: 563,
+    sleeveRow: 1980,
   },
-  facing: {
-    heat: '/assets/images/concept-2/figure-6094.webp',
-    tone: '/assets/images/concept-2/figure-6094-tone.webp',
-    matte: '/assets/images/concept-2/figure-6094-matte.webp',
-    relief: '/assets/images/concept-2/figure-6094-relief.webp',
-    colour: '/assets/images/concept-2/figure-6094-colour.webp',
-    width: 2288,
-    height: 2836,
-    axis: 1369.1,
-    eyeLine: 1027.4,
-    faceUnit: 589.9,
-    foreheadAboveEyes: 0.68,
-    hairCentreOffset: 0.174,
-    axisBesideLabel: 0.485,
-    facePerViewportHeight: 0.36,
+  alley: {
+    colour: '/assets/images/concept-2/portrait-alley-colour.webp',
+    matte: '/assets/images/concept-2/portrait-alley-matte.webp',
+    width: 1792,
+    height: 2400,
+    axis: 903.5,
+    faceUnit: 423.5,
+    crownRow: 121,
+    foreheadRow: 566,
+    sleeveRow: 2080,
+  },
+  room: {
+    colour: '/assets/images/concept-2/portrait-room-colour.webp',
+    matte: '/assets/images/concept-2/portrait-room-matte.webp',
+    width: 1792,
+    height: 2390,
+    axis: 795,
+    faceUnit: 456,
+    crownRow: 236,
+    foreheadRow: 758,
+    sleeveRow: 1977,
   },
 }
-const PORTRAIT_DEFAULT = 'turned'
+const PORTRAIT_DEFAULT = 'kente'
 
 /* The display pass maps temperature to colour in the shader. The static canvas has no shader,
    so the same ramp is kept here for a lookup table; both must hold the same stops. */
@@ -2950,11 +2956,20 @@ const RAMP_COLOURS = [
 ]
 
 const NAME_CLEARANCE = 12
-const CHIN_CLEARANCE = 0.04
+const CROWN_UNDER_NAME = 6
+const FACE_PER_VIEWPORT_HEIGHT = 0.215
 const FACE_PER_VIEWPORT_WIDTH = 0.4
-/* How much of the spare height goes above the face: the head hangs from the name rather than
-   floating in the middle of the stage. */
-const FACE_SLACK_ABOVE = 0.25
+
+/* Behind each footer label that stands on it, the figure keeps SHADE_LEVEL of its light. The
+   shade is as wide as the label plus SHADE_PAD, starts SHADE_GAP above it and runs to the bottom
+   edge; it feathers out over SHADE_FEATHER sideways and over SHADE_FADE of the viewport height
+   upwards, so the cloth beside and above a label keeps its colour. */
+const SHADE_PAD = 16
+const SHADE_GAP = 12
+const SHADE_FEATHER = 140
+const SHADE_FADE = 0.16
+const SHADE_LEVEL = 0.3
+const SHADE_SLOTS = 3
 
 const KNOCKOUT_BLEED = 0.75
 const KNOCKOUT_RING = [
@@ -3022,76 +3037,34 @@ const displayGains = { ink: 0, skin: 0 }
 
 interface SceneLayout {
   axisX: number
-  eyeY: number
+  top: number
   figureScale: number
+  shades: SceneBox[]
 }
 
-interface SceneLook {
-  light: number
-  tone: number
-  mono: number
-  grade: number
-  ground: number
-}
-
-const LOOKS: Record<string, SceneLook> = {
-  a: {
-    light: 0,
-    tone: 0.5,
-    mono: 0,
-    grade: 0,
-    ground: 0,
-  },
-  b: {
-    light: 1,
-    tone: 0.5,
-    mono: 1,
-    grade: 0,
-    ground: 0,
-  },
-  c: {
-    light: 1,
-    tone: 0.5,
-    mono: 1,
-    grade: 1,
-    ground: 0,
-  },
-}
-/* Three grounds for the thermal figure, each read through the ramp: beams through haze, a
-   horizon behind the shoulders, a field of scan rows. */
-const GROUND_LOOKS: Record<string, SceneLook> = {
-  d: {
-    light: 0,
-    tone: 0.5,
-    mono: 0,
-    grade: 0,
-    ground: 1,
-  },
-  e: {
-    light: 0,
-    tone: 0.5,
-    mono: 0,
-    grade: 0,
-    ground: 2,
-  },
-  f: {
-    light: 0,
-    tone: 0.5,
-    mono: 0,
-    grade: 0,
-    ground: 3,
-  },
-}
-const HORIZON_BELOW_EYES = 1.42
-const ROW_PITCH = 6
-const LOOK_DEFAULT = 'c'
-const MONO_PAPER = [0.93, 0.91, 0.88] as const
+/* Shown as temperature, the figure holds its cold range back to half until the ink touches it. */
+const REST_TONE = 0.5
+const CARRY_REACH = 0.6
 
 const route = useRoute()
-const look = LOOKS[String(route.query.v ?? '')] ?? GROUND_LOOKS[String(route.query.v ?? '')] ?? LOOKS[LOOK_DEFAULT]!
 const portrait = PORTRAITS[String(route.query.photo ?? '')] ?? PORTRAITS[PORTRAIT_DEFAULT]!
+const showsPhotograph = portrait.colour !== undefined
+/* What the liquid does to the figure: part it by colour channel, keep the two copies whole in
+   the colours of the ramp, or comb it sideways. */
+const TOUCHES: Record<string, number> = {
+  split: 0,
+  whole: 1,
+  comb: 2,
+  rgb: 3,
+}
+const touch = TOUCHES[String(route.query.touch ?? '')] ?? TOUCHES.split!
 
-let scene: SceneLayout = { axisX: 0, eyeY: 0, figureScale: 1 }
+let scene: SceneLayout = {
+  axisX: 0,
+  top: 0,
+  figureScale: 1,
+  shades: [],
+}
 let mastheadBox: SceneBox | null = null
 
 const fluid = useFluidSimulation()
@@ -3102,6 +3075,7 @@ let fluidReady = false
 let figureCanvas: HTMLCanvasElement | null = null
 let colourImage: HTMLImageElement | null = null
 let rampTable: Uint8ClampedArray | null = null
+let restTable: Float32Array | null = null
 let backdropResizeHandler: (() => void) | null = null
 let textDistortion: ReturnType<typeof useHeroTextWarp> | null = null
 let textResizeHandler: (() => void) | null = null
@@ -3204,16 +3178,16 @@ function paintStaticMasthead() {
   ctx.drawImage(source, 0, 0)
 }
 
-/* The warm part of the face starts a few pixels under the baseline of the name, so nothing
-   hotter than violet ever touches the letters, and it ends above the footer. The rest follows
-   from the photograph itself: the hair rises behind the name and the shoulders leave through
-   the bottom edge. */
+/* The top of the hair stays under the top edge of the letters and the forehead under their
+   baseline, so the name always lies on the hair: never on the face, and never with hair showing
+   above it. The figure is as small as the photograph allows: it has to reach the bottom edge,
+   and where it is narrower than the viewport, the viewport has to end above the row on which the
+   sleeves run out of the plate. */
 function computeScene() {
   const section = sectionRef.value
-  const nav = navRef.value
   const foot = footRef.value
   const text = textCanvasRef.value
-  if (!section || !nav || !foot || !text)
+  if (!section || !foot || !text)
     return
   const bounds = section.getBoundingClientRect()
   const relative = (element: Element): SceneBox => {
@@ -3228,35 +3202,53 @@ function computeScene() {
   mastheadBox = relative(text)
 
   const cap = bounds.width * CAP_PER_VIEWPORT
-  const faceTop = mastheadBox.top + Math.round(cap * INK_TOP_PER_CAP) + cap + NAME_CLEARANCE
-  const footTop = foot.getBoundingClientRect().top - bounds.top
-  const unit = Math.min(
-    Math.max(1, footTop - faceTop) / (portrait.foreheadAboveEyes + 1 + CHIN_CLEARANCE),
-    bounds.height * portrait.facePerViewportHeight,
-    bounds.width * FACE_PER_VIEWPORT_WIDTH,
+  const inkTop = mastheadBox.top + Math.round(cap * INK_TOP_PER_CAP)
+  const crownTop = inkTop + CROWN_UNDER_NAME
+  const faceTop = inkTop + cap + NAME_CLEARANCE
+  const preferred = Math.min(bounds.height * FACE_PER_VIEWPORT_HEIGHT, bounds.width * FACE_PER_VIEWPORT_WIDTH) / portrait.faceUnit
+  const axisX = bounds.width / 2
+  const spansWidth = Math.max(axisX / portrait.axis, (bounds.width - axisX) / (portrait.width - portrait.axis))
+  const clearsSleeves = Math.min(
+    (bounds.height - faceTop) / (portrait.sleeveRow - portrait.foreheadRow),
+    (bounds.height - crownTop) / (portrait.sleeveRow - portrait.crownRow),
   )
-  const room = footTop - unit * CHIN_CLEARANCE - faceTop
-  const slack = Math.max(0, room - unit * (portrait.foreheadAboveEyes + 1))
-  const eyeY = faceTop + slack * FACE_SLACK_ABOVE + unit * portrait.foreheadAboveEyes
-  /* The plate ends where the photograph does, so it is never allowed to end inside the viewport. */
-  const figureScale = Math.max(
-    unit / portrait.faceUnit,
-    (bounds.height - eyeY) / (portrait.height - portrait.eyeLine),
-  )
-  const scrollLabel = foot.querySelector('.chd__foot-scroll')
-  const axisX = scrollLabel && scrollLabel.getBoundingClientRect().width > 0
-    ? bounds.width * portrait.axisBesideLabel
-    : bounds.width / 2 + unit * portrait.hairCentreOffset
-  scene = { axisX, eyeY, figureScale }
+  const figureScale = Math.max(preferred, Math.min(spansWidth, clearsSleeves))
+  const left = axisX - portrait.axis * figureScale
+  const right = left + portrait.width * figureScale
+  scene = {
+    axisX,
+    top: Math.max(
+      faceTop - portrait.foreheadRow * figureScale,
+      crownTop - portrait.crownRow * figureScale,
+      bounds.height - portrait.height * figureScale,
+    ),
+    figureScale,
+    shades: Array.from(foot.querySelectorAll('.chd__foot-block'), relative)
+      .filter(box => box.width > 0 && box.left + box.width > left && box.left < right)
+      .slice(0, SHADE_SLOTS),
+  }
 }
 
 function figureRect(): SceneBox {
   return {
     left: scene.axisX - portrait.axis * scene.figureScale,
-    top: scene.eyeY - portrait.eyeLine * scene.figureScale,
+    top: scene.top,
     width: portrait.width * scene.figureScale,
     height: portrait.height * scene.figureScale,
   }
+}
+
+function labelShades(width: number, height: number): Float32Array {
+  const shades = new Float32Array(SHADE_SLOTS * 4)
+  scene.shades.forEach((box, slot) => {
+    shades.set([
+      (box.left - SHADE_PAD) / width,
+      (box.left + box.width + SHADE_PAD) / width,
+      1 - (box.top - SHADE_GAP) / height,
+      1,
+    ], slot * 4)
+  })
+  return shades
 }
 
 async function loadImage(src: string): Promise<HTMLImageElement | null> {
@@ -3272,63 +3264,54 @@ async function loadImage(src: string): Promise<HTMLImageElement | null> {
   return image
 }
 
-/* Four greyscale pictures become one RGBA plate: temperature in red, the photograph's own
-   tones in green, its relief in blue, the matte in alpha. A 2D context can only mask by alpha,
-   so the matte's luminance is moved into its alpha channel first; the three tints are
-   multiplied in and added. */
-function composeFigure(heat: HTMLImageElement, tone: HTMLImageElement, relief: HTMLImageElement, matte: HTMLImageElement): HTMLCanvasElement | null {
-  const width = heat.naturalWidth
-  const height = heat.naturalHeight
-  const layer = (image: HTMLImageElement, tint: string) => {
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')
-    if (!ctx)
-      return null
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(image, 0, 0, width, height)
-    ctx.globalCompositeOperation = 'multiply'
-    ctx.fillStyle = tint
-    ctx.fillRect(0, 0, width, height)
-    return canvas
-  }
+/* The plate the liquid moves: temperature in the colour channels, where there is one, and the
+   matte in alpha. A 2D context can only mask by alpha, so the matte's luminance is moved into
+   its alpha channel first. */
+function composeFigure(heat: HTMLImageElement | null, matte: HTMLImageElement): HTMLCanvasElement | null {
+  const width = matte.naturalWidth
+  const height = matte.naturalHeight
+  const figure = document.createElement('canvas')
+  figure.width = width
+  figure.height = height
   const mask = document.createElement('canvas')
-  mask.width = matte.naturalWidth
-  mask.height = matte.naturalHeight
+  mask.width = width
+  mask.height = height
+  const ctx = figure.getContext('2d')
   const maskCtx = mask.getContext('2d', { willReadFrequently: true })
-  const figure = layer(heat, '#ff0000')
-  const tones = layer(tone, '#00ff00')
-  const depth = layer(relief, '#0000ff')
-  const ctx = figure?.getContext('2d')
-  if (!maskCtx || !figure || !tones || !depth || !ctx)
+  if (!ctx || !maskCtx)
     return null
   maskCtx.drawImage(matte, 0, 0)
-  const pixels = maskCtx.getImageData(0, 0, mask.width, mask.height)
+  const pixels = maskCtx.getImageData(0, 0, width, height)
   for (let i = 0; i < pixels.data.length; i += 4)
     pixels.data[i + 3] = pixels.data[i]!
   maskCtx.putImageData(pixels, 0, 0)
 
-  ctx.globalCompositeOperation = 'lighter'
-  ctx.drawImage(tones, 0, 0)
-  ctx.drawImage(depth, 0, 0)
-  ctx.globalCompositeOperation = 'destination-in'
   ctx.imageSmoothingQuality = 'high'
-  ctx.drawImage(mask, 0, 0, width, height)
+  if (heat) {
+    ctx.drawImage(heat, 0, 0, width, height)
+  }
+  else {
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, width, height)
+  }
+  ctx.globalCompositeOperation = 'destination-in'
+  ctx.drawImage(mask, 0, 0)
   return figure
 }
 
 async function loadScene(): Promise<boolean> {
-  const [heat, tone, relief, matte, colour] = await Promise.all([
-    loadImage(portrait.heat),
-    loadImage(portrait.tone),
-    loadImage(portrait.relief),
+  const [heat, colour, matte] = await Promise.all([
+    portrait.heat
+      ? loadImage(portrait.heat)
+      : null,
+    portrait.colour
+      ? loadImage(portrait.colour)
+      : null,
     loadImage(portrait.matte),
-    loadImage(portrait.colour),
   ])
-  if (!heat || !tone || !relief || !matte)
+  if (!matte || (portrait.heat && !heat) || (portrait.colour && !colour))
     return false
-  figureCanvas = composeFigure(heat, tone, relief, matte)
+  figureCanvas = composeFigure(heat, matte)
   colourImage = colour
   return figureCanvas !== null
 }
@@ -3389,9 +3372,11 @@ function paintSceneContent() {
   const ratio = canvas.width / Math.max(1, canvas.clientWidth)
   paintScene(content, ratio)
   fluid.setContentCanvas(content)
+  const width = Math.max(1, canvas.clientWidth)
   const height = Math.max(1, canvas.clientHeight)
-  const horizon = scene.eyeY + portrait.faceUnit * scene.figureScale * HORIZON_BELOW_EYES
-  fluid.setGround(look.ground, 1 - horizon / height, height / ROW_PITCH)
+  fluid.setLabelShades(labelShades(width, height), SHADE_FEATHER / width, SHADE_FADE, SHADE_LEVEL)
+  const reach = CARRY_REACH * portrait.faceUnit * scene.figureScale
+  fluid.setCarryReach(reach / width, reach / height)
 
   if (!colourImage)
     return
@@ -3416,13 +3401,12 @@ function paintColours(target: HTMLCanvasElement, ratio: number) {
   knockOutMasthead(ctx, ratio)
 }
 
+/* Indexed by the square root of the temperature, like the plate, to keep the cold end fine. */
 function buildRampTable(): Uint8ClampedArray {
   const table = new Uint8ClampedArray(256 * 3)
   const floor = RAMP_COLOURS[0]!
-  for (let value = 0; value < 256; value++) {
-    const warmth = (value / 255) ** 2
-    const held = Math.min(1, Math.max(0, (warmth - 0.3) / 0.25))
-    const t = warmth * (look.tone + (1 - look.tone) * held * held * (3 - 2 * held))
+  for (let index = 0; index < 256; index++) {
+    const t = (index / 255) ** 2
     let segment = 0
     while (segment < RAMP_STOPS.length - 2 && t >= RAMP_STOPS[segment + 1]!)
       segment++
@@ -3433,13 +3417,24 @@ function buildRampTable(): Uint8ClampedArray {
     const cold = RAMP_COLOURS[segment]!
     const hot = RAMP_COLOURS[segment + 1]!
     for (let channel = 0; channel < 3; channel++)
-      table[value * 3 + channel] = cold[channel]! + (hot[channel]! - cold[channel]!) * k - floor[channel]!
+      table[index * 3 + channel] = cold[channel]! + (hot[channel]! - cold[channel]!) * k - floor[channel]!
+  }
+  return table
+}
+
+function buildRestTable(): Float32Array {
+  const table = new Float32Array(256)
+  for (let value = 0; value < 256; value++) {
+    const warmth = (value / 255) ** 2
+    const held = Math.min(1, Math.max(0, (warmth - 0.3) / 0.25))
+    table[value] = warmth * (REST_TONE + (1 - REST_TONE) * held * held * (3 - 2 * held))
   }
   return table
 }
 
 /* Reduced motion and a missing WebGL context both end here: the same scene, painted once on a
-   2D canvas and mapped through the ramp by a lookup table instead of the shader. */
+   2D canvas, with the ramp, the hold at rest and the label shades done by hand instead of by the
+   shader. */
 function paintStaticScene() {
   const canvas = backdropCanvasRef.value
   if (!canvas || !figureCanvas)
@@ -3447,30 +3442,54 @@ function paintStaticScene() {
   const ratio = Math.min(window.devicePixelRatio || 1, STATIC_MAX_DPR)
   canvas.width = Math.round(canvas.clientWidth * ratio)
   canvas.height = Math.round(canvas.clientHeight * ratio)
-  if (look.mono && look.grade && colourImage) {
+  const inColour = showsPhotograph && colourImage !== null
+  if (inColour) {
     computeScene()
     paintColours(canvas, ratio)
-    return
   }
-  paintScene(canvas, ratio)
+  else {
+    paintScene(canvas, ratio)
+  }
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx)
     return
   rampTable ??= buildRampTable()
+  restTable ??= buildRestTable()
+  const shades = labelShades(canvas.clientWidth, canvas.clientHeight)
+  const feather = SHADE_FEATHER / canvas.clientWidth
+  const ramp = (from: number, to: number, value: number) => {
+    const x = Math.min(1, Math.max(0, (value - from) / (to - from)))
+    return x * x * (3 - 2 * x)
+  }
+  const across = scene.shades.map((_, slot) => Float32Array.from({ length: canvas.width }, (_, x) => {
+    const u = (x + 0.5) / canvas.width
+    return ramp(shades[slot * 4]! - feather, shades[slot * 4]!, u) * (1 - ramp(shades[slot * 4 + 1]!, shades[slot * 4 + 1]! + feather, u))
+  }))
+  const down = scene.shades.map((_, slot) => Float32Array.from({ length: canvas.height }, (_, y) => {
+    return 1 - ramp(shades[slot * 4 + 2]!, shades[slot * 4 + 2]! + SHADE_FADE, 1 - (y + 0.5) / canvas.height)
+  }))
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const data = pixels.data
-  for (let i = 0; i < data.length; i += 4) {
-    if (look.mono) {
-      const tone = data[i + 1]!
-      data[i] = tone * MONO_PAPER[0]
-      data[i + 1] = tone * MONO_PAPER[1]
-      data[i + 2] = tone * MONO_PAPER[2]
-      continue
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      let shade = 0
+      for (let slot = 0; slot < across.length; slot++)
+        shade = Math.max(shade, across[slot]![x]! * down[slot]![y]!)
+      const lift = 1 - (1 - SHADE_LEVEL) * shade
+      const i = (y * canvas.width + x) * 4
+      if (inColour) {
+        data[i] = data[i]! * lift
+        data[i + 1] = data[i + 1]! * lift
+        data[i + 2] = data[i + 2]! * lift
+        continue
+      }
+      const t = restTable[data[i]!]! * lift
+      const entry = Math.round(Math.sqrt(t) * 255) * 3
+      const rise = Math.min(1, t * 8)
+      data[i] = rampTable[entry]! * rise
+      data[i + 1] = rampTable[entry + 1]! * rise
+      data[i + 2] = rampTable[entry + 2]! * rise
     }
-    const entry = data[i]! * 3
-    data[i] = rampTable[entry]!
-    data[i + 1] = rampTable[entry + 1]!
-    data[i + 2] = rampTable[entry + 2]!
   }
   ctx.putImageData(pixels, 0, 0)
 }
@@ -3527,7 +3546,7 @@ onMounted(async () => {
     })
     if (fluidReady) {
       fluid.setContentCanvas(createBlankContent())
-      fluid.setSceneLook(look.light, look.tone, look.mono, look.grade)
+      fluid.setSceneLook(REST_TONE, showsPhotograph ? 1 : 0, touch)
       applyDisplayGains()
       resizeObserver = new ResizeObserver(() => {
         fluid.resize()
@@ -3604,8 +3623,9 @@ onMounted(async () => {
       defaults: { ease: 'expo.out' },
     })
 
-    /* The photograph is revealed by raising its temperature from zero, so it develops out of the
-       ground through the cold end of the ramp instead of fading in as a finished picture. */
+    /* The figure is revealed by raising its gain from zero: as temperature it develops out of
+       the ground through the cold end of the ramp, and in its own colours it comes up out of
+       black, instead of fading in as a finished picture. */
     if (fluidReady) {
       tl.to(displayGains, {
         skin: 1,
@@ -3797,6 +3817,18 @@ onUnmounted(() => {
 
 .chd__nav-link:hover {
   color: #F2EFEA;
+}
+
+.chd__nav-link,
+.chd__foot-link {
+  position: relative;
+}
+
+.chd__nav-link::after,
+.chd__foot-link::after {
+  content: '';
+  position: absolute;
+  inset: -1rem -0.5rem;
 }
 
 .chd__nav-status {
