@@ -5,6 +5,8 @@
 
 | Tanggal | Slug | Rute | Konsep | Verdict (verbatim, dipotong) | Severity |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-25 | [[2026-11-25-concept-2-colour-portraits]] | `/explore/concept/2` | Empat foto edit Billy berwarna sebagai bawaan; sosok termal di `?v=a` | "jadikan ini default /explore/concept/2?v=a dan hapus yang lain … sayya melihat di area dagu aneh … agar kelas foto kualitas photography" | **iterate** (termal jadi bawaan; filter, mutu foto, dan efek sentuh diulang) |
+| 2026-11-25 | [[2026-11-25-concept-2-backdrop-shader]] | `/explore/concept/2` | Shader latar di belakang potret: berkas cahaya netral di kabut fbm (bawaan) + tiga latar termal percobaan; foto berwarna bergrade gelap | "hapus saja shader karna jelek." · "coba jangan hitam putih." | **deleted** (shader dicabut; foto diganti 16 edit berwarna buatan Billy) |
 | 2026-11-24 | [[2026-11-24-concept-2-two-worlds]] | `/explore/concept/2` | Foto IMG_6120 berwarna asli + berkas cahaya netral + paralaks; plasma hanya saat disentuh (sebelumnya hitam-putih) | "jauh lebih baik, tapi masih kurang … saat ada motion dengan muncul liquid plasma juga serasa tidak harmonies … sepertinya filter foto atau shader kurang cocok dan mendukung konsep plasma saya." | iterate |
 | 2026-11-24 | [[2026-11-24-concept-2-purple-glow]] | `/explore/concept/2` | Korona/glow ungu di sekitar sosok saat diam sebagai jawaban atas "tempelan" (empat percobaan latar di rute hidup) | "saat diam glow ungu tersebut entah mengapa saya merasa jelek dan sangat slop" | **rejected** |
 | 2026-11-24 | [[2026-11-24-concept-2-backdrop-pasted]] | `/explore/concept/2` | Foto IMG_6094 utuh sebagai latar termal di ground hitam, nama di depan rambut, layout hero-3 tak berubah | "saat ini masih terasa bahwa foto saya hanya seperti tempelan saja dan feels imersive dan lain lainnya tidak berasa" | **iterate** (butuh latar yang cocok, elemen, efek tinta pada foto) |
@@ -95,6 +97,10 @@
 34. **Eksplorasi di rute hidup** — 1×. Empat percobaan latar dipasang bergantian di rute yang sedang Billy tonton; ia menilai keadaan setengah jadi. Arah baru harus berupa styleframe diam.
 35. **Kata sifat dijawab dengan membuang konsep** — 1× (tiga langkah). "Filter ungu terlalu tajam" → termal dicabut dari foto → hitam-putih → warna asli. Tiap langkah dinilai "lebih baik", sementara tumpang-tindih hue diam↔sentuh turun dari 90–93% ke 0–8%; plasma menjadi tamu di foto orang lain. Tidak ada gate yang mengukur frame diam terhadap frame sentuh.
 36. **"Mati" dijawab dengan menggerakkan foto** — 1×. Paralaks relief + condong ke pointer, padahal aturan 2026-11-20 melarang kehidupan tempelan pada gambar diam. Ditolak: "saya tidak suka juga foto bergerak ketika ada motion".
+37. **Shader latar di belakang potret** — 3× dinilai, 3× ditolak (korona, marmer cair, berkas cahaya), ditambah tiga latar termal yang tidak sempat dinilai. Setiap keluhan "mati" atau "tempelan" dijawab dengan lapisan prosedural di belakang sosok; yang terakhir terukur 1,10:1 di atas ground dengan tepi 0,64%. Dicabut seluruhnya 2026-11-25.
+38. **Foto berwarna yang terbaca hitam-putih** — 1×. Plat warna bergrade gelap (saturasi 82%) menyisakan 3% isi terang yang berkroma; Billy menyebutnya hitam-putih dan membuat sendiri foto berpakaian warna jenuh. Mode warna berkas bukan ukurannya; porsi berkroma frame diam yang diukur.
+39. **Bawaan dipilih melawan ukuran sendiri** — 1×. Tumpang-tindih hue memihak sosok termal (77–84% lawan 22–33%), kritikus juga; warna asli tetap dijadikan bawaan atas tafsir "jangan hitam putih". Billy memilih sosok termal.
+40. **Topeng kelas terbaca di gambar jadi** — 2× (pita abu-biru di rahang pada plat warna; garis kumis dan lubang janggut pada peta suhu). Setiap kelas bertepi keras yang diberi perlakuan berbeda meninggalkan garisnya di wajah.
 
 ## Yang belum pernah dicoba
 

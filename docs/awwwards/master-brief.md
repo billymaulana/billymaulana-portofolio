@@ -22,9 +22,13 @@ Efek pada sosoknya sendiri: *"contoh effect yang keren jika nanti di beri effect
 Verdict putaran 2: *"a bagus tapi layout saya kurang suka"* · *"single dulu saja jika ada interaction baru ada effect"* · *"object juga bagus tapi kurang cocok jika di hero"* · *"meniru layout ini: /hero/hero-3 atau copy dan teruskan"*.
 Verdict rute: *"bagaimana jika photo itu sebagai background"* · *"tidak enak di lihat cuttingnya"* · *"tidak terlihat menyatu di hero"* · *"saya ingin rambut saya terlihat di background hitam"*.
 Ditolak: *"saya tidak suka bentuk shader yang muncul di awal seperti itu karna jelek, hapus saja defaultnya jangan langsung muncul"* · *"saat putih tidak terlihat liqudi"* · *"shader cacat dan jelek"*. · *"b juga jelek kaku"* (gambar diam tanpa gerak tersirat).
+Verdict latar dan keadaan diam (2026-11-24/25): *"saat diam glow ungu tersebut entah mengapa saya merasa jelek dan sangat slop"* · *"shadernya saya kurang suka. saya berharap shader yang cinematic"* · *"saat ada motion dengan muncul liquid plasma juga serasa tidak harmonies"* · *"saya tidak suka juga foto bergerak ketika ada motion"* · *"hapus saja shader karna jelek."* Yang tetap disukai: *"detail dari effect liquid ketika mengenai object itu sudah sangat bagus"*.
+Respons foto terhadap cairan (2026-11-25): *"jika terkena liquid saya ingin seperti ini:https://www.daspritam.in/ lihat foto chain-labs"* — foto tidak diwarnai ulang; pikselnya sendiri terseret aliran, kanal merah terpisah dari hijau-biru, lalu pulih.
 
 **Objek dan foto.** Disukai: *"object liquid glass di hero"* · *"sculpture heronya"* · *"object silver cahayanya"*. Video dihindari: *"overall bagus, MENGHINDARI video"*.
 Foto Billy pernah ditolak karena eksekusinya: *"fotor saya thermal juga tidak rapih. semua yang saya lihat tidak aesthetic."*
+Perlakuan foto saat diam: *"saya masih kurang sreg jika hitam putih fotonya"* · *"konsep /explore/concept/2?v=a jauh lebih baik dibanding hitam putih"* (sosok termal) · *"ganti foto saya dengan ini … dan coba jangan hitam putih."* (2026-11-25, atas 16 foto yang ia buat sendiri: frontal, afro penuh, latar hitam, pakaian warna jenuh).
+Pilihan sesudah melihat keduanya (2026-11-25): *"jadikan ini default /explore/concept/2?v=a dan hapus yang lain"* (sosok termal) · foto berlingkungan sebagai opsi: *"tanpa filter fulu saya ingin foto tanpa filter di edit dulu agar tonenya sesuai"* · mutu: *"toolong buat enak di lihat filternya sayya melihat di area dagu aneh"* · *"saya ingin gunakan dulu preset filter atau apapun agar kelas foto kualitas photography"*.
 
 **Cara bekerja.** *"saya ingin claude tidak disuapi referensi yang anda benar benar meniru tapi mempelajari taste … sisi kreatifitas tersebutlah yang saya capek dan frutstasi jika kaku dan seperti robot semua step by step."*
 Aset: *"saya ingin anda bukan asal gunakan tapi mengolah atau membuat juga assets."* Bila gagal: *"jika jelek ganti konsep hingga mendekati yang saya inginkan"*.
@@ -51,7 +55,7 @@ Fakta dari `app/constants/profile.ts`, satu-satunya sumber konten:
 - Tagline: "Transforming pixels into performance. Building interfaces that move millions."
 - Etos: "Always hunting for that perfect 60fps."
 
-Bahan visual: foto Billy `bahan/profile/IMG_6094` (latar hero; matte orang, rambut, kulit), `6096`, `6111`, `6120`, logo BM, palet termal liquid-2.
+Bahan visual: 16 foto buatan Billy di `bahan/edit okeeeee` (sejak 2026-11-25 menggantikan `bahan/profile/IMG_6094` dan `6120` sebagai latar hero). Dipakai: kente frontal berlatar hitam sebagai sosok termal (bawaan), dan dua foto berlingkungan tanpa filter sebagai opsi (gang bermural `f649ag…`, kamar tiga perempat `wl9v77…`). Logo BM, palet termal liquid-2.
 
 Uji SWAP: bila halaman tetap masuk akal dengan nama lain, konsepnya belum milik Billy.
 Nama Billy adalah subjek halaman, bukan label kecil.
@@ -80,9 +84,12 @@ Panduan halaman (bukan gate per frame): dingin C1–C3 dominan, oranye ≤ 25%, 
 - Layout hero di luar salinan `/hero/hero-3`; font hero baru tanpa spesimen yang ia lihat.
 - Efek pada sosok saat diam (multi-eksposur, jejak); objek sebagai isi hero.
 - Potret sebagai potongan di panggung (topeng, fade pendek); rambut dibuang atau tenggelam di hitam.
-- Pastel, hijau di hero, ground kuning/oranye penuh, putih layar, biru/cyan dominan.
+- Pastel, hijau di hero, ground kuning/oranye penuh, putih layar, biru/cyan dominan. (Catatan 2026-11-25: foto buatan Billy sendiri memuat pakaian kuning/oranye dan hijau neon; belum ada verdict apakah larangan warna ini berlaku untuk pakaian.)
 - Efek yang menyala sendiri saat diam atau langsung muncul di awal tanpa sebab.
-- Gambar diam yang diberi drift atau tear palsu.
+- Gambar diam yang diberi drift atau tear palsu; foto yang digerakkan (paralaks, condong ke pointer).
+- Shader atau glow latar di belakang potret. Ground hitam rata; gambar hanya dari foto dan dari cairan.
+- Keadaan diam yang terbaca hitam-putih (isi terang < 50% berkroma), termasuk foto berwarna yang diredam.
+- Peta suhu wajah yang terputus: garis topeng kelas, lubang dingin di janggut atau mata. Foto yang dipasang sebelum diolah sampai kelas fotografi.
 - Potret garis-pindai Concept 1 diulang; wajah termal yang tidak rapi atau tidak jelas bentuknya.
 - Logam grayscale prosedural.
 - Partikel generik, glassmorphism card, hero tengah dengan CTA, grid tiga kolom.
