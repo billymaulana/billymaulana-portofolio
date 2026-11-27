@@ -880,6 +880,7 @@ function useFluidSimulation() {
   let contentDisplayProgram: ProgramObj | null = null
   let contentTexture: TextureObj | null = null
   let auxTexture: TextureObj | null = null
+  let hotTexture: TextureObj | null = null
   let letterTexture: TextureObj | null = null
   let letterSource: HTMLCanvasElement | null = null
   const letterRect = [0, 0, 0, 0]
@@ -1354,6 +1355,7 @@ function useFluidSimulation() {
 
     uniform sampler2D tMap;
     uniform sampler2D tAux;
+    uniform sampler2D tHot;
     uniform sampler2D tFluid;
     uniform float uMode;
     uniform float uDisplace;
@@ -1586,7 +1588,16 @@ function useFluidSimulation() {
         t = rest + (1.0 - rest) * FELT_SHIFT * min(warmth + contour * 0.9 / FELT_BANDS, 1.0);
       }
       vec3 heat;
-      if (uLook > 4.5) {
+      if (uLook > 5.5) {
+        /* Both states are graded in Photoshop, lit like a low-key portrait: a skin-keyed light
+           with the clothes falling into shadow, a rim of back light through the hair, a slow
+           shutter drag, halation and grain, mapped to violet. The touch crosses to the same
+           portrait exposed brighter. */
+        vec3 rest = texture2D(tAux, at).rgb;
+        vec3 hot = texture2D(tHot, at).rgb;
+        heat = mix(rest, hot, smoothstep(0.0, 0.85, rise)) * uSkinGain * lift * open * mix(0.3, 1.0, uWarm);
+      }
+      else if (uLook > 4.5) {
         /* Black and white at rest, read straight off the photograph; where the pointer has
            warmed the figure, the same pixel in the overheat palette. */
         vec3 shot = texture2D(tAux, at).rgb;
@@ -2534,6 +2545,11 @@ function useFluidSimulation() {
     auxTexture = uploadRaster(auxTexture, source)
   }
 
+  /* The same photograph graded for heat, shown where the pointer has warmed the figure. */
+  function setHotCanvas(source: HTMLCanvasElement) {
+    hotTexture = uploadRaster(hotTexture, source)
+  }
+
   function uploadRaster(existing: TextureObj | null, source: HTMLCanvasElement): TextureObj | null {
     if (!gl)
       return existing
@@ -2624,6 +2640,7 @@ function useFluidSimulation() {
     g.uniform1i(contentDisplayProgram.uniforms.tMap!, contentTexture.attach(0))
     g.uniform1i(contentDisplayProgram.uniforms.tFluid!, dye!.read.attach(1))
     g.uniform1i(contentDisplayProgram.uniforms.tAux!, (auxTexture ?? contentTexture).attach(2))
+    g.uniform1i(contentDisplayProgram.uniforms.tHot!, (hotTexture ?? auxTexture ?? contentTexture).attach(4))
     g.uniform1f(contentDisplayProgram.uniforms.uMode!, contentDisplay.mode)
     g.uniform1f(contentDisplayProgram.uniforms.uDisplace!, contentDisplay.displace)
     g.uniform1f(contentDisplayProgram.uniforms.uChromatic!, contentDisplay.chromatic)
@@ -3347,6 +3364,7 @@ function useFluidSimulation() {
     ditheringTexture = null
     contentTexture = null
     auxTexture = null
+    hotTexture = null
     letterTexture = null
     letterSource = null
     contentDisplayProgram = null
@@ -3365,6 +3383,7 @@ function useFluidSimulation() {
     emitSplat,
     setContentCanvas,
     setAuxCanvas,
+    setHotCanvas,
     setDisplayGains,
     setSceneLook,
     setTouchLook,
@@ -3402,7 +3421,7 @@ interface SceneBox {
   height: number
 }
 
-type Look = 'mono' | 'overheat' | 'infrared' | 'thermal' | 'isotherm' | 'void' | 'noise' | 'colour' | 'grayscale'
+type Look = 'purple' | 'mono' | 'overheat' | 'infrared' | 'thermal' | 'isotherm' | 'void' | 'noise' | 'colour' | 'grayscale'
 
 interface Portrait {
   /* Every portrait is kept as five rasters in one register: the photograph in its own colours,
@@ -3512,6 +3531,7 @@ const PORTRAIT_KEYS = Object.keys(PORTRAITS)
 const LOOKS: Look[] = [
   'overheat',
   'mono',
+  'purple',
   'infrared',
   'thermal',
   'isotherm',
@@ -3521,7 +3541,7 @@ const LOOKS: Look[] = [
   'grayscale',
 ]
 
-function plateSrc(key: string, kind: 'colour' | 'heat' | 'depth' | 'matte'): string {
+function plateSrc(key: string, kind: 'colour' | 'heat' | 'depth' | 'matte' | 'purple-idle' | 'purple-hot'): string {
   return `/assets/images/concept-2/portrait-${key}-${kind}.webp`
 }
 
@@ -3703,6 +3723,7 @@ const LOOK_MODES: Partial<Record<Look, number>> = {
   infrared: 3,
   overheat: 4,
   mono: 5,
+  purple: 6,
 }
 const lookMode = LOOK_MODES[look] ?? 0
 const showsPanel = import.meta.dev && route.query.panel !== '0'
@@ -3731,6 +3752,11 @@ const PANEL_GROUPS: PanelGroup[] = [
         label: 'Mono',
         query: { filter: 'mono' },
         active: look === 'mono',
+      },
+      {
+        label: 'Purple',
+        query: { filter: 'purple' },
+        active: look === 'purple',
       },
       {
         label: 'Fotografis',
@@ -3904,6 +3930,7 @@ let resizeObserver: ResizeObserver | null = null
 let fluidReady = false
 let figureCanvas: HTMLCanvasElement | null = null
 let colourImage: HTMLImageElement | HTMLCanvasElement | null = null
+let hotImage: HTMLImageElement | null = null
 let rampTable: Uint8ClampedArray | null = null
 let restTable: Float32Array | null = null
 let backdropResizeHandler: (() => void) | null = null
@@ -4181,8 +4208,10 @@ function ensureScene(): Promise<boolean> {
   return scenePromise
 }
 
-function photoPlate(): 'colour' {
-  return 'colour'
+function photoPlate(): 'colour' | 'purple-idle' {
+  return look === 'purple'
+    ? 'purple-idle'
+    : 'colour'
 }
 
 async function loadScene(): Promise<boolean> {
@@ -4192,6 +4221,7 @@ async function loadScene(): Promise<boolean> {
       'infrared',
       'overheat',
       'mono',
+      'purple',
     ].includes(look)
       ? loadImage(plateSrc(portraitKey, photoPlate()))
       : null,
@@ -4207,6 +4237,9 @@ async function loadScene(): Promise<boolean> {
   colourImage = colour && look === 'grayscale'
     ? toGrayscale(colour)
     : colour
+  hotImage = look === 'purple'
+    ? await loadImage(plateSrc(portraitKey, 'purple-hot'))
+    : null
   return figureCanvas !== null && (!showsPhotograph || colourImage !== null)
 }
 
@@ -4514,6 +4547,13 @@ function paintSceneContent() {
   colours.height = canvas.height
   paintColours(colours, ratio, false)
   fluid.setAuxCanvas(colours)
+  if (!hotImage)
+    return
+  const hot = document.createElement('canvas')
+  hot.width = canvas.width
+  hot.height = canvas.height
+  paintColours(hot, ratio, false, hotImage)
+  fluid.setHotCanvas(hot)
 }
 
 /* The colour plate sits on black and is laid out exactly like the figure, so the two rasters can

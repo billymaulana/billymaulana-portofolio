@@ -5,6 +5,7 @@
 
 | Tanggal | Slug | Rute | Konsep | Verdict (verbatim, dipotong) | Severity |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-26 | [[2026-11-26-concept-3-styleframes]] | styleframe concept-3 | a SABLON (halftone, kursor = rakel) · b 60 FRAME (jejak stroboskop di grid); Archivo Expanded 800 cap 96 px; c dicabut sebelum presentasi | "konsep masih nanggung kurang filosofis. dan hasil layout juga jelek kurang bold dan tidak beda jauh dengan concept 2 malah lebih bagu concept 2 …" | rejected |
 | 2026-11-25 | [[2026-11-25-concept-2-kinetic-hair-crop]] | `/explore/concept/2` | Foto berwarna di depan nama; `touch=kinetic` (foto terdorong aliran + jejak, tinta tembus di atasnya); rambut dirapikan morfologi | "effect di photo saya jelek, dan saya ragu apakah liquid perlu dipertahankan jika diatas foto saya. dan cropping dari foto saya tidak rapih seperti di area rambut. saya ingin kualitas awwwards …" | **rejected** (efek sentuh dan potongan rambut diulang; cairan dipindah ke belakang sosok) |
 | 2026-11-25 | [[2026-11-25-concept-2-filters-hair]] | `/explore/concept/2` | Enam foto × empat filter (colour, grayscale, thermal, void); plat 2× Lanczos, matte RVM, tepi rambut alley dari alpha plat lama | "Terlalu ungu filternya … kualitas photographer, agar tetap layak bukan asal filter … Disisi rambut jelek seperti rusak fotonya tolong buat agar hd" | **iterate** (filter, resolusi, dan tepi rambut diulang) |
 | 2026-11-25 | [[2026-11-25-concept-2-colour-portraits]] | `/explore/concept/2` | Empat foto edit Billy berwarna sebagai bawaan; sosok termal di `?v=a` | "jadikan ini default /explore/concept/2?v=a dan hapus yang lain … sayya melihat di area dagu aneh … agar kelas foto kualitas photography" | **iterate** (termal jadi bawaan; filter, mutu foto, dan efek sentuh diulang) |
@@ -57,6 +58,7 @@
 | **Clash Display 700** | Concept 2 styleframe a (2026-11-23) | Bukan famili yang ditolak: huruf dijadikan kaca bening di atas fluida, bagian tanpa panas jatuh ke kontras 1,18:1 — "typography tidak terbaca" |
 | **PP Editorial New Ultrabold** | Concept 2 styleframe b (2026-11-23) | Serif dengan tekstur lava/kerak di-clip di dalam huruf — terbaca efek teks, "kaku" |
 | **Cabinet Grotesk 800** | Concept 2 styleframe c, `/hero/hero-5` (2026-11-23) | Paling dekat ("paling mending c"), tetapi "y" tertutup kepala 26,8% dan "ll" dilumuri panas — "font bentuk shape tidak jelas". **Ditolak eksplisit sebagai font hero** di `/hero/hero-5`: "alasannya font heronya jelek" — penolakan preferensi famili, bukan eksekusi (geometri lolos 9 viewport) |
+| **Archivo Expanded 800** | Concept 3 styleframe a/b (2026-11-26) | Dipilih Billy di spesimen buta 2026-11-23, tetapi fit-to-width selebar layar hanya cap 96 px di 1440, dibanding Bebas Neue 188 px di concept 2 yang disetujui. Bukan famili yang ditolak; masalahnya massa nama di konteks: "kurang bold" |
 
 ## Pola kegagalan yang berulang
 
