@@ -3446,7 +3446,7 @@ interface Portrait {
    viewport and by nothing else. */
 const PORTRAITS: Record<string, Portrait> = {
   pattern: {
-    look: 'overheat',
+    look: 'purple',
     width: 1216,
     height: 1536,
     axis: 607.5,
@@ -3456,7 +3456,7 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 1459,
   },
   school: {
-    look: 'overheat',
+    look: 'purple',
     width: 1216,
     height: 1536,
     axis: 608,
@@ -3466,7 +3466,7 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 1475,
   },
   mural: {
-    look: 'overheat',
+    look: 'purple',
     width: 1216,
     height: 1536,
     axis: 607.5,
@@ -3476,7 +3476,7 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 1536,
   },
   neon: {
-    look: 'overheat',
+    look: 'purple',
     width: 1792,
     height: 2400,
     axis: 788,
@@ -3486,7 +3486,7 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 2245,
   },
   studio: {
-    look: 'overheat',
+    look: 'purple',
     width: 2240,
     height: 3000,
     axis: 1142,
@@ -3496,7 +3496,7 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 3000,
   },
   varsity: {
-    look: 'overheat',
+    look: 'purple',
     width: 2280,
     height: 2880,
     axis: 1124,
@@ -3506,7 +3506,7 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 2719,
   },
   geometric: {
-    look: 'overheat',
+    look: 'purple',
     width: 2240,
     height: 2988,
     axis: 1108,
@@ -3516,7 +3516,7 @@ const PORTRAITS: Record<string, Portrait> = {
     sleeveRow: 2988,
   },
   room: {
-    look: 'overheat',
+    look: 'purple',
     width: 2240,
     height: 2988,
     axis: 980,
@@ -3706,7 +3706,7 @@ const nameDepth: NameDepth = requestedDepth ?? (route.query.front === 'photo'
 const liquidLook = route.query.liquid
   ? Math.max(0, LIQUIDS.findIndex(name => name === route.query.liquid))
   : LIQUIDS.indexOf('thermal')
-const motion = MOTIONS.find(name => name === route.query.motion) ?? 'tear'
+const motion = MOTIONS.find(name => name === route.query.motion) ?? 'wave'
 const MOTION_LOOK = {
   shatter: { mode: 2, reach: SHATTER.reach },
   tear: { mode: 1, reach: RIPPLE.tear },
