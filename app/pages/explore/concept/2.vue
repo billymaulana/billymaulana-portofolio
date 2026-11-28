@@ -604,79 +604,62 @@ const SCAN = {
   gap: 0.18,
 }
 const COLD_CHROMA = 0.3
-/* A thrown piece of the photograph covers half of its reach at a stored drag of `knee`. */
-const DRAG = {
-  knee: 160,
-}
-
-/* A harder touch breaks the photograph into shards, seven CSS px tall and three times as wide, laid in
-   courses. Each shard is carried by the liquid under its centre, turned off the stroke by up to
-   half of `spin` radians, and glows through the warm end of the ramp in proportion to how far it
-   has been thrown. */
-const SHATTER = {
-  width: 21,
-  height: 7,
-  reach: 90,
-  spin: 1.4,
+/* A dragged piece of the photograph glows through the warm end of the ramp, between `ember`, by
+   `glow` of how far it has been carried. */
+const TOUCH_GLOW = {
   glow: 0.85,
   ember: [0.7, 0.985],
 }
 
-/* The other answers to a touch. `tear` drags the photograph itself along the stored stroke, up to
-   `tear` CSS px, splitting it into a hot leading copy and a cold trailing one; `echo` leaves four
-   copies of the figure behind the stroke, spaced over `echo` CSS px and each a step colder;
-   `liquid` bends the photograph through the liquid like glass, by `liquid` CSS px per unit of the
-   heat's slope, so it warps hardest along the liquid's edges; `smear` drags each
-   touched row out along the stroke, up to `smear` CSS px, into a pale streak; `wave` ripples the
-   touched rows sideways by up to `wave` CSS px, like heat haze over water. */
+/* The answers to a touch. `tear` drags the photograph itself along the stored stroke, up to
+   `tear` CSS px, splitting it into a hot leading copy and a cold trailing one; `liquid` bends the
+   photograph through the liquid like glass, by `liquid` CSS px per unit of the heat's slope, so it
+   warps hardest along the liquid's edges; `wave` ripples the touched rows sideways by up to
+   `wave` CSS px, like heat haze over water. */
 const RIPPLE = {
   tear: 120,
-  echo: 150,
   liquid: 70,
-  smear: 140,
   wave: 16,
+  shift: 14,
+  glitch: 70,
+}
+
+/* Effects laid over whichever look is chosen, adapted from the three.js post-processing shaders
+   (MIT): `halftone` redraws the figure as a print screen of `cell` CSS px turned 45 degrees, each
+   dot sized by its tone as in HalftoneShader; `film` adds FilmShader's grain at `grain` with
+   scanlines every `scan` CSS px; `chroma` splits red from blue by `chroma` CSS px as RGBShiftShader
+   does. The touch answers `shift` and `glitch` follow RGBShiftShader and DigitalGlitch, the glitch
+   tearing rows `row` CSS px tall. */
+const EFFECTS = [
+  'none',
+  'halftone',
+  'film',
+  'chroma',
+] as const
+
+const EFFECT = {
+  cell: 7,
+  grain: 0.35,
+  scan: 3,
+  chroma: 2,
+  row: 9,
 }
 
 const MOTIONS = [
   'wave',
-  'shatter',
   'tear',
-  'echo',
   'liquid',
-  'smear',
-  'still',
+  'shift',
+  'glitch',
 ] as const
 
-/* What the liquid itself looks like: the thermal ramp of the figure, its warm end only, the
-   ramp cut into isotherms with a dark line on each boundary, as a thermal camera draws heat, or
-   felt: the experience is felt, not seen, so the air the pointer moves stays almost invisible and
-   the touch shows only where something receives it, as heat in the figure and as the letters it
-   turns over. */
+/* What the liquid itself looks like: the thermal ramp of the figure, its warm end only, or the
+   ramp cut into isotherms with a dark line on each boundary, as a thermal camera draws heat. */
 const LIQUIDS = [
   'thermal',
   'ember',
   'contour',
-  'felt',
 ] as const
-
-/* The felt touch. Over the bare ground the moving air keeps `air` of its colour, enough to read as
-   a shimmer, and under the letters it is cream, so a touched letter turns to its dark negative; in
-   the figure the heat it leaves closes up to `shift` of the way to the top of the ramp, stepped
-   into `bands` isotherms with a contour on each, and the ink fades over 1 / `dissipation` seconds
-   so a touch lingers the way a warm handprint does. The warmth spreading through the whole body
-   keeps `spread` of its strength, so the print stays where the touch was, and the heat haze moves
-   the picture by `shimmer` of its usual reach. */
-const FELT = {
-  air: 0.025,
-  shift: 0.62,
-  bands: 6,
-  dissipation: 0.55,
-  spread: 0.35,
-  shimmer: 0.35,
-}
-
-/* Isotherm zones for the photograph's look and for the contour liquid. */
-const ISOTHERMS = 9
 
 /* Motion becomes heat. The figure is shown through the liquid's own ramp, read off a temperature
    plate graded in Photoshop (skin brightest, cloth and hair cooler, local contrast kept), between
@@ -692,27 +675,7 @@ const INFRA = {
   lag: 0.38,
 }
 
-/* The photographic infrared: the photograph's luminance raised to `gamma` and scaled by
-   `exposure` carries the light, the temperature only its hue, held to `chroma` of the ramp's
-   colour at rest. The coldest parts keep `cold` of their light so the face stays the brightest
-   thing in the frame however pale the cloth is. Heat multiplies the light by up to 1 + `lift`,
-   less the brighter it already is so a lit face keeps room for colour, and adds `glow` of it,
-   so a touched patch brightens with its own texture instead of turning into a flat disc. Above
-   `knee` the light rolls off towards white instead of clipping, so a heated face keeps its
-   modelling. Heat moves the hue only `heat` of the usual way up the ramp, so a touched face
-   peaks in amber and gold rather than in pale yellow. */
-const PHOTOGRAPHIC = {
-  gamma: 0.9,
-  exposure: 1.0,
-  cold: 0.2,
-  knee: 0.6,
-  lift: 0.55,
-  glow: 0.1,
-  heat: 0.6,
-  chroma: 0.95,
-}
-
-/* The overheat look: the photograph's luminance between `black` and `white` is spread across the
+/* The overheat palette, used where the pointer warms the monochrome figure: the photograph's luminance between `black` and `white` is spread across the
    ramp from `lo` to `hi`; the coldest parts of the temperature plate reach only `cold` of that
    span. The pointer's heat closes `shift` of the remaining way to the top, only `dark` of it in the
    deepest shadows so touched hair warms strand by strand instead of as one flat disc, and `grain`
@@ -731,24 +694,30 @@ const OVERHEAT = {
 /* The monochrome look, after the sharp black-and-white editorial portraits in the reference
    folder: the photograph's own luminance between `black` and `white`, bent by `gamma`, with no
    softening at all. Where the pointer warms the figure it turns to the overheat palette. */
+/* Light in the room behind the figure, as in the violet portrait references: `haze` is a soft
+   pool of the look's own colour coming from the upper left, the side the rim light falls from,
+   `beam` a slanting shaft from the top, each held to `strength` and kept off the footer corners.
+   It never follows the outline of the figure. */
+const BACKDROPS = [
+  'haze',
+  'beam',
+  'none',
+] as const
+
+const BACKDROP = {
+  strength: 0.3,
+  colours: {
+    purple: [92, 52, 214],
+    duotone: [70, 44, 190],
+    mono: [120, 120, 128],
+  } as Record<string, [number, number, number]>,
+  fallback: [60, 30, 170] as [number, number, number],
+}
+
 const MONO = {
   black: 0.04,
   white: 0.86,
   gamma: 1.15,
-}
-
-/* How the name answers the liquid. `invert` leaves it to the masthead canvas, whose difference
-   blend turns each letter into the negative of the ink under it; `marble` draws it on the stage,
-   read back along the stored stroke by `displace` per unit of drag so the letters swirl with the
-   ink, edged in the liquid's own hot colour where a sample `fringe` further along differs. */
-const TEXT_MODES = [
-  'invert',
-  'marble',
-] as const
-
-const MARBLE = {
-  displace: 0.001,
-  fringe: 0.003,
 }
 
 /* The heat the pointer leaves in the figure: moving across it at `full` CSS px per millisecond
@@ -896,7 +865,9 @@ function useFluidSimulation() {
     skinGain: 1,
     warm: 1,
     lookMode: 0,
-    textMode: 0,
+    fx: 0,
+    backdrop: 0,
+    backdropColour: [0, 0, 0] as [number, number, number],
     heat: [0, 0, 0, 0] as [number, number, number, number],
     photo: 0,
     scan: 0,
@@ -1366,8 +1337,10 @@ function useFluidSimulation() {
     uniform float uSkinGain;
     uniform float uWarm;
     uniform float uLook;
-    uniform float uText;
+    uniform float uBackdrop;
+    uniform vec3 uBackdropColour;
     uniform float uClock;
+    uniform float uFx;
     uniform vec3 uInfra;
     uniform vec4 uHeat;
     uniform float uPhoto;
@@ -1401,28 +1374,16 @@ function useFluidSimulation() {
     const float SCAN_DUTY = ${SCAN.duty.toFixed(4)};
     const float SCAN_GAP = ${SCAN.gap.toFixed(4)};
     const float COLD_CHROMA = ${COLD_CHROMA.toFixed(4)};
-    const float DRAG_KNEE = ${DRAG.knee.toFixed(4)};
-    const vec2 SHARD = vec2(${SHATTER.width.toFixed(4)}, ${SHATTER.height.toFixed(4)});
-    const float SHARD_SPIN = ${SHATTER.spin.toFixed(4)};
-    const float SHARD_GLOW = ${SHATTER.glow.toFixed(4)};
-    const float EMBER_LO = ${SHATTER.ember[0]!.toFixed(4)};
-    const float EMBER_HI = ${SHATTER.ember[1]!.toFixed(4)};
+    const float FX_CELL = ${EFFECT.cell.toFixed(4)};
+    const float FX_GRAIN = ${EFFECT.grain.toFixed(4)};
+    const float FX_SCAN = ${EFFECT.scan.toFixed(4)};
+    const float FX_CHROMA = ${EFFECT.chroma.toFixed(4)};
+    const float FX_ROW = ${EFFECT.row.toFixed(4)};
+    const float SHARD_GLOW = ${TOUCH_GLOW.glow.toFixed(4)};
+    const float EMBER_LO = ${TOUCH_GLOW.ember[0]!.toFixed(4)};
+    const float EMBER_HI = ${TOUCH_GLOW.ember[1]!.toFixed(4)};
     const float INFRA_SHIFT = ${INFRA.shift.toFixed(4)};
-    const float MARBLE_DISPLACE = ${MARBLE.displace.toFixed(5)};
-    const float MARBLE_FRINGE = ${MARBLE.fringe.toFixed(5)};
-    const float ISOTHERMS = ${ISOTHERMS.toFixed(4)};
-    const float FELT_AIR = ${FELT.air.toFixed(4)};
-    const float FELT_SHIFT = ${FELT.shift.toFixed(4)};
-    const float FELT_BANDS = ${FELT.bands.toFixed(4)};
-    const float FELT_SPREAD = ${FELT.spread.toFixed(4)};
     const float INFRA_LAG = ${INFRA.lag.toFixed(4)};
-    const float PHOTO_GAMMA = ${PHOTOGRAPHIC.gamma.toFixed(4)};
-    const float PHOTO_EXPOSURE = ${PHOTOGRAPHIC.exposure.toFixed(4)};
-    const float PHOTO_LIFT = ${PHOTOGRAPHIC.lift.toFixed(4)};
-    const float PHOTO_COLD = ${PHOTOGRAPHIC.cold.toFixed(4)};
-    const float PHOTO_GLOW = ${PHOTOGRAPHIC.glow.toFixed(4)};
-    const float PHOTO_KNEE = ${PHOTOGRAPHIC.knee.toFixed(4)};
-    const float PHOTO_HEAT = ${PHOTOGRAPHIC.heat.toFixed(4)};
     const float OVER_BLACK = ${OVERHEAT.black.toFixed(4)};
     const float OVER_WHITE = ${OVERHEAT.white.toFixed(4)};
     const float OVER_LO = ${OVERHEAT.lo.toFixed(4)};
@@ -1431,10 +1392,10 @@ function useFluidSimulation() {
     const float OVER_SHIFT = ${OVERHEAT.shift.toFixed(4)};
     const float OVER_GRAIN = ${OVERHEAT.grain.toFixed(4)};
     const float OVER_DARK = ${OVERHEAT.dark.toFixed(4)};
+    const float BACKDROP_STRENGTH = ${BACKDROP.strength.toFixed(4)};
     const float MONO_BLACK = ${MONO.black.toFixed(4)};
     const float MONO_WHITE = ${MONO.white.toFixed(4)};
     const float MONO_GAMMA = ${MONO.gamma.toFixed(4)};
-    const float PHOTO_CHROMA = ${PHOTOGRAPHIC.chroma.toFixed(4)};
     const vec3 GROUND = vec3(${GROUND.map(channel => (channel / 255).toFixed(5)).join(', ')});
 
     float hash1(float n) {
@@ -1466,18 +1427,6 @@ function useFluidSimulation() {
       return dot(c, vec3(0.2126, 0.7152, 0.0722));
     }
 
-    vec3 withLuma(vec3 c, float l) {
-      vec3 d = c + (l - lumaOf(c));
-      float mid = lumaOf(d);
-      float lo = min(min(d.r, d.g), d.b);
-      float hi = max(max(d.r, d.g), d.b);
-      if (lo < 0.0)
-        d = mid + (d - mid) * mid / max(mid - lo, 1e-4);
-      if (hi > 1.0)
-        d = mid + (d - mid) * (1.0 - mid) / max(hi - mid, 1e-4);
-      return d;
-    }
-
     vec3 figureColour(float t) {
       vec3 c = max(thermal(t) - C0, 0.0);
       float grey = dot(c, vec3(0.2126, 0.7152, 0.0722));
@@ -1499,21 +1448,6 @@ function useFluidSimulation() {
       return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
     }
 
-    /* A second ramp for the speckled look: deep indigo through blue and cyan to a hard yellow,
-       the palette of an older thermal sensor. */
-    vec3 sensorColour(float t) {
-      t = clamp(t, 0.0, 1.0);
-      if (t < 0.3)
-        return mix(vec3(0.03, 0.02, 0.18), vec3(0.14, 0.09, 0.58), smoothstep(0.0, 0.3, t));
-      if (t < 0.5)
-        return mix(vec3(0.14, 0.09, 0.58), vec3(0.08, 0.38, 0.98), smoothstep(0.3, 0.5, t));
-      if (t < 0.68)
-        return mix(vec3(0.08, 0.38, 0.98), vec3(0.22, 0.88, 0.98), smoothstep(0.5, 0.68, t));
-      if (t < 0.86)
-        return mix(vec3(0.22, 0.88, 0.98), vec3(0.96, 0.94, 0.24), smoothstep(0.68, 0.86, t));
-      return mix(vec3(0.96, 0.94, 0.24), vec3(1.0, 0.98, 0.84), smoothstep(0.86, 1.0, t));
-    }
-
     float letterAt(vec2 at) {
       if (uTextRect.z <= 0.0)
         return 0.0;
@@ -1532,20 +1466,6 @@ function useFluidSimulation() {
       for (int i = 0; i < ${BEHIND_SLOTS}; i++)
         back = max(back, step(uBehind[i].x, x) * step(x, uBehind[i].y));
       return back;
-    }
-
-    /* Heat cut into isotherms with a hard edge, keeping a quarter of the photograph's own
-       gradation inside each zone so its detail still reads. Each boundary is drawn in the colour of
-       the zone below it rather than darkened, since a darkened yellow reads as olive, a colour the
-       ramp does not hold. */
-    vec3 isotherm(float t) {
-      t = clamp(t, 0.0, 1.0);
-      float zone = (floor(t * ISOTHERMS) + 0.5) / ISOTHERMS;
-      float edge = fract(t * ISOTHERMS);
-      float line = 1.0 - smoothstep(0.0, 0.05, min(edge, 1.0 - edge));
-      vec3 inside = figureColour(mix(zone, t, 0.25));
-      vec3 below = figureColour(max(zone - 1.0 / ISOTHERMS, 0.0));
-      return mix(inside, below, line * 0.8);
     }
 
     /* A gradient map over the photograph across the whole ramp, the way a thermal print reads:
@@ -1573,20 +1493,8 @@ function useFluidSimulation() {
       float body = plate.a * uSkinGain * lift * open;
       float lag = INFRA_LAG * (1.0 - level);
       float rise = smoothstep(lag, lag + 0.3, boost) * boost;
-      if (uLiquid > 2.5)
-        rise *= 0.55 + 0.45 * smoothstep(0.02, 0.35, level);
       float rest = mix(uInfra.x, uInfra.y, pow(level, uInfra.z)) * mix(0.3, 1.0, uWarm);
       float t = rest + (1.0 - rest) * INFRA_SHIFT * rise;
-      if (uLiquid > 2.5 && uLook < 2.5) {
-        /* The warmth keeps its own gradient so its outer edge fades into the cold body instead of
-           standing as a patch; the isotherms are drawn on top of it as thin contours, and only
-           where the heat is already well inside the print. */
-        float banded = rise * FELT_BANDS;
-        float stepped = floor(banded) / FELT_BANDS;
-        float contour = (1.0 - smoothstep(0.0, 0.07, fract(banded))) * smoothstep(1.2 / FELT_BANDS, 1.8 / FELT_BANDS, rise);
-        float warmth = mix(rise, stepped, 0.35);
-        t = rest + (1.0 - rest) * FELT_SHIFT * min(warmth + contour * 0.9 / FELT_BANDS, 1.0);
-      }
       vec3 heat;
       if (uLook > 5.5) {
         /* Both states are graded in Photoshop, lit like a low-key portrait: a skin-keyed light
@@ -1605,31 +1513,6 @@ function useFluidSimulation() {
         float tone = pow(smoothstep(MONO_BLACK, MONO_WHITE, light), MONO_GAMMA) * mix(0.3, 1.0, uWarm);
         heat = mix(vec3(tone), overheatColour(light, level, rise), smoothstep(0.0, 0.6, rise)) * body;
       }
-      else if (uLook > 3.5) {
-        vec3 shot = texture2D(tAux, at).rgb;
-        float light = clamp(lumaOf(shot) / max(plate.a, 0.05), 0.0, 1.0);
-        heat = overheatColour(light, level, rise) * body;
-      }
-      else if (uLook > 2.5) {
-        /* The photograph keeps its own light and the temperature only gives it colour, as a
-           gradient map laid over it in Color blend: the shading of the face, the strands of the
-           hair and the print of the cloth stay where the camera put them. Heat brightens the
-           picture as well as warming its hue, and lets its colour run fuller. */
-        vec3 shot = texture2D(tAux, at).rgb;
-        float light = pow(clamp(lumaOf(shot) / max(plate.a, 0.05), 0.0, 1.0), PHOTO_GAMMA);
-        float warmth = mix(PHOTO_COLD, 1.0, smoothstep(0.15, 0.75, level));
-        float lum = light * PHOTO_EXPOSURE * warmth * mix(0.3, 1.0, uWarm);
-        lum = lum * (1.0 + rise * PHOTO_LIFT * (1.0 - lum)) + rise * PHOTO_GLOW * light;
-        if (lum > PHOTO_KNEE)
-          lum = PHOTO_KNEE + (1.0 - PHOTO_KNEE) * (1.0 - exp((PHOTO_KNEE - lum) / (1.0 - PHOTO_KNEE)));
-        float warmed = rest + (1.0 - rest) * INFRA_SHIFT * PHOTO_HEAT * rise;
-        vec3 tint = withLuma(figureColour(clamp(warmed, 0.0, 1.0)), lum);
-        heat = mix(vec3(lum), tint, mix(PHOTO_CHROMA, 0.92, rise)) * body;
-      }
-      else if (uLook > 1.5)
-        heat = sensorColour(t + (grain(gl_FragCoord.xy) - 0.5) * 0.1) * body;
-      else if (uLook > 0.5)
-        heat = isotherm(t) * body;
       else
         heat = figureColour(scanned(clamp(t, 0.0, 1.0), plate.g)) * body;
       vec3 photo = texture2D(tAux, at).rgb * uSkinGain * lift * open;
@@ -1647,7 +1530,7 @@ function useFluidSimulation() {
     }
 
     vec4 driftAt(vec2 px) {
-      if (uMotion < 0.5 || uReach <= 0.0 || (uMotion > 2.5 && uMotion < 3.5) || (uMotion > 4.5 && uMotion < 5.5))
+      if (uReach <= 0.0 || uMotion > 6.5)
         return vec4(0.0);
       if (uMotion > 5.5) {
         vec2 at = px / uView;
@@ -1661,30 +1544,13 @@ function useFluidSimulation() {
         float wave = sin(px.y * 0.34 + uClock * 5.2) * 0.6 + sin(px.y * 0.11 - uClock * 2.3) * 0.4;
         return vec4(uReach * swell * wave, 0.0, swell * 0.55, 0.0);
       }
-      if (uMotion < 1.5) {
-        vec3 ink = texture2D(tFluid, px / uView).rgb;
-        float grip = smoothstep(0.04, 0.45, clamp(ink.b, 0.0, 1.3) * uInkGain);
-        vec2 dragged = ink.rg * 0.45;
-        float span = length(dragged);
-        if (span > uReach)
-          dragged *= uReach / span;
-        return vec4(dragged * grip, grip * 0.4, grip);
-      }
-      float course = floor(px.y / SHARD.y);
-      float bond = mod(course, 2.0) * 0.5 * SHARD.x;
-      vec2 cell = vec2(floor((px.x + bond) / SHARD.x), course);
-      vec2 centre = vec2((cell.x + 0.5) * SHARD.x - bond, (cell.y + 0.5) * SHARD.y);
-      vec3 drag = texture2D(tFluid, centre / uView).rgb;
-      float grip = smoothstep(0.06, 0.55, clamp(drag.b, 0.0, 1.3) * uInkGain);
-      if (grip <= 0.0)
-        return vec4(0.0);
-      vec2 thrown = drag.rg / (length(drag.rg) + DRAG_KNEE);
-      float spin = (hash1(cell.x * 3.91 + cell.y * 17.3) - 0.5) * SHARD_SPIN;
-      thrown = vec2(thrown.x * cos(spin) - thrown.y * sin(spin), thrown.x * sin(spin) + thrown.y * cos(spin));
-      float weight = mix(0.35, 1.0, hash1(cell.x * 7.13 + cell.y * 31.7));
-      vec2 move = uReach * weight * grip * thrown;
-      float glow = clamp(length(thrown) * weight * 1.6, 0.0, 1.0) * grip;
-      return vec4(move, glow, 0.0);
+      vec3 ink = texture2D(tFluid, px / uView).rgb;
+      float grip = smoothstep(0.04, 0.45, clamp(ink.b, 0.0, 1.3) * uInkGain);
+      vec2 dragged = ink.rg * 0.45;
+      float span = length(dragged);
+      if (span > uReach)
+        dragged *= uReach / span;
+      return vec4(dragged * grip, grip * 0.4, grip);
     }
 
     vec3 toStage(vec3 shown) {
@@ -1696,7 +1562,7 @@ function useFluidSimulation() {
        heat sits at one value across the whole core of a stroke and would draw it as a single flat
        zone instead of nested isotherms. */
     vec3 liquidColour(float h, vec2 at) {
-      if (uLiquid < 0.5 || uLiquid > 2.5)
+      if (uLiquid < 0.5)
         return max(thermal(h) - C0, 0.0);
       if (uLiquid < 1.5)
         return max(thermal(mix(0.58, 1.0, h)) - C0, 0.0) * smoothstep(0.0, 0.25, h);
@@ -1763,29 +1629,14 @@ function useFluidSimulation() {
         vec2 px = gl_FragCoord.xy * uPx;
         vec4 drift = driftAt(px);
         vec2 slid = uv - drift.xy / uView;
-        vec2 mush = uText > 0.5
-          ? vel * MARBLE_DISPLACE
-          : vec2(0.0);
-        float letter = letterAt(uv - mush) * (uText > 0.5 ? uLetters : 1.0);
-        float back = behindAt(uv - mush);
+        float letter = letterAt(uv);
+        float back = behindAt(uv);
         float open = 1.0 - letter * (1.0 - back);
         float matte = texture2D(tMap, slid).a * clamp(uSkinGain, 0.0, 1.0) * open;
         /* Heat in the figure: where the ink lies now, and the region the pointer has warmed,
            spreading from where it last crossed the figure. */
-        float felt = step(2.5, uLiquid);
-        float softPresence = presence;
-        if (felt > 0.5) {
-          /* The solver keeps the front of a stroke sharp; heat soaking into a body does not, so
-             the felt print reads the ink averaged over a small ring. */
-          vec2 r = vec2(14.0) / uView;
-          softPresence = presence * 0.2;
-          softPresence += clamp(texture2D(tFluid, vUv + vec2(r.x, 0.0)).b, 0.0, 1.6) * 0.2;
-          softPresence += clamp(texture2D(tFluid, vUv - vec2(r.x, 0.0)).b, 0.0, 1.6) * 0.2;
-          softPresence += clamp(texture2D(tFluid, vUv + vec2(0.0, r.y)).b, 0.0, 1.6) * 0.2;
-          softPresence += clamp(texture2D(tFluid, vUv - vec2(0.0, r.y)).b, 0.0, 1.6) * 0.2;
-        }
-        float soaked = mix(smoothstep(0.03, 0.45, presence * uInkGain), 1.0 - exp(-softPresence * uInkGain * 1.1), felt);
-        float warmed = (1.0 - smoothstep(uHeat.z * 0.55, uHeat.z, distance(px, uHeat.xy))) * uHeat.w * mix(1.0, FELT_SPREAD, felt);
+        float soaked = smoothstep(0.03, 0.45, presence * uInkGain);
+        float warmed = (1.0 - smoothstep(uHeat.z * 0.55, uHeat.z, distance(px, uHeat.xy))) * uHeat.w;
         float boost = clamp(max(soaked, warmed), 0.0, 1.0);
         vec3 figure = figureAt(slid, lift, open, boost);
         if (matte > 0.001) {
@@ -1810,70 +1661,87 @@ function useFluidSimulation() {
           figure = max(figure, max(thermal(0.3) - C0, 0.0) * trailTone * 1.6 * drift.w);
         }
 
-        /* Echoes: copies of the figure left behind the stroke, each a step further and colder,
-           like a thermal camera's stroboscope. */
-        if (uMotion > 4.5 && uMotion < 5.5) {
-          float grip = smoothstep(0.05, 0.5, presence * uInkGain);
+        if (uMotion > 6.5 && matte > 0.001) {
+          vec3 stroke = texture2D(tFluid, vUv).rgb;
+          float grip = smoothstep(0.04, 0.45, clamp(stroke.b, 0.0, 1.3) * uInkGain);
           if (grip > 0.001) {
-            vec2 toward = vel / (length(vel) + DRAG_KNEE);
-            vec3 echoes = vec3(0.0);
-            for (int i = 1; i <= 4; i++) {
-              float k = float(i);
-              vec2 at = slid + toward * uReach * k / 4.0 / uView;
-              vec3 ghost = figureAt(at, lift, 1.0, boost);
-              float tone = dot(ghost, vec3(0.2126, 0.7152, 0.0722));
-              vec3 tinted = max(thermal(clamp(0.78 - 0.13 * k + 0.3 * tone, 0.0, 1.0)) - C0, 0.0) * texture2D(tMap, at).a;
-              echoes = max(echoes, tinted * (1.0 - k * 0.16));
+            vec2 toward = stroke.rg / (length(stroke.rg) + 40.0);
+            if (uMotion < 7.5) {
+              vec2 off = toward * uReach * grip / uView;
+              vec3 red = figureAt(slid + off, lift, open, boost);
+              vec3 blue = figureAt(slid - off, lift, open, boost);
+              figure = vec3(red.r, figure.g, blue.b);
             }
-            figure = mix(figure, max(figure, echoes), grip);
+            else {
+              float tick = floor(uClock * 12.0);
+              float band = floor(px.y / FX_ROW);
+              float torn = step(1.0 - grip * 0.85, hash1(band * 1.7 + tick));
+              vec2 jump = vec2((hash1(band * 3.1 + tick * 0.7) - 0.5) * uReach * 2.0 * torn, 0.0) / uView;
+              vec2 off = vec2(uReach * 0.12 * grip, 0.0) / uView;
+              vec3 red = figureAt(slid + jump + off, lift, open, boost);
+              vec3 green = figureAt(slid + jump, lift, open, boost);
+              vec3 blue = figureAt(slid + jump - off, lift, open, boost);
+              figure = mix(figure, vec3(red.r, green.g, blue.b), grip);
+              figure += (grain(floor(px * 0.5) + tick) - 0.5) * 0.3 * grip * torn;
+            }
           }
         }
 
-        /* A smeared row: the photograph read back along the stroke and averaged into a pale
-           streak that can run past the figure's edge. */
-        if (uMotion > 2.5 && uMotion < 3.5) {
-          float row = floor(px.y / 2.0);
-          vec3 stroke = texture2D(tFluid, vec2(vUv.x, (row + 0.5) * 2.0 / uView.y)).rgb;
-          float grip = smoothstep(0.05, 0.5, clamp(stroke.b, 0.0, 1.3) * uInkGain);
-          if (grip > 0.001) {
-            float toward = stroke.r >= 0.0 ? 1.0 : -1.0;
-            float reachPx = uReach * grip * mix(0.25, 1.0, hash1(row * 7.31 + 1.7));
-            vec3 trail = vec3(0.0);
-            for (int i = 1; i <= 6; i++)
-              trail += figureAt(slid - vec2(toward * reachPx * float(i) / 6.0 / uView.x, 0.0), lift, 1.0, boost);
-            trail /= 6.0;
-            float pale = dot(trail, vec3(0.2126, 0.7152, 0.0722));
-            figure = max(figure, mix(trail, vec3(pale) * vec3(1.0, 0.97, 0.9) * 1.3, 0.6) * grip);
+        if (uFx > 0.5 && matte > 0.001) {
+          if (uFx < 1.5) {
+            /* Halftone: a dot per cell of a grid turned 45 degrees, sized by the tone at the cell's
+               centre and coloured by it, on black. */
+            const mat2 turn = mat2(0.70711, -0.70711, 0.70711, 0.70711);
+            const mat2 unturn = mat2(0.70711, 0.70711, -0.70711, 0.70711);
+            vec2 q = turn * px;
+            vec2 centre = (floor(q / FX_CELL) + 0.5) * FX_CELL;
+            vec3 tone = figureAt((unturn * centre) / uView, lift, open, boost);
+            float level = lumaOf(tone);
+            float radius = pow(level, 1.125) * FX_CELL * 0.72;
+            float ink = 1.0 - smoothstep(radius - 0.75, radius + 0.75, distance(q, centre));
+            float peak = max(max(tone.r, tone.g), tone.b);
+            figure = tone / max(peak, 0.04) * min(peak * 1.8, 1.0) * ink;
+          }
+          else if (uFx < 2.5) {
+            float noise = grain(px + fract(uClock) * 97.0);
+            vec3 grained = figure + figure * clamp(0.1 + noise, 0.0, 1.0);
+            figure = mix(figure, grained, FX_GRAIN);
+            figure *= 1.0 - 0.16 * (0.5 + 0.5 * sin(px.y * 6.28318 / FX_SCAN));
+          }
+          else {
+            vec2 off = vec2(FX_CHROMA, 0.0) / uView;
+            figure = vec3(figureAt(slid + off, lift, open, boost).r, figure.g, figureAt(slid - off, lift, open, boost).b);
           }
         }
 
-        /* The name. Inverted, the masthead canvas draws the letters in front and only those behind
-           the figure are laid here, at the negative the difference blend would give them. In
-           marble, every letter is drawn here, cream with an accent-blue edge, and laid in front of
-           or under the figure; both are worked back through the screen blend of this canvas. */
+        /* The name. The masthead canvas draws the letters in front and only those behind the
+           figure are laid here, at the negative the difference blend would give them, worked back
+           through the screen blend of this canvas. */
         vec3 under = liquidColour(heat, uv) * cover;
-        if (uLiquid > 2.5) {
-          /* A letter feels the touch only while the air is still moving through it; the heat a
-             touch leaves belongs to the figure, so the name is whole again the moment the pointer
-             stops. */
-          float moving = smoothstep(20.0, 160.0, speed);
-          under = mix(under * FELT_AIR, (1.0 - GROUND) * cover, letterAt(uv - mush) * moving);
-        }
-        if (uText < 0.5) {
-          float behind = letter * back * uLetters;
-          if (behind > 0.0)
-            under = mix(under, toStage(1.0 - (under + GROUND - under * GROUND)), behind);
-          col = figure + under * (1.0 - matte);
-        }
-        else {
-          float rim = abs(letterAt(uv - vel * (MARBLE_DISPLACE + MARBLE_FRINGE)) * uLetters - letter);
-          vec3 inked = toStage(1.0 - GROUND);
-          vec3 edged = toStage(liquidColour(0.85, uv) + (1.0 - GROUND) * 0.15);
-          under = mix(under, inked, letter * back);
-          under = mix(under, edged, rim * back);
-          col = figure + under * (1.0 - matte);
-          col = mix(col, inked, letter * (1.0 - back));
-          col = mix(col, edged, rim * (1.0 - back));
+        float behind = letter * back * uLetters;
+        if (behind > 0.0)
+          under = mix(under, toStage(1.0 - (under + GROUND - under * GROUND)), behind);
+        col = figure + under * (1.0 - matte);
+
+        if (uBackdrop > 0.5) {
+          vec2 room = vec2(vUv.x * uView.x / uView.y, vUv.y);
+          float light;
+          if (uBackdrop > 1.5) {
+            vec2 along = normalize(vec2(0.55, -1.0));
+            vec2 from = vec2(0.18 * uView.x / uView.y, 1.05);
+            float across = abs(dot(room - from, vec2(-along.y, along.x)));
+            float down = clamp(dot(room - from, along), 0.0, 1.4);
+            light = (1.0 - smoothstep(0.02, 0.2 + down * 0.16, across)) * (1.0 - smoothstep(0.1, 1.3, down)) * 0.9;
+            light += (1.0 - smoothstep(0.0, 0.9, distance(room, from))) * 0.25;
+          }
+          else {
+            vec2 source = vec2(0.32 * uView.x / uView.y, 0.82);
+            light = 1.0 - smoothstep(0.0, 0.95, distance(room, source));
+            light *= light;
+          }
+          float corners = 1.0 - smoothstep(0.3, 0.5, abs(vUv.x - 0.5)) * (1.0 - smoothstep(0.12, 0.3, vUv.y));
+          float clear = 1.0 - letterAt(uv) * uLetters;
+          col += uBackdropColour * BACKDROP_STRENGTH * light * corners * clear * (1.0 - matte);
         }
 
         /* A half-step dither: the cold end of the ramp spans a few dozen 8-bit levels across
@@ -2650,7 +2518,9 @@ function useFluidSimulation() {
     g.uniform1f(contentDisplayProgram.uniforms.uSkinGain!, contentDisplay.skinGain)
     g.uniform1f(contentDisplayProgram.uniforms.uWarm!, contentDisplay.warm)
     g.uniform1f(contentDisplayProgram.uniforms.uLook!, contentDisplay.lookMode)
-    g.uniform1f(contentDisplayProgram.uniforms.uText!, contentDisplay.textMode)
+    g.uniform1f(contentDisplayProgram.uniforms.uBackdrop!, contentDisplay.backdrop)
+    g.uniform1f(contentDisplayProgram.uniforms.uFx!, contentDisplay.fx)
+    g.uniform3f(contentDisplayProgram.uniforms.uBackdropColour!, ...contentDisplay.backdropColour)
     g.uniform1f(contentDisplayProgram.uniforms.uClock!, performance.now() / 1000)
     g.uniform3f(contentDisplayProgram.uniforms.uInfra!, INFRA.lo, INFRA.hi, INFRA.gamma)
     g.uniform4f(contentDisplayProgram.uniforms.uHeat!, contentDisplay.heat[0], contentDisplay.heat[1], contentDisplay.heat[2], contentDisplay.heat[3])
@@ -3300,11 +3170,19 @@ function useFluidSimulation() {
     contentDisplay.warm = warm
   }
 
-  function setSceneLook(photo: number, scan: number, lookMode: number, textMode: number) {
+  function setSceneLook(photo: number, scan: number, lookMode: number) {
     contentDisplay.lookMode = lookMode
-    contentDisplay.textMode = textMode
     contentDisplay.photo = photo
     contentDisplay.scan = scan
+  }
+
+  function setEffect(fx: number) {
+    contentDisplay.fx = fx
+  }
+
+  function setBackdrop(mode: number, colour: [number, number, number]) {
+    contentDisplay.backdrop = mode
+    contentDisplay.backdropColour = colour
   }
 
   function setTouchLook(liquid: number, motion: number, reach: number) {
@@ -3383,6 +3261,8 @@ function useFluidSimulation() {
     emitSplat,
     setContentCanvas,
     setAuxCanvas,
+    setBackdrop,
+    setEffect,
     setHotCanvas,
     setDisplayGains,
     setSceneLook,
@@ -3421,7 +3301,15 @@ interface SceneBox {
   height: number
 }
 
-type Look = 'purple' | 'mono' | 'overheat' | 'infrared' | 'thermal' | 'isotherm' | 'void' | 'noise' | 'colour' | 'grayscale'
+/* Looks graded in Photoshop as two plates per photograph, at rest and touched. */
+const GRADED_LOOKS = ['purple', 'duotone'] as const
+type GradedLook = typeof GRADED_LOOKS[number]
+
+function isGraded(value: string): value is GradedLook {
+  return (GRADED_LOOKS as readonly string[]).includes(value)
+}
+
+type Look = 'duotone' | 'purple' | 'mono' | 'thermal' | 'void' | 'colour' | 'grayscale'
 
 interface Portrait {
   /* Every portrait is kept as five rasters in one register: the photograph in its own colours,
@@ -3445,46 +3333,6 @@ interface Portrait {
 /* Each photograph is used whole: skin, hair and cloth in their real outline, cropped by the
    viewport and by nothing else. */
 const PORTRAITS: Record<string, Portrait> = {
-  pattern: {
-    look: 'purple',
-    width: 1216,
-    height: 1536,
-    axis: 607.5,
-    faceUnit: 289.6,
-    crownRow: 45,
-    foreheadRow: 367,
-    sleeveRow: 1459,
-  },
-  school: {
-    look: 'purple',
-    width: 1216,
-    height: 1536,
-    axis: 608,
-    faceUnit: 287.6,
-    crownRow: 44,
-    foreheadRow: 375,
-    sleeveRow: 1475,
-  },
-  mural: {
-    look: 'purple',
-    width: 1216,
-    height: 1536,
-    axis: 607.5,
-    faceUnit: 254.7,
-    crownRow: 61,
-    foreheadRow: 358,
-    sleeveRow: 1536,
-  },
-  neon: {
-    look: 'purple',
-    width: 1792,
-    height: 2400,
-    axis: 788,
-    faceUnit: 442.7,
-    crownRow: 254,
-    foreheadRow: 777,
-    sleeveRow: 2245,
-  },
   studio: {
     look: 'purple',
     width: 2240,
@@ -3529,19 +3377,16 @@ const PORTRAITS: Record<string, Portrait> = {
 const PORTRAIT_DEFAULT = 'geometric'
 const PORTRAIT_KEYS = Object.keys(PORTRAITS)
 const LOOKS: Look[] = [
-  'overheat',
   'mono',
   'purple',
-  'infrared',
+  'duotone',
   'thermal',
-  'isotherm',
   'void',
-  'noise',
   'colour',
   'grayscale',
 ]
 
-function plateSrc(key: string, kind: 'colour' | 'heat' | 'depth' | 'matte' | 'purple-idle' | 'purple-hot'): string {
+function plateSrc(key: string, kind: 'colour' | 'heat' | 'depth' | 'matte' | `${GradedLook}-${'idle' | 'hot'}`): string {
   return `/assets/images/concept-2/portrait-${key}-${kind}.webp`
 }
 
@@ -3605,17 +3450,13 @@ const PLATE_FADE_FOOT = 0.06
 
 /* Which letters of the name sit behind the figure: `front` keeps the whole name over it,
    `behind` sends every letter the hair reaches behind it (a letter counts as reached when
-   COVER_MIN of its ink lies on the figure), `split` sends the first SPLIT_LETTERS, BILLYM,
-   behind and keeps AULANA in front, and `lead` does the opposite. */
+   COVER_MIN of its ink lies on the figure). */
 const NAME_DEPTHS = [
   'behind',
   'front',
-  'split',
-  'lead',
 ] as const
 type NameDepth = typeof NAME_DEPTHS[number]
 const COVER_MIN = 0.03
-const SPLIT_LETTERS = 6
 
 /* Behind each footer label that stands on it, the figure keeps SHADE_LEVEL of its light. The
    shade is as wide as the label plus SHADE_PAD, starts SHADE_GAP above it and runs to the bottom
@@ -3675,7 +3516,6 @@ const textCanvasRef = ref<HTMLCanvasElement>()
 const navRef = ref<HTMLElement>()
 const footRef = ref<HTMLElement>()
 const isTextReady = ref(false)
-const stageDrawsName = ref(false)
 
 const backdropCanvasRef = ref<HTMLCanvasElement>()
 const showStaticBackdrop = ref(false)
@@ -3708,25 +3548,26 @@ const liquidLook = route.query.liquid
   : LIQUIDS.indexOf('thermal')
 const motion = MOTIONS.find(name => name === route.query.motion) ?? 'wave'
 const MOTION_LOOK = {
-  shatter: { mode: 2, reach: SHATTER.reach },
+  shift: { mode: 7, reach: RIPPLE.shift },
+  glitch: { mode: 8, reach: RIPPLE.glitch },
   tear: { mode: 1, reach: RIPPLE.tear },
-  smear: { mode: 3, reach: RIPPLE.smear },
   wave: { mode: 4, reach: RIPPLE.wave },
-  echo: { mode: 5, reach: RIPPLE.echo },
   liquid: { mode: 6, reach: RIPPLE.liquid },
-  still: { mode: 0, reach: 0 },
 } as const
-const textMode = TEXT_MODES.find(name => name === route.query.text) ?? TEXT_MODES[0]
 const LOOK_MODES: Partial<Record<Look, number>> = {
-  isotherm: 1,
-  noise: 2,
-  infrared: 3,
-  overheat: 4,
   mono: 5,
   purple: 6,
+  duotone: 6,
 }
 const lookMode = LOOK_MODES[look] ?? 0
 const showsPanel = import.meta.dev && route.query.panel !== '0'
+const backdrop = BACKDROPS.find(name => name === route.query.blend) ?? 'haze'
+const effect = EFFECTS.find(name => name === route.query.fx) ?? 'none'
+const BACKDROP_MODES = {
+  none: 0,
+  haze: 1,
+  beam: 2,
+} as const
 
 interface PanelOption {
   label: string
@@ -3744,11 +3585,6 @@ const PANEL_GROUPS: PanelGroup[] = [
     label: 'Filter',
     options: [
       {
-        label: 'Overheat',
-        query: { filter: 'overheat' },
-        active: look === 'overheat',
-      },
-      {
         label: 'Mono',
         query: { filter: 'mono' },
         active: look === 'mono',
@@ -3759,139 +3595,119 @@ const PANEL_GROUPS: PanelGroup[] = [
         active: look === 'purple',
       },
       {
-        label: 'Fotografis',
-        query: { filter: 'infrared' },
-        active: look === 'infrared',
+        label: 'Duotone',
+        query: { filter: 'duotone' },
+        active: look === 'duotone',
       },
       {
-        label: 'Termal',
+        label: 'Thermal',
         query: { filter: 'thermal' },
         active: look === 'thermal',
       },
       {
-        label: 'Isoterm',
-        query: { filter: 'isotherm' },
-        active: look === 'isotherm',
-      },
-      {
-        label: 'Garis',
+        label: 'Lines',
         query: { filter: 'void' },
         active: look === 'void',
       },
       {
-        label: 'Bintik',
-        query: { filter: 'noise' },
-        active: look === 'noise',
-      },
-      {
-        label: 'Asli',
+        label: 'Original',
         query: { filter: 'colour' },
         active: look === 'colour',
       },
     ],
   },
   {
-    label: 'Cairan',
+    label: 'Background',
     options: [
       {
-        label: 'Rasa',
-        query: { liquid: 'felt' },
-        active: liquidLook === 3,
+        label: 'Haze',
+        query: { blend: 'haze' },
+        active: backdrop === 'haze',
       },
       {
-        label: 'Termal',
+        label: 'Beam',
+        query: { blend: 'beam' },
+        active: backdrop === 'beam',
+      },
+      {
+        label: 'None',
+        query: { blend: 'none' },
+        active: backdrop === 'none',
+      },
+    ],
+  },
+  {
+    label: 'Effect',
+    options: EFFECTS.map(name => ({
+      label: name === 'none'
+        ? 'None'
+        : name[0]!.toUpperCase() + name.slice(1),
+      query: { fx: name },
+      active: effect === name,
+    })),
+  },
+  {
+    label: 'Liquid',
+    options: [
+      {
+        label: 'Thermal',
         query: { liquid: 'thermal' },
         active: liquidLook === 0,
       },
       {
-        label: 'Bara',
+        label: 'Ember',
         query: { liquid: 'ember' },
         active: liquidLook === 1,
       },
       {
-        label: 'Kontur',
+        label: 'Contour',
         query: { liquid: 'contour' },
         active: liquidLook === 2,
       },
     ],
   },
   {
-    label: 'Gerak',
+    label: 'Motion',
     options: [
       {
-        label: 'Gelombang',
+        label: 'Wave',
         query: { motion: 'wave' },
         active: motion === 'wave',
       },
       {
-        label: 'Pecah',
-        query: { motion: 'shatter' },
-        active: motion === 'shatter',
-      },
-      {
-        label: 'Robek',
+        label: 'Tear',
         query: { motion: 'tear' },
         active: motion === 'tear',
       },
       {
-        label: 'Stroboskop',
-        query: { motion: 'echo' },
-        active: motion === 'echo',
-      },
-      {
-        label: 'Cair',
+        label: 'Melt',
         query: { motion: 'liquid' },
         active: motion === 'liquid',
       },
       {
-        label: 'Sapuan',
-        query: { motion: 'smear' },
-        active: motion === 'smear',
+        label: 'RGB Shift',
+        query: { motion: 'shift' },
+        active: motion === 'shift',
       },
       {
-        label: 'Diam',
-        query: { motion: 'still' },
-        active: motion === 'still',
+        label: 'Glitch',
+        query: { motion: 'glitch' },
+        active: motion === 'glitch',
       },
     ],
   },
   {
-    label: 'Nama',
+    label: 'Name',
     options: [
       {
-        label: 'Belakang',
+        label: 'Behind',
         query: { name: 'behind' },
         active: nameDepth === 'behind',
       },
       {
-        label: 'Depan',
+        label: 'Front',
         query: { name: 'front' },
         active: nameDepth === 'front',
-      },
-      {
-        label: 'BILLYM belakang',
-        query: { name: 'split' },
-        active: nameDepth === 'split',
-      },
-      {
-        label: 'BILLYM depan',
-        query: { name: 'lead' },
-        active: nameDepth === 'lead',
-      },
-    ],
-  },
-  {
-    label: 'Teks',
-    options: [
-      {
-        label: 'Balik',
-        query: { text: 'invert' },
-        active: textMode === 'invert',
-      },
-      {
-        label: 'Marmer',
-        query: { text: 'marble' },
-        active: textMode === 'marble',
       },
     ],
   },
@@ -4208,9 +4024,9 @@ function ensureScene(): Promise<boolean> {
   return scenePromise
 }
 
-function photoPlate(): 'colour' | 'purple-idle' {
-  return look === 'purple'
-    ? 'purple-idle'
+function photoPlate(): 'colour' | `${GradedLook}-idle` {
+  return isGraded(look)
+    ? `${look}-idle`
     : 'colour'
 }
 
@@ -4218,10 +4034,9 @@ async function loadScene(): Promise<boolean> {
   const [heat, colour, depth, matte] = await Promise.all([
     loadImage(plateSrc(portraitKey, 'heat')),
     showsPhotograph || [
-      'infrared',
-      'overheat',
       'mono',
       'purple',
+      'duotone',
     ].includes(look)
       ? loadImage(plateSrc(portraitKey, photoPlate()))
       : null,
@@ -4237,8 +4052,8 @@ async function loadScene(): Promise<boolean> {
   colourImage = colour && look === 'grayscale'
     ? toGrayscale(colour)
     : colour
-  hotImage = look === 'purple'
-    ? await loadImage(plateSrc(portraitKey, 'purple-hot'))
+  hotImage = isGraded(look)
+    ? await loadImage(plateSrc(portraitKey, `${look}-hot`))
     : null
   return figureCanvas !== null && (!showsPhotograph || colourImage !== null)
 }
@@ -4295,10 +4110,6 @@ function letterCover(source: HTMLCanvasElement, runs: Array<[number, number]>): 
 }
 
 function chooseBehind(cover: number[]): boolean[] {
-  if (nameDepth === 'split')
-    return cover.map((_, index) => index < SPLIT_LETTERS)
-  if (nameDepth === 'lead')
-    return cover.map((_, index) => index >= SPLIT_LETTERS)
   return cover.map(value => nameDepth === 'behind' && value >= COVER_MIN)
 }
 
@@ -4831,20 +4642,16 @@ onMounted(async () => {
       displace: FLUID.displace,
       chromatic: FLUID.chromatic,
       whiteCore: FLUID.whiteCore,
-      densityDissipation: LIQUIDS[liquidLook] === 'felt'
-        ? FELT.dissipation
-        : FLUID.densityDissipation,
+      densityDissipation: FLUID.densityDissipation,
       velocityDissipation: FLUID.velocityDissipation,
       pressureIterations: FLUID.pressureIterations,
     })
     if (fluidReady) {
       fluid.setContentCanvas(createBlankContent())
-      fluid.setSceneLook(showsPhotograph ? 1 : 0, scansLines ? 1 : 0, lookMode, textMode === 'marble'
-        ? 1
-        : 0)
-      fluid.setTouchLook(liquidLook, MOTION_LOOK[motion].mode, MOTION_LOOK[motion].reach * (LIQUIDS[liquidLook] === 'felt'
-        ? FELT.shimmer
-        : 1))
+      fluid.setSceneLook(showsPhotograph ? 1 : 0, scansLines ? 1 : 0, lookMode)
+      fluid.setEffect(EFFECTS.indexOf(effect))
+      fluid.setBackdrop(BACKDROP_MODES[backdrop], (BACKDROP.colours[look] ?? BACKDROP.fallback).map(channel => channel / 255) as [number, number, number])
+      fluid.setTouchLook(liquidLook, MOTION_LOOK[motion].mode, MOTION_LOOK[motion].reach)
       applyDisplayGains()
       resizeObserver = new ResizeObserver(() => {
         fluid.resize()
@@ -4853,8 +4660,6 @@ onMounted(async () => {
       resizeObserver.observe(fluidCanvasRef.value)
     }
   }
-
-  stageDrawsName.value = fluidReady && !prefersReduced && textMode === 'marble'
 
   if (prefersReduced) {
     paintStaticMasthead()
@@ -4991,7 +4796,7 @@ onUnmounted(() => {
 
     <div class="chd__grain" aria-hidden="true" />
 
-    <div ref="headRef" class="chd__head" :class="{ 'chd__head--ready': isTextReady, 'chd__head--stage': stageDrawsName }">
+    <div ref="headRef" class="chd__head" :class="{ 'chd__head--ready': isTextReady }">
       <canvas
         ref="textCanvasRef"
         class="chd__text-canvas"
@@ -5048,7 +4853,7 @@ onUnmounted(() => {
       <div v-show="panelOpen" class="chd__panel-body">
         <div class="chd__panel-group">
           <p class="chd__panel-label">
-            Foto
+            Photo
           </p>
           <ul class="chd__panel-photos">
             <li v-for="key in PORTRAIT_KEYS" :key="key">
@@ -5056,7 +4861,7 @@ onUnmounted(() => {
                 class="chd__panel-photo"
                 :class="{ 'chd__panel-photo--active': key === portraitKey }"
                 :href="panelHref({ photo: key })"
-                :aria-label="`Foto ${key}`"
+                :aria-label="`Photo ${key}`"
                 :aria-current="key === portraitKey ? 'true' : undefined"
               >
                 <img
@@ -5156,11 +4961,6 @@ onUnmounted(() => {
 
 .chd__head--ready .chd__text-canvas {
   opacity: 1;
-}
-
-.chd__head--stage .chd__text-canvas,
-.chd__head--stage.chd__head--ready .chd__text-canvas {
-  opacity: 0;
 }
 
 .chd__nav {
