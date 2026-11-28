@@ -625,20 +625,19 @@ const RIPPLE = {
 }
 
 /* Effects laid over whichever look is chosen, adapted from the three.js post-processing shaders
-   (MIT): `halftone` redraws the figure as a print screen of `cell` CSS px turned 45 degrees, each
-   dot sized by its tone as in HalftoneShader; `film` adds FilmShader's grain at `grain` with
-   scanlines every `scan` CSS px; `chroma` splits red from blue by `chroma` CSS px as RGBShiftShader
-   does. The touch answers `shift` and `glitch` follow RGBShiftShader and DigitalGlitch, the glitch
+   (MIT): `bleach` is BleachBypassShader, the silver left in the print, at `bleach` strength;
+   `film` adds FilmShader's grain at `grain` with scanlines every `scan` CSS px; `chroma` splits
+   red from blue by `chroma` CSS px as RGBShiftShader does. The touch answers `shift` and `glitch` follow RGBShiftShader and DigitalGlitch, the glitch
    tearing rows `row` CSS px tall. */
 const EFFECTS = [
   'none',
-  'halftone',
+  'bleach',
   'film',
   'chroma',
 ] as const
 
 const EFFECT = {
-  cell: 7,
+  bleach: 0.8,
   grain: 0.35,
   scan: 3,
   chroma: 2,
@@ -709,6 +708,7 @@ const BACKDROP = {
   colours: {
     purple: [92, 52, 214],
     duotone: [70, 44, 190],
+    thermal: [46, 5, 90],
     mono: [120, 120, 128],
   } as Record<string, [number, number, number]>,
   fallback: [60, 30, 170] as [number, number, number],
@@ -1374,7 +1374,7 @@ function useFluidSimulation() {
     const float SCAN_DUTY = ${SCAN.duty.toFixed(4)};
     const float SCAN_GAP = ${SCAN.gap.toFixed(4)};
     const float COLD_CHROMA = ${COLD_CHROMA.toFixed(4)};
-    const float FX_CELL = ${EFFECT.cell.toFixed(4)};
+    const float FX_BLEACH = ${EFFECT.bleach.toFixed(4)};
     const float FX_GRAIN = ${EFFECT.grain.toFixed(4)};
     const float FX_SCAN = ${EFFECT.scan.toFixed(4)};
     const float FX_CHROMA = ${EFFECT.chroma.toFixed(4)};
@@ -1689,18 +1689,11 @@ function useFluidSimulation() {
 
         if (uFx > 0.5 && matte > 0.001) {
           if (uFx < 1.5) {
-            /* Halftone: a dot per cell of a grid turned 45 degrees, sized by the tone at the cell's
-               centre and coloured by it, on black. */
-            const mat2 turn = mat2(0.70711, -0.70711, 0.70711, 0.70711);
-            const mat2 unturn = mat2(0.70711, 0.70711, -0.70711, 0.70711);
-            vec2 q = turn * px;
-            vec2 centre = (floor(q / FX_CELL) + 0.5) * FX_CELL;
-            vec3 tone = figureAt((unturn * centre) / uView, lift, open, boost);
-            float level = lumaOf(tone);
-            float radius = pow(level, 1.125) * FX_CELL * 0.72;
-            float ink = 1.0 - smoothstep(radius - 0.75, radius + 0.75, distance(q, centre));
-            float peak = max(max(tone.r, tone.g), tone.b);
-            figure = tone / max(peak, 0.04) * min(peak * 1.8, 1.0) * ink;
+            float lum = lumaOf(figure);
+            float above = clamp(10.0 * (lum - 0.45), 0.0, 1.0);
+            vec3 low = 2.0 * figure * lum;
+            vec3 high = 1.0 - 2.0 * (1.0 - lum) * (1.0 - figure);
+            figure = mix(figure, mix(low, high, above), FX_BLEACH);
           }
           else if (uFx < 2.5) {
             float noise = grain(px + fract(uClock) * 97.0);
@@ -3302,7 +3295,7 @@ interface SceneBox {
 }
 
 /* Looks graded in Photoshop as two plates per photograph, at rest and touched. */
-const GRADED_LOOKS = ['purple', 'duotone'] as const
+const GRADED_LOOKS = ['purple', 'duotone', 'thermal'] as const
 type GradedLook = typeof GRADED_LOOKS[number]
 
 function isGraded(value: string): value is GradedLook {
@@ -3558,6 +3551,7 @@ const LOOK_MODES: Partial<Record<Look, number>> = {
   mono: 5,
   purple: 6,
   duotone: 6,
+  thermal: 6,
 }
 const lookMode = LOOK_MODES[look] ?? 0
 const showsPanel = import.meta.dev && route.query.panel !== '0'
@@ -4033,11 +4027,7 @@ function photoPlate(): 'colour' | `${GradedLook}-idle` {
 async function loadScene(): Promise<boolean> {
   const [heat, colour, depth, matte] = await Promise.all([
     loadImage(plateSrc(portraitKey, 'heat')),
-    showsPhotograph || [
-      'mono',
-      'purple',
-      'duotone',
-    ].includes(look)
+    showsPhotograph || look === 'mono' || isGraded(look)
       ? loadImage(plateSrc(portraitKey, photoPlate()))
       : null,
     loadImage(plateSrc(portraitKey, 'depth')),
